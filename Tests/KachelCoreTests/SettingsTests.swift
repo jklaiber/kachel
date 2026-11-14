@@ -195,3 +195,29 @@ final class LayoutAndSnapshotTests: XCTestCase {
         XCTAssertEqual(fresh.workspaces[6].layout, .mirrorTall)
     }
 }
+
+
+final class GestureSettingsTests: XCTestCase {
+    func testDefaults() throws {
+        let g = try Settings.parse(Settings.defaultYAML).gestures
+        XCTAssertEqual(g, GestureSettings())
+        XCTAssertEqual(g.left, .workspaceNext)
+        XCTAssertNil(g.up)
+        XCTAssertEqual(try Settings.parse("").gestures, GestureSettings())
+    }
+
+    func testCustom() throws {
+        let g = try Settings.parse("gestures:\n  fingers: 4\n  skip-empty: false\n  swipe-up: window-search\n  swipe-left: ~\n").gestures
+        XCTAssertEqual(g.fingers, 4)
+        XCTAssertFalse(g.skipEmpty)
+        XCTAssertEqual(g.up, .windowSearch)
+        XCTAssertNil(g.left)
+        XCTAssertEqual(g.right, .workspacePrev)
+    }
+
+    func testBad() {
+        XCTAssertThrowsError(try Settings.parse("gestures:\n  fingers: 5"))
+        XCTAssertThrowsError(try Settings.parse("gestures:\n  swipe-left: fly"))
+        XCTAssertThrowsError(try Settings.parse("gestures:\n  pinch: quit"))
+    }
+}

@@ -220,6 +220,23 @@ public struct StackSet {
         return ((currentWorkspaceIndex + d) % n + n) % n
     }
 
+    /// The workspace a "next/previous" swipe goes to, like xmonad's CycleWS
+    /// with HiddenWS / HiddenNonEmptyWS: workspaces shown on another screen
+    /// are skipped (swapping screens on a swipe is confusing), and with
+    /// `skipEmpty` so are empty ones. nil when there's nowhere to go.
+    public func cycleTarget(_ d: Int, skipEmpty: Bool) -> Int? {
+        let n = workspaces.count
+        let here = currentWorkspaceIndex
+        for step in 1..<max(n, 1) {
+            let i = ((here + d * step) % n + n) % n
+            if i == here { break }
+            if isVisible(workspace: i) { continue }
+            if skipEmpty && workspaces[i].windows.isEmpty { continue }
+            return i
+        }
+        return nil
+    }
+
     /// Screen index `d` steps from the current one, wrapping around.
     public func neighbourScreen(_ d: Int) -> Int {
         let n = screenWorkspace.count

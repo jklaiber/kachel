@@ -67,6 +67,19 @@ public struct BarSettings: Equatable {
     public func shows(_ w: BarWidget) -> Bool { left.contains(w) || right.contains(w) }
 }
 
+/// Trackpad swipes (needs macOS's own horizontal swipe turned off).
+public struct GestureSettings: Equatable {
+    public var enabled = true
+    public var fingers = 3
+    /// workspace-next / -prev from a swipe skip empty workspaces (xmonad's HiddenNonEmptyWS).
+    public var skipEmpty = true
+    public var left: Command? = .workspaceNext     // fingers move left → like macOS, the space to the right
+    public var right: Command? = .workspacePrev
+    public var up: Command?
+    public var down: Command?
+    public init() {}
+}
+
 public struct SettingsError: Error, CustomStringConvertible {
     public let description: String
     init(_ d: String) { description = d }
@@ -84,6 +97,7 @@ public struct Settings {
     public var layouts: [LayoutKind] = [.tall, .mirrorTall, .column, .full]
     public var menubarIcon = false
     public var rules: [Rule] = []
+    public var gestures = GestureSettings()
     public var bar = BarSettings()
     public var keys: [KeyChord: Command] = [:]
 
@@ -104,7 +118,7 @@ public struct Settings {
         }
 
         let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
-                                  "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules"]
+                                  "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -130,6 +144,27 @@ public struct Settings {
                     throw SettingsError("layouts: unknown layout '\($0)' (use tall, wide, column, full)")
                 }
                 return l
+            }
+        }
+        if let v = dict["gestures"] {
+            guard let g = v as? [String: Any] else { throw SettingsError("gestures must be a mapping") }
+            for (k, v) in g {
+                func cmd() throws -> Command? {
+                    v is NSNull ? nil : try parseCommand("\(v)", workspaceCount: s.workspaces.count, context: "gestures.\(k)")
+                }
+                switch k {
+                case "enabled": s.gestures.enabled = try bool(v, "gestures.enabled")
+                case "fingers":
+                    let n = Int(try number(v, "gestures.fingers"))
+                    guard n == 3 || n == 4 else { throw SettingsError("gestures.fingers must be 3 or 4") }
+                    s.gestures.fingers = n
+                case "skip-empty": s.gestures.skipEmpty = try bool(v, "gestures.skip-empty")
+                case "swipe-left": s.gestures.left = try cmd()
+                case "swipe-right": s.gestures.right = try cmd()
+                case "swipe-up": s.gestures.up = try cmd()
+                case "swipe-down": s.gestures.down = try cmd()
+                default: throw SettingsError("unknown setting 'gestures.\(k)'")
+                }
             }
         }
         if let v = dict["rules"] { s.rules = try parseRules(v, workspaces: s.workspaces) }
@@ -381,6 +416,18 @@ bar:
   date-format: "EEE d MMM"   # Unicode date patterns
   clock-format: "HH:mm"
   interval: 2               # seconds between cpu / memory / network updates
+
+# Trackpad swipes switch workspaces on the screen under the pointer. Turn
+# macOS's own swipe off first: System Settings → Trackpad → More Gestures →
+# "Swipe between full-screen applications" → Off (or the other finger count).
+gestures:
+  enabled: true
+  fingers: 3              # 3 or 4
+  skip-empty: true        # swipes skip empty workspaces and ones shown on another screen
+  swipe-left: workspace-next    # any command; ~ for nothing
+  swipe-right: workspace-prev
+  swipe-up: ~
+  swipe-down: ~
 
 # Rules, like xmonad's manageHook: where an app's windows open, or whether
 # they float. mod-shift-p sets one for the focused app and writes it here.

@@ -114,3 +114,23 @@ final class MouseResizeTests: XCTestCase {
         XCTAssertEqual(r, 0.9)
     }
 }
+
+final class CycleTests: XCTestCase {
+    func testCycleSkipsVisibleAndEmpty() {
+        var ss = StackSet(tags: (1...9).map(String.init), screenCount: 2)   // screens show 1 and 2
+        ss.insert(10, into: 4)                                               // workspace 5 has a window
+        ss.insert(11, into: 7)                                               // workspace 8 too
+        XCTAssertEqual(ss.cycleTarget(+1, skipEmpty: true), 4)
+        XCTAssertEqual(ss.cycleTarget(-1, skipEmpty: true), 7)               // wraps backwards
+        XCTAssertEqual(ss.cycleTarget(+1, skipEmpty: false), 2)              // 2 is on the other screen
+        ss.greedyView(4)
+        XCTAssertEqual(ss.cycleTarget(+1, skipEmpty: true), 7)
+    }
+
+    func testNowhereToGo() {
+        let ss = StackSet(tags: ["1", "2"], screenCount: 2)
+        XCTAssertNil(ss.cycleTarget(+1, skipEmpty: false))
+        let one = StackSet(tags: ["1", "2", "3"], screenCount: 1)
+        XCTAssertNil(one.cycleTarget(+1, skipEmpty: true))                   // all empty
+    }
+}

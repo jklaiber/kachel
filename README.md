@@ -151,6 +151,22 @@ Problems (missing Accessibility permission, config errors, hotkeys taken by
 another app) appear in the bar in orange. The log is at
 `~/Library/Logs/Kachel.log`.
 
+## Trackpad gestures
+
+Swipe with three fingers (or four, `gestures.fingers`) to switch workspaces on
+the screen under the pointer: left for the next one, right for the previous one,
+like macOS Spaces. Swipes skip empty workspaces and the ones already shown on
+another screen (`skip-empty`, like xmonad's `CycleWS` with `HiddenNonEmptyWS`).
+Any command can go on a swipe, up and down included.
+
+Turn macOS's own swipe off first: System Settings → Trackpad → More Gestures →
+"Swipe between full-screen applications" → Off.
+
+Kachel reads the trackpad through Apple's private `MultitouchSupport`
+framework, as BetterTouchTool and similar tools do. If a macOS update breaks
+it, swipes stop working and everything else keeps going. The switch is instant;
+there's no sliding animation.
+
 ## Known limitations (v0.1)
 
 - Native fullscreen windows and minimized windows aren't managed. A window

@@ -128,6 +128,7 @@ final class WindowManager {
         }
 
         adoptExistingWindows()
+        updateGestures()
     }
 
     /// (Re)apply Config.current: hotkeys, workspaces, bar, screen geometry.
@@ -139,6 +140,7 @@ final class WindowManager {
         ss.setTags(cfg.workspaces)
         ss.setLayoutIfUnlisted(cfg.layouts)
         menuBarItem.setVisible(cfg.menubarIcon)
+        updateGestures()
         bar.menuBarIconShown = cfg.menubarIcon
         screens = Screen.all(reserveBottom: cfg.bar.enabled ? Bar.height(for: cfg.bar) : 0)
         ss.setScreenCount(screens.count)
@@ -249,6 +251,49 @@ final class WindowManager {
             ss.setRatio(r, workspace: wsIndex)
         }
         render()
+    }
+
+    // MARK: - trackpad swipes
+
+    private func updateGestures() {
+        let g = Config.current.gestures
+        let g2 = Gestures.shared
+        g2.onSwipe = { [unowned self] dir in self.swiped(dir) }
+        if managing && g.enabled { g2.start(fingers: g.fingers) } else { g2.stop() }
+    }
+
+    /// A swipe acts on the screen under the pointer, like the macOS one.
+    private func swiped(_ dir: Gestures.Direction) {
+        guard managing, !switcher.isOpen, !rulePicker.isOpen else { return }
+        let g = Config.current.gestures
+        let cmd: Command?
+        switch dir {
+        case .left: cmd = g.left
+        case .right: cmd = g.right
+        case .up: cmd = g.up
+        case .down: cmd = g.down
+        }
+        guard let cmd else { return }
+        syncFocusFromSystem(followHidden: false)
+        if let primary = NSScreen.screens.first {
+            let m = NSEvent.mouseLocation
+            let p = CGPoint(x: m.x, y: primary.frame.height - m.y)     // to AX coordinates
+            if let s = screenIndex(containing: p) { ss.focusScreen(s) }
+        }
+        switch cmd {
+        case .workspaceNext, .workspacePrev:
+            let d = cmd == .workspaceNext ? +1 : -1
+            guard let target = ss.cycleTarget(d, skipEmpty: g.skipEmpty) else {
+                Log.info("swipe \(dir.rawValue): no other workspace to go to")
+                return
+            }
+            Log.info("swipe \(dir.rawValue): workspace \(ss.workspaces[target].tag) on screen \(ss.currentScreen)")
+            ss.greedyView(target)
+            render()
+        default:
+            Log.info("swipe \(dir.rawValue): \(cmd)")
+            perform(cmd)
+        }
     }
 
     // MARK: - window search
