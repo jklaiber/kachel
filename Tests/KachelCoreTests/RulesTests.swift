@@ -36,7 +36,7 @@ final class RulesTests: XCTestCase {
                                     rule: Rule(app: "com.tinyspeck.slackmacgap", workspace: "9"), comment: "Slack")
         var s = try Settings.parse(text)
         XCTAssertEqual(s.rules, [Rule(app: "com.tinyspeck.slackmacgap", workspace: "9")])
-        XCTAssertEqual(s.keys.count, 37)                         // nothing else broke
+        XCTAssertEqual(s.keys.count, 39)                         // nothing else broke
         XCTAssertTrue(text.contains("# Slack"))
         XCTAssertTrue(text.contains("# Rules, like xmonad's manageHook"))
 
@@ -53,7 +53,7 @@ final class RulesTests: XCTestCase {
         text = Settings.setRule(text, app: "com.apple.calculator", rule: nil)
         s = try Settings.parse(text)
         XCTAssertEqual(s.rules, [])
-        XCTAssertEqual(s.keys.count, 37)
+        XCTAssertEqual(s.keys.count, 39)
     }
 
     func testSetRuleKeepsHandWrittenTitleRules() throws {
@@ -91,7 +91,7 @@ final class TopLevelEditTests: XCTestCase {
         XCTAssertTrue(on.contains("menubar-icon: true") && on.contains("# Kachel icon in the top menu bar"))
         let off = Settings.setTopLevel(on, key: "menubar-icon", value: "false")
         XCTAssertFalse(try Settings.parse(off).menubarIcon)
-        XCTAssertEqual(try Settings.parse(off).keys.count, 37)
+        XCTAssertEqual(try Settings.parse(off).keys.count, 39)
         let added = Settings.setTopLevel("gap: 3\nkeys:\n  mod-1: workspace 1\n", key: "menubar-icon", value: "true")
         XCTAssertTrue(try Settings.parse(added).menubarIcon)
     }

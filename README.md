@@ -92,9 +92,9 @@ Option + q / Return / f / b stay free.
 | `mod-shift-j / k` | swap window down / up | Amethyst swap-cw/ccw |
 | `mod-h / l` | shrink / expand master area (5 %) | Amethyst shrink/expand-main |
 | `mod-shift-space` | next layout: Tall → Wide → Column → Full | Amethyst cycle-layout |
-| `mod-,` | focus next screen | Amethyst focus-screen-cw |
+| `mod-,` / `mod-.` | focus next / previous screen | Amethyst focus-screen-cw, xmonad |
 | `mod-z` | re-scan windows and screens, then re-tile | Amethyst reevaluate-windows |
-| `mod-shift-,` | send focused window to next screen | xmonad |
+| `mod-shift-,` / `mod-shift-.` | send focused window to next / previous screen | xmonad |
 | `mod-p` | **window search**: type to find any open window; ↩ go there, ⇧↩ bring it here | xmonad Prompt.Window / dmenu |
 | `mod-shift-p` | **app rule**: always open the focused app on workspace N (1–9), F float, ⌫ remove; saved under `rules:` | xmonad manageHook |
 | `mod-m` / `mod-shift-m` | focus / swap with master | xmonad |

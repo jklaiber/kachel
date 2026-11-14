@@ -512,6 +512,7 @@ keys:
   mod-shift-space: next-layout
   # Amethyst focus-screen-cw
   mod-comma: focus-next-screen
+  mod-period: focus-prev-screen
   # Amethyst reevaluate-windows
   mod-z: refresh
 
@@ -519,6 +520,7 @@ keys:
   mod-p: window-search      # like dmenu / XMonad.Prompt.Window on mod-p
   mod-shift-p: app-rule     # "always open this app on workspace N" (writes rules: above)
   mod-shift-comma: shift-to-next-screen
+  mod-shift-period: shift-to-prev-screen
   mod-m: focus-master
   mod-shift-m: swap-master
   mod-t: toggle-float
