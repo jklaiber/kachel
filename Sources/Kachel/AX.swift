@@ -157,6 +157,11 @@ struct Screen {
     /// Without menu bar and Dock, Cocoa coordinates (bottom-left origin). The bar goes here.
     let nsVisible: NSRect
     let ns: NSScreen
+    /// The laptop's own display (for workspace-screens: builtin / external).
+    var builtin: Bool {
+        guard let id = ns.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return false }
+        return CGDisplayIsBuiltin(id.uint32Value) != 0
+    }
 
     /// Screens ordered left-to-right (then top-to-bottom), like xmonad's
     /// physical screen order for mod-w / mod-e / mod-r.

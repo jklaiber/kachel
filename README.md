@@ -91,11 +91,13 @@ Option + q / Return / f / b stay free.
 | `mod-j / k` | focus next / previous window | Amethyst focus-cw/ccw |
 | `mod-shift-j / k` | swap window down / up | Amethyst swap-cw/ccw |
 | `mod-h / l` | shrink / expand master area (5 %) | Amethyst shrink/expand-main |
-| `mod-shift-space` | next layout: Tall → Wide → Column → Full | Amethyst cycle-layout |
+| `mod-shift-space` | next layout: Tall → Wide → Three-column → Column → Full | Amethyst cycle-layout |
 | `mod-,` / `mod-.` | focus next / previous screen | Amethyst focus-screen-cw, xmonad |
 | `mod-z` | re-scan windows and screens, then re-tile | Amethyst reevaluate-windows |
 | `mod-shift-,` / `mod-shift-.` | send focused window to next / previous screen | xmonad |
 | `mod-p` | **window search**: type to find any open window; ↩ go there, ⇧↩ bring it here | xmonad Prompt.Window / dmenu |
+| `mod-tab` | **back and forth** to the workspace this screen showed before | xmonad toggleWS |
+| `mod-a` / `mod-shift-a` | make the focused window shorter / taller in its column | xmonad ResizableTall |
 | `mod-s` | **scratchpad**: show/hide a floating terminal over any workspace (see `scratchpads:`) | xmonad NamedScratchpad |
 | `mod-shift-f` | toggle fullscreen: show the workspace in Full until pressed again | xmonad ToggleLayouts |
 | `ctrl-alt-←/→/↑/↓` | focus the window in that direction, also across screens | xmonad Navigation2D, AeroSpace |
@@ -212,10 +214,30 @@ corners) and `smart` (no frame when a window is alone on its screen).
 
 ## Mouse
 
-- Drag the edge between master and stack (Tall, Wide) to move the split.
+- Drag the edge between master and stack (Tall, Wide, Three-column) to move the split.
+- Drag the top or bottom edge of a window in a column to make it taller or
+  shorter; the others make room (xmonad's ResizableTall). `reset-sizes`
+  evens everything out again.
 - Drag a tiled window by its title bar onto another one to swap them, also
   across screens (Amethyst's `mouse-swaps-windows`). Drop it on an empty part
   of another screen to move it there. Anything else snaps back.
+- `focus-follows-mouse: true`: the window under the pointer gets focus when
+  the pointer rests on it.
+- `mouse-follows-focus: window`: when focus moves by keyboard, the pointer
+  jumps to the focused window's centre (`screen`: only between screens; `off`).
+
+## Workspaces on fixed screens
+
+```yaml
+workspace-screens:
+  "8": external      # main, external, builtin, 1…n (left to right), or part of the display's name
+  "9": DELL
+```
+
+A pinned workspace always shows on its screen while that screen is connected:
+`mod-8` brings it up there and moves focus over. Without that screen, it
+behaves like any other workspace. Swipes skip workspaces pinned to another
+screen.
 
 ## Tips for the corner trick
 
@@ -234,8 +256,6 @@ with one pixel showing. Some macOS settings make that nicer:
 
 - Native fullscreen and minimized windows aren't tiled. They keep their
   workspace and come back there.
-- In Tall and Wide, stack windows share their column equally: making one
-  stack window taller with the mouse snaps back.
 - Apps with a minimum size (some Electron apps) can't shrink into a small tile.
   Kachel asks twice, then leaves them; the log names them.
 - If Kachel crashes, it first puts parked windows back on screen. The next

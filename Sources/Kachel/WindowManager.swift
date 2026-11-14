@@ -163,6 +163,7 @@ final class WindowManager {
         }
 
         adoptExistingWindows()
+        NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [unowned self] _ in self.pointerMoved() }
         updateGestures()
     }
 
@@ -283,11 +284,23 @@ final class WindowManager {
               let frame = windows[id]?.frame else { return }
         let ws = ss.workspaces[wsIndex]
         let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
-        if let i = tiled.firstIndex(of: id),
-           let r = Layout.ratio(afterResizing: frame, index: i, count: tiled.count, kind: ws.effectiveLayout,
-                                in: screens[s].visible, nMaster: ws.nMaster, gap: CGFloat(Config.current.gap)) {
+        guard let i = tiled.firstIndex(of: id) else { render(); return }
+        let kind = ws.effectiveLayout, gap = CGFloat(Config.current.gap), area = screens[s].visible
+        let before = expected[id] ?? frame
+        let dw = abs(frame.width - before.width), dh = abs(frame.height - before.height)
+        // Which way the split runs vs. which way windows share a column.
+        let splitChanged = kind == .mirrorTall ? dh > 4 : dw > 4
+        let columnChanged = (kind == .mirrorTall || kind == .column) ? dw > 4 : dh > 4
+        if splitChanged, let r = Layout.ratio(afterResizing: frame, index: i, count: tiled.count, kind: kind,
+                                              in: area, nMaster: ws.nMaster, gap: gap) {
             Log.info("mouse resize: workspace \(ws.tag) ratio \(String(format: "%.2f", ws.ratio)) → \(String(format: "%.2f", r))")
             ss.setRatio(r, workspace: wsIndex)
+        }
+        if columnChanged, let w = Layout.weights(afterResizing: frame, index: i, count: tiled.count, kind: kind,
+                                                 in: area, nMaster: ws.nMaster, ratio: ss.workspaces[wsIndex].ratio,
+                                                 gap: gap, weights: tiled.map { ws.weights[$0] ?? 1 }) {
+            Log.info("mouse resize: window \(id) share \(String(format: "%.2f", w[i])) in its column")
+            ss.setWeights(Dictionary(uniqueKeysWithValues: zip(tiled, w)), workspace: wsIndex)
         }
         render()
     }
@@ -334,7 +347,9 @@ final class WindowManager {
         switch cmd {
         case .workspaceNext, .workspacePrev:
             let d = cmd == .workspaceNext ? +1 : -1
-            guard let target = ss.cycleTarget(d, skipEmpty: g.skipEmpty) else {
+            let here = ss.currentScreen
+            guard let target = ss.cycleTarget(d, skipEmpty: g.skipEmpty,
+                                              allowed: { self.assignedScreen(of: $0).map { $0 == here } ?? true }) else {
                 Log.info("swipe \(dir.rawValue): no other workspace to go to")
                 return
             }
@@ -370,6 +385,48 @@ final class WindowManager {
         }
         ss.focus(id)
         render()
+    }
+
+    // MARK: - focus follows mouse
+
+    private var hoverTimer: Timer?
+
+    /// The pointer moved: once it rests (120 ms), focus the window under it.
+    /// Resting avoids focusing every window the pointer passes over.
+    private func pointerMoved() {
+        guard Config.current.focusFollowsMouse else { return }
+        hoverTimer?.invalidate()
+        hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: false) { [unowned self] _ in
+            self.focusWindowUnderPointer()
+        }
+    }
+
+    private func focusWindowUnderPointer() {
+        guard managing, NSEvent.pressedMouseButtons == 0, !switcher.isOpen, !rulePicker.isOpen, !asleep,
+              let primary = NSScreen.screens.first else { return }
+        let m = NSEvent.mouseLocation
+        let p = CGPoint(x: m.x, y: primary.frame.height - m.y)
+        // Only inside the tiling area: not over the bar, the menu bar or the Dock.
+        guard screens.contains(where: { $0.visible.contains(p) }) else { return }
+        // The topmost normal window under the pointer, front to back.
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return }
+        for info in list {
+            guard (info[kCGWindowLayer as String] as? Int) == 0,
+                  let b = info[kCGWindowBounds as String] as? [String: CGFloat],
+                  CGRect(x: b["X"] ?? 0, y: b["Y"] ?? 0, width: b["Width"] ?? 0, height: b["Height"] ?? 0).contains(p),
+                  let n = (info[kCGWindowNumber as String] as? NSNumber)?.uint32Value else { continue }
+            // The first window there decides: if it isn't one of ours, leave focus alone.
+            guard let w = windows[n], ss.workspaceIndex(of: n) != nil, !hidden.contains(n),
+                  n != ss.current.focused || focusedSystemWindow() != n else { return }
+            ss.focus(n)
+            touch(n)
+            ignoreFocusEventsUntil = Date().addingTimeInterval(0.3)
+            w.focus()
+            updateBar()
+            updateBorder()
+            return
+        }
     }
 
     // MARK: - focus border
@@ -518,7 +575,7 @@ final class WindowManager {
     /// ↩ in the search: show the window's workspace here (greedyView) and focus it.
     private func goToWindow(_ id: WindowID) {
         guard let ws = ss.workspaceIndex(of: id) else { return }
-        if ws != ss.currentWorkspaceIndex { ss.greedyView(ws) }
+        if ws != ss.currentWorkspaceIndex { show(ws) }
         ss.focus(id)
         render()
     }
@@ -888,7 +945,7 @@ final class WindowManager {
             guard self.focusedSystemWindow() == id, let ws = self.ss.workspaceIndex(of: id),
                   !self.ss.isVisible(workspace: ws) else { return }
             Log.info("following focus to window \(id) on workspace \(self.ss.workspaces[ws].tag)")
-            self.ss.greedyView(ws)
+            self.show(ws)
             self.ss.focus(id)
             self.render()
         }
@@ -907,7 +964,19 @@ final class WindowManager {
         }
         let step = Config.current.ratioStep
         switch cmd {
-        case .greedyView(let i): greedyView(i)
+        case .greedyView(let i):
+            // workspace-back-and-forth: the key of the workspace you're on goes back.
+            if Config.current.workspaceBackAndForth, i == ss.currentWorkspaceIndex, let p = ss.previousWorkspace {
+                greedyView(p)
+            } else {
+                greedyView(i)
+            }
+        case .workspaceBack:
+            syncFocusFromSystem(followHidden: false)
+            if let p = ss.previousWorkspace { greedyView(p) }
+        case .taller: act { $0.scaleFocusedWeight(1.25) }
+        case .shorter: act { $0.scaleFocusedWeight(0.8) }
+        case .resetSizes: act { $0.resetSizes(ratio: Config.current.ratio) }
         case .view(let i): view(i)
         case .shift(let i): shift(to: i)
         case .focusScreen(let s): focusScreen(s)
@@ -951,12 +1020,33 @@ final class WindowManager {
     /// Clicking workspace `i` in screen `s`'s bar: show it on that screen.
     func greedyView(_ i: Int, onScreen s: Int) {
         syncFocusFromSystem(followHidden: false)   // before focusScreen, or it would undo it
-        ss.focusScreen(s)
+        ss.focusScreen(assignedScreen(of: i) ?? s)
         ss.greedyView(i)
         render()
     }
 
-    func greedyView(_ i: Int) { syncFocusFromSystem(followHidden: false); ss.greedyView(i); render() }
+    func greedyView(_ i: Int) {
+        syncFocusFromSystem(followHidden: false)
+        show(i)
+        render()
+    }
+
+    /// Bring workspace `i` up: on its pinned screen if it has one
+    /// (workspace-screens), otherwise here (greedyView).
+    private func show(_ i: Int) {
+        if let s = assignedScreen(of: i), s != ss.currentScreen { ss.focusScreen(s) }
+        ss.greedyView(i)
+    }
+
+    /// The screen a workspace is pinned to, if that screen is connected.
+    func assignedScreen(of i: Int) -> Int? {
+        let cfg = Config.current
+        guard ss.workspaces.indices.contains(i),
+              let pattern = cfg.workspaceScreens[ss.workspaces[i].tag] ?? cfg.workspaceScreens["\(i + 1)"] else { return nil }
+        let main = NSScreen.screens.first
+        let infos = screens.map { ScreenInfo(name: $0.ns.localizedName, builtin: $0.builtin, main: $0.ns == main) }
+        return ScreenMatcher.index(for: pattern, in: infos)
+    }
     func view(_ i: Int)       { syncFocusFromSystem(followHidden: false); ss.view(i); render() }
 
     func shift(to i: Int) {
@@ -1058,7 +1148,8 @@ final class WindowManager {
             let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
             let rects = Layout.tile(ws.effectiveLayout, count: tiled.count, in: scr.visible,
                                     nMaster: ws.nMaster, ratio: ws.ratio, gap: CGFloat(Config.current.gap),
-                                    minSizes: tiled.map { minSize[$0] })
+                                    minSizes: tiled.map { minSize[$0] },
+                                    weights: tiled.map { ws.weights[$0] ?? 1 })
             for (id, r) in zip(tiled, rects) {
                 windows[id]?.setFrame(r)
                 expected[id] = r.integral
@@ -1234,11 +1325,24 @@ final class WindowManager {
             // to a window that's parked in a corner.
             NSApp.activate(ignoringOtherApps: true)
         }
-        if Config.current.mouseFollowsFocus, ss.currentScreen < screens.count {
-            let scr = screens[ss.currentScreen]
-            let mouse = CGEvent(source: nil)?.location ?? .zero
-            if !scr.frame.contains(mouse) {
-                CGWarpMouseCursorPosition(CGPoint(x: scr.frame.midX, y: scr.frame.midY))
+        // Pointer follows focus, unless it's already there (so clicks and
+        // focus-follows-mouse never make it jump).
+        let mouse = CGEvent(source: nil)?.location ?? .zero
+        switch Config.current.mouseFollowsFocus {
+        case .off:
+            break
+        case .screen:
+            if ss.currentScreen < screens.count {
+                let scr = screens[ss.currentScreen]
+                if !scr.frame.contains(mouse) { CGWarpMouseCursorPosition(CGPoint(x: scr.frame.midX, y: scr.frame.midY)) }
+            }
+        case .window:
+            if let f = ws.focused, let frame = expected[f] ?? windows[f]?.frame, !frame.contains(mouse),
+               !hidden.contains(f) {
+                CGWarpMouseCursorPosition(CGPoint(x: frame.midX, y: frame.midY))
+            } else if ws.focused == nil, ss.currentScreen < screens.count {
+                let scr = screens[ss.currentScreen]
+                if !scr.frame.contains(mouse) { CGWarpMouseCursorPosition(CGPoint(x: scr.frame.midX, y: scr.frame.midY)) }
             }
         }
     }

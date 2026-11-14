@@ -7,8 +7,8 @@ final class SettingsTests: XCTestCase {
         let s = try Settings.parse(Settings.defaultYAML)
         XCTAssertEqual(s.mod, [.alt])
         XCTAssertEqual(s.workspaces.count, 9)
-        XCTAssertEqual(s.keys.count, 49)
-        XCTAssertEqual(s.layouts, [.tall, .mirrorTall, .column, .full])
+        XCTAssertEqual(s.keys.count, 52)
+        XCTAssertEqual(s.layouts, [.tall, .mirrorTall, .threeColumn, .column, .full])
         XCTAssertEqual(s.gap, 5)
         XCTAssertEqual(s.ratioStep, 0.05)
         XCTAssertFalse(s.menubarIcon)
@@ -20,7 +20,7 @@ final class SettingsTests: XCTestCase {
     func testPartialFileKeepsDefaultKeysWithNewMod() throws {
         let s = try Settings.parse("mod: cmd+alt\ngap: 10\n")
         XCTAssertEqual(s.gap, 10)
-        XCTAssertEqual(s.keys.count, 49)
+        XCTAssertEqual(s.keys.count, 52)
         XCTAssertEqual(s.keys[KeyChord(modifiers: [.cmd, .alt], key: "j")], .focusDown)
     }
 
@@ -40,7 +40,7 @@ final class SettingsTests: XCTestCase {
     }
 
     func testEmptyFileIsDefaults() throws {
-        XCTAssertEqual(try Settings.parse("").keys.count, 49)
+        XCTAssertEqual(try Settings.parse("").keys.count, 52)
     }
 
     func testErrors() {
@@ -103,7 +103,7 @@ final class BarConfigTests: XCTestCase {
         let s = try Settings.parse(text)
         XCTAssertEqual(s.bar.right, [.cpu, .clock])
         XCTAssertEqual(s.bar.left, [.workspaces, .layout, .title])
-        XCTAssertEqual(s.keys.count, 49)
+        XCTAssertEqual(s.keys.count, 52)
         XCTAssertTrue(text.contains("# Widgets, in order"))
     }
 

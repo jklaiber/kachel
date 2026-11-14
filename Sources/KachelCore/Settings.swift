@@ -38,7 +38,7 @@ public enum Command: Equatable {
     case workspaceNext, workspacePrev, shiftNext, shiftPrev
     case toggleFloat, refresh, close, terminal, reload, restart, quit
     case windowSearch, appRule
-    case toggleFullscreen
+    case toggleFullscreen, workspaceBack, taller, shorter, resetSizes
     case focusDirection(Direction), swapDirection(Direction)
     case scratchpad(String)
     case spawn(String)
@@ -125,10 +125,19 @@ public struct Settings {
     public var gap: Double = 6
     public var ratio: Double = 0.5
     public var ratioStep: Double = 0.03
-    public var mouseFollowsFocus = true
+    /// Move the pointer when focus moves: to the focused window's centre
+    /// (window, like Amethyst), to its screen's centre (screen), or not (off).
+    public var mouseFollowsFocus: MouseFollows = .window
+    public enum MouseFollows: String { case off, screen, window }
+    /// Focus the window under the pointer when it rests there.
+    public var focusFollowsMouse = false
+    /// Pressing the key of the workspace you're on goes back to the previous one.
+    public var workspaceBackAndForth = false
+    /// Workspace name -> screen pattern (see ScreenMatcher): always shown there.
+    public var workspaceScreens: [String: String] = [:]
     public var terminal = "open -na Terminal"
     public var floating: Set<String> = []
-    public var layouts: [LayoutKind] = [.tall, .mirrorTall, .column, .full]
+    public var layouts: [LayoutKind] = [.tall, .mirrorTall, .threeColumn, .column, .full]
     public var menubarIcon = false
     public var rules: [Rule] = []
     public var gestures = GestureSettings()
@@ -162,7 +171,8 @@ public struct Settings {
         let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
                                   "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
                                   "float-dialogs", "float-small-windows", "start-at-login",
-                                  "scratchpads", "border"]
+                                  "scratchpads", "border", "focus-follows-mouse",
+                                  "workspace-back-and-forth", "workspace-screens"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -175,7 +185,28 @@ public struct Settings {
         if let v = dict["gap"] { s.gap = try number(v, "gap") }
         if let v = dict["ratio"] { s.ratio = min(0.9, max(0.1, try number(v, "ratio"))) }
         if let v = dict["ratio-step"] { s.ratioStep = try number(v, "ratio-step") }
-        if let v = dict["mouse-follows-focus"] { s.mouseFollowsFocus = try bool(v, "mouse-follows-focus") }
+        if let v = dict["mouse-follows-focus"] {
+            if let b = v as? Bool { s.mouseFollowsFocus = b ? .window : .off }
+            else if let m = MouseFollows(rawValue: "\(v)") { s.mouseFollowsFocus = m }
+            else { throw SettingsError("mouse-follows-focus must be window, screen or off") }
+        }
+        if let v = dict["focus-follows-mouse"] { s.focusFollowsMouse = try bool(v, "focus-follows-mouse") }
+        if let v = dict["workspace-back-and-forth"] { s.workspaceBackAndForth = try bool(v, "workspace-back-and-forth") }
+        if let v = dict["workspace-screens"] {
+            if v is NSNull { s.workspaceScreens = [:] }
+            else {
+                guard let m = v as? [String: Any] else {
+                    throw SettingsError("workspace-screens must map workspaces to screens, e.g. \"9\": external")
+                }
+                s.workspaceScreens = [:]
+                for (k, val) in m {
+                    guard s.workspaces.contains(k) || Int(k).map({ $0 >= 1 && $0 <= s.workspaces.count }) == true else {
+                        throw SettingsError("workspace-screens: there is no workspace '\(k)'")
+                    }
+                    s.workspaceScreens[k] = "\(val)"
+                }
+            }
+        }
         if let v = dict["terminal"] { s.terminal = try string(v, "terminal") }
         if let v = dict["floating"] {
             guard let list = v as? [Any] else { throw SettingsError("floating must be a list of bundle IDs") }
@@ -427,6 +458,10 @@ public struct Settings {
         case "window-search":        return try noArg(.windowSearch)
         case "app-rule":             return try noArg(.appRule)
         case "toggle-fullscreen":    return try noArg(.toggleFullscreen)
+        case "workspace-back":       return try noArg(.workspaceBack)
+        case "taller":               return try noArg(.taller)
+        case "shorter":              return try noArg(.shorter)
+        case "reset-sizes":          return try noArg(.resetSizes)
         case "scratchpad":
             guard !arg.isEmpty, !arg.contains(" ") else {
                 throw SettingsError("\(context): 'scratchpad' needs a scratchpad name")
@@ -521,13 +556,22 @@ mod: alt
 # Workspace names. All monitors share these, like in xmonad.
 workspaces: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-# Layouts cycled by next-layout, in order: tall, wide, column, full.
-layouts: [tall, wide, column, full]
+# Layouts cycled by next-layout, in order: tall, wide, three-column, column, full.
+layouts: [tall, wide, three-column, column, full]
 
 gap: 5                    # points between windows and at screen edges
 ratio: 0.5                # master area share for new workspaces
 ratio-step: 0.05          # how much shrink/expand change it
-mouse-follows-focus: true # warp the pointer when focus moves to another screen
+mouse-follows-focus: window   # pointer to the focused window's centre; screen = only between screens; off
+focus-follows-mouse: false    # true: the window under the pointer gets focus when the pointer rests
+workspace-back-and-forth: false   # true: the key of the workspace you're on goes back to the previous one
+
+# Pin workspaces to a screen (AeroSpace's workspace-to-monitor assignment):
+# they always show there while that screen is connected. Screens: main (menu
+# bar), external, builtin, 1…n from left to right, or part of the display name.
+workspace-screens: {}
+#   "8": external
+#   "9": external
 menubar-icon: false       # Kachel icon in the top menu bar (same menu as right-clicking the bar)
 
 # Used by the `terminal` command. Examples: "open -na Ghostty",
@@ -632,6 +676,9 @@ rules: []
 #   shift-to-next-screen   shift-to-prev-screen
 #   focus-down  focus-up  focus-master  swap-down  swap-up  swap-master
 #   next-layout  shrink  expand  inc-master  dec-master  toggle-float
+#   workspace-back         the workspace this screen showed before (xmonad toggleWS)
+#   taller  shorter        the focused window's share of its column (xmonad ResizableTall)
+#   reset-sizes            equal sizes and the default split again
 #   focus left|right|up|down   focus the window in that direction (across screens)
 #   swap left|right|up|down    swap the focused window with the one in that direction
 #   toggle-fullscreen      show the workspace in Full until toggled back
@@ -689,6 +736,9 @@ keys:
   mod-p: window-search      # like dmenu / XMonad.Prompt.Window on mod-p
   mod-s: scratchpad term    # show/hide the scratchpad terminal
   mod-shift-f: toggle-fullscreen   # mod-f is skhd's
+  mod-tab: workspace-back   # back and forth between the last two workspaces
+  mod-a: shorter            # the focused window's height in its column
+  mod-shift-a: taller
   # Directional focus and swap (mod-arrows would break word jumps in text)
   ctrl-alt-left: focus left
   ctrl-alt-right: focus right

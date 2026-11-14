@@ -6,6 +6,7 @@ public enum LayoutKind: String, CaseIterable, Codable {
     case tall = "Tall"          // master left, stack right
     case mirrorTall = "Wide"    // master on top, stack below (Amethyst "wide", xmonad Mirror Tall)
     case column = "Column"      // all windows side by side, equal width
+    case threeColumn = "ThreeCol"   // master in the middle, stacks left and right (xmonad ThreeColMid)
     case full = "Full"
 
     /// Name in config.yaml.
@@ -14,6 +15,7 @@ public enum LayoutKind: String, CaseIterable, Codable {
         case .tall: return "tall"
         case .mirrorTall: return "wide"
         case .column: return "column"
+        case .threeColumn: return "three-column"
         case .full: return "full"
         }
     }
@@ -23,6 +25,7 @@ public enum LayoutKind: String, CaseIterable, Codable {
         case "tall": self = .tall
         case "wide", "mirror", "mirror-tall": self = .mirrorTall
         case "column", "columns": self = .column
+        case "three-column", "threecol", "3column", "three-columns": self = .threeColumn
         case "full", "fullscreen": self = .full
         default: return nil
         }
@@ -38,6 +41,8 @@ public struct Workspace: Equatable {
     public var ratio: Double = 0.5
     /// Toggled fullscreen (xmonad ToggleLayouts): show Full until toggled back.
     public var fullscreen = false
+    /// Share of each window in its column, 1 = normal (xmonad ResizableTall).
+    public var weights: [WindowID: Double] = [:]
 
     /// The layout actually used for tiling.
     public var effectiveLayout: LayoutKind { fullscreen ? .full : layout }
@@ -55,6 +60,8 @@ public struct StackSet {
     /// screen index -> index into `workspaces` that the screen shows
     public private(set) var screenWorkspace: [Int]
     public private(set) var currentScreen: Int = 0
+    /// screen index -> the workspace it showed before (for back and forth)
+    public private(set) var previousOnScreen: [Int: Int] = [:]
     public var floating: Set<WindowID> = []
 
     public init(tags: [String], screenCount: Int, ratio: Double = 0.5) {
@@ -118,6 +125,7 @@ public struct StackSet {
     /// If it is visible on another screen, the two screens swap workspaces.
     public mutating func greedyView(_ i: Int) {
         guard workspaces.indices.contains(i) else { return }
+        if i != currentWorkspaceIndex { previousOnScreen[currentScreen] = currentWorkspaceIndex }
         if let s = screen(ofWorkspace: i) {
             screenWorkspace.swapAt(s, currentScreen)
         } else {
@@ -131,6 +139,7 @@ public struct StackSet {
         if let s = screen(ofWorkspace: i) {
             currentScreen = s
         } else {
+            if i != currentWorkspaceIndex { previousOnScreen[currentScreen] = currentWorkspaceIndex }
             screenWorkspace[currentScreen] = i
         }
     }
@@ -155,6 +164,7 @@ public struct StackSet {
         var ws = workspaces[i]
         let idx = ws.windows.firstIndex(of: w)!
         ws.windows.remove(at: idx)
+        ws.weights[w] = nil
         if ws.focused == w {
             ws.focused = ws.windows.isEmpty ? nil : ws.windows[min(idx, ws.windows.count - 1)]
         }
@@ -247,7 +257,12 @@ public struct StackSet {
     /// with HiddenWS / HiddenNonEmptyWS: workspaces shown on another screen
     /// are skipped (swapping screens on a swipe is confusing), and with
     /// `skipEmpty` so are empty ones. nil when there's nowhere to go.
-    public func cycleTarget(_ d: Int, skipEmpty: Bool) -> Int? {
+    /// The workspace this screen showed before the current one (xmonad toggleWS).
+    public var previousWorkspace: Int? {
+        previousOnScreen[currentScreen].flatMap { workspaces.indices.contains($0) && $0 != currentWorkspaceIndex ? $0 : nil }
+    }
+
+    public func cycleTarget(_ d: Int, skipEmpty: Bool, allowed: (Int) -> Bool = { _ in true }) -> Int? {
         let n = workspaces.count
         let here = currentWorkspaceIndex
         for step in 1..<max(n, 1) {
@@ -255,6 +270,7 @@ public struct StackSet {
             if i == here { break }
             if isVisible(workspace: i) { continue }
             if skipEmpty && workspaces[i].windows.isEmpty { continue }
+            if !allowed(i) { continue }
             return i
         }
         return nil
@@ -279,22 +295,25 @@ public struct StackSet {
         public var ratios: [Int: Double]
         public var nMaster: [Int: Int]
         public var fullscreen: [Int: Bool]? = nil     // optional: older saved states lack it
+        public var weights: [Int: [WindowID: Double]]? = nil
     }
 
     public var snapshot: Snapshot {
         var windows: [WindowID: Int] = [:], focused: [Int: WindowID] = [:], order: [Int: [WindowID]] = [:]
         var layouts: [Int: LayoutKind] = [:], ratios: [Int: Double] = [:], nMaster: [Int: Int] = [:]
         var fullscreen: [Int: Bool] = [:]
+        var weights: [Int: [WindowID: Double]] = [:]
         for (i, ws) in workspaces.enumerated() {
             ws.windows.forEach { windows[$0] = i }
             order[i] = ws.windows
             if let f = ws.focused { focused[i] = f }
             layouts[i] = ws.layout; ratios[i] = ws.ratio; nMaster[i] = ws.nMaster
             if ws.fullscreen { fullscreen[i] = true }
+            if !ws.weights.isEmpty { weights[i] = ws.weights }
         }
         return Snapshot(windows: windows, focused: focused, order: order, floating: Array(floating),
                         screenWorkspace: screenWorkspace, currentScreen: currentScreen,
-                        layouts: layouts, ratios: ratios, nMaster: nMaster, fullscreen: fullscreen)
+                        layouts: layouts, ratios: ratios, nMaster: nMaster, fullscreen: fullscreen, weights: weights)
     }
 
     /// Restore a snapshot. Windows not in `existing` are dropped; existing
@@ -308,6 +327,7 @@ public struct StackSet {
             if let r = snap.ratios[i] { ws.ratio = r }
             if let n = snap.nMaster[i] { ws.nMaster = n }
             ws.fullscreen = snap.fullscreen?[i] ?? false
+            ws.weights = (snap.weights?[i] ?? [:]).filter { ws.windows.contains($0.key) }
             workspaces[i] = ws
         }
         floating = Set(snap.floating.filter(existing.contains))
@@ -330,6 +350,24 @@ public struct StackSet {
     public mutating func focusOther(than w: WindowID, excluding: Set<WindowID> = []) {
         guard let i = workspaceIndex(of: w), workspaces[i].focused == w else { return }
         workspaces[i].focused = workspaces[i].windows.first { $0 != w && !excluding.contains($0) }
+    }
+
+    /// Make the focused window taller (factor > 1) or shorter in its column.
+    public mutating func scaleFocusedWeight(_ factor: Double) {
+        modifyCurrent { ws in
+            guard let f = ws.focused else { return }
+            ws.weights[f] = min(20, max(0.05, (ws.weights[f] ?? 1) * factor))
+        }
+    }
+
+    public mutating func setWeights(_ w: [WindowID: Double], workspace i: Int) {
+        guard workspaces.indices.contains(i) else { return }
+        workspaces[i].weights = w
+    }
+
+    /// Back to equal sizes and the default split (AeroSpace balance-sizes).
+    public mutating func resetSizes(ratio: Double) {
+        modifyCurrent { ws in ws.weights = [:]; ws.ratio = ratio }
     }
 
     public mutating func toggleFullscreen() {
