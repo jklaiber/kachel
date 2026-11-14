@@ -456,7 +456,9 @@ final class WindowManager {
         if ss.workspaceIndex(of: id) == here, !scratchParked.contains(id) {
             Log.info("scratchpad \(name): away")
             scratchParked.insert(id)
-            ss.focusOther(than: id, excluding: scratchParked)
+            // Back to the window you used before the scratchpad.
+            let previous = mru.first { $0 != id && !scratchParked.contains($0) && ss.workspaceIndex(of: $0) == here }
+            if let previous { ss.focus(previous) } else { ss.focusOther(than: id, excluding: scratchParked) }
             render()
         } else {
             Log.info("scratchpad \(name): here")
