@@ -1077,11 +1077,12 @@ final class WindowManager {
         render()
     }
 
-    func focusDown()   { act { [unowned self] in $0.focusDown(skipping: self.offScreen()) } }
-    func focusUp()     { act { [unowned self] in $0.focusUp(skipping: self.offScreen()) } }
+    // offScreen() reads the state, so it runs before act() starts changing it.
+    func focusDown()   { let skip = offScreen(); act { $0.focusDown(skipping: skip) } }
+    func focusUp()     { let skip = offScreen(); act { $0.focusUp(skipping: skip) } }
     func focusMaster() { act { $0.focusMaster() } }
-    func swapDown()    { act { [unowned self] in $0.swapDown(skipping: self.offScreen()) } }
-    func swapUp()      { act { [unowned self] in $0.swapUp(skipping: self.offScreen()) } }
+    func swapDown()    { let skip = offScreen(); act { $0.swapDown(skipping: skip) } }
+    func swapUp()      { let skip = offScreen(); act { $0.swapUp(skipping: skip) } }
     func swapMaster()  { act { $0.swapMaster() } }
     func incMaster(_ d: Int)      { act { $0.incMaster(d) } }
     func adjustRatio(_ d: Double) { act { $0.adjustRatio(d) } }
