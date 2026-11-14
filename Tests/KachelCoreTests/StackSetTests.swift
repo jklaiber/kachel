@@ -80,3 +80,37 @@ final class StackSetTests: XCTestCase {
         XCTAssertEqual(rects[2], CGRect(x: 500, y: 300, width: 500, height: 300))
     }
 }
+
+final class MouseResizeTests: XCTestCase {
+    let screen = CGRect(x: 0, y: 0, width: 1000, height: 600)
+
+    func testRatioRoundTripsThroughTile() {
+        for kind in [LayoutKind.tall, .mirrorTall] {
+            let rects = Layout.tile(kind, count: 3, in: screen, nMaster: 1, ratio: 0.62, gap: 6)
+            for (i, r) in rects.enumerated() {
+                let back = Layout.ratio(afterResizing: r, index: i, count: 3, kind: kind, in: screen, nMaster: 1, gap: 6)!
+                XCTAssertEqual(back, 0.62, accuracy: 0.01, "\(kind) window \(i)")
+            }
+        }
+    }
+
+    func testDraggingMasterEdge() {
+        // Master dragged wider to x = 700.
+        let r = Layout.ratio(afterResizing: CGRect(x: 3, y: 3, width: 694, height: 594), index: 0, count: 2,
+                             kind: .tall, in: screen, nMaster: 1, gap: 6)!
+        XCTAssertEqual(r, 0.7, accuracy: 0.01)
+    }
+
+    func testNoSplitToMove() {
+        let f = CGRect(x: 0, y: 0, width: 400, height: 600)
+        XCTAssertNil(Layout.ratio(afterResizing: f, index: 0, count: 2, kind: .full, in: screen, nMaster: 1, gap: 0))
+        XCTAssertNil(Layout.ratio(afterResizing: f, index: 0, count: 2, kind: .column, in: screen, nMaster: 1, gap: 0))
+        XCTAssertNil(Layout.ratio(afterResizing: f, index: 0, count: 1, kind: .tall, in: screen, nMaster: 1, gap: 0))
+    }
+
+    func testClamped() {
+        let r = Layout.ratio(afterResizing: CGRect(x: 0, y: 0, width: 990, height: 600), index: 0, count: 2,
+                             kind: .tall, in: screen, nMaster: 1, gap: 0)!
+        XCTAssertEqual(r, 0.9)
+    }
+}

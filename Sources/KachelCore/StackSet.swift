@@ -281,6 +281,12 @@ public struct StackSet {
         modifyCurrent { ws in ws.nMaster = max(0, ws.nMaster + d) }
     }
 
+    /// Set a workspace's master ratio directly (mouse resize).
+    public mutating func setRatio(_ r: Double, workspace i: Int) {
+        guard workspaces.indices.contains(i) else { return }
+        workspaces[i].ratio = min(0.9, max(0.1, r))
+    }
+
     public mutating func adjustRatio(_ d: Double) {
         modifyCurrent { ws in ws.ratio = min(0.9, max(0.1, ws.ratio + d)) }
     }

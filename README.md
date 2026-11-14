@@ -155,8 +155,9 @@ another app) appear in the bar in orange. The log is at
 
 - Native fullscreen windows and minimized windows aren't managed. A window
   you un-minimize comes back on the current workspace.
-- No mouse resizing of the master split. Dragging a tiled window gets undone
-  on the next re-tile.
+- Mouse resizing moves the master split (Tall and Wide) when you drag the edge
+  between master and stack. Other drags, such as resizing in Column or Full,
+  making one stack window taller, or moving a tiled window, snap back.
 - Workspace state lives in memory. If the app crashes, windows stay parked
   in a corner. Relaunch it and they're adopted again, and `mod-shift-q` or Ctrl-C
   restores them properly.

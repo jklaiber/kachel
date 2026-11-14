@@ -3,8 +3,8 @@ import ApplicationServices
 import KachelCore
 
 /// AX callback: just forwards to the manager.
-private let axCallback: AXObserverCallback = { _, _, notification, _ in
-    WindowManager.shared.onAXEvent(notification as String)
+private let axCallback: AXObserverCallback = { _, element, notification, _ in
+    WindowManager.shared.onAXEvent(notification as String, element: element)
 }
 
 /// How workspaces work here (same trick as AeroSpace):
@@ -31,6 +31,9 @@ final class WindowManager {
     /// other app on its own; that must not drag us to that app's workspace.
     private var lastWindowGone = Date.distantPast
     private var followPending = false
+    /// A tiled window being resized with the mouse; applied on mouse-up.
+    private var mouseResized: WindowID?
+    private var mouseUpTimer: Timer?
     private let bar = Bar()
     private let menuBarItem = MenuBarItem()
     private let switcher = WindowSwitcher()
@@ -217,6 +220,37 @@ final class WindowManager {
         exit(0)
     }
 
+    // MARK: - mouse resize of the master split
+
+    private func waitForMouseUp() {
+        guard mouseUpTimer == nil else { return }
+        mouseUpTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [unowned self] t in
+            guard NSEvent.pressedMouseButtons & 1 == 0 else { return }
+            t.invalidate()
+            self.mouseUpTimer = nil
+            if let id = self.mouseResized { self.applyMouseResize(id) }
+            self.mouseResized = nil
+        }
+    }
+
+    /// Turn the window's new size into the workspace's master ratio, then
+    /// re-tile so the other windows make room. Anything that isn't a split
+    /// (Full, Column, floating) just snaps back.
+    private func applyMouseResize(_ id: WindowID) {
+        guard let wsIndex = ss.workspaceIndex(of: id), !ss.floating.contains(id),
+              let s = ss.screen(ofWorkspace: wsIndex), s < screens.count,
+              let frame = windows[id]?.frame else { return }
+        let ws = ss.workspaces[wsIndex]
+        let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
+        if let i = tiled.firstIndex(of: id),
+           let r = Layout.ratio(afterResizing: frame, index: i, count: tiled.count, kind: ws.layout,
+                                in: screens[s].visible, nMaster: ws.nMaster, gap: CGFloat(Config.current.gap)) {
+            Log.info("mouse resize: workspace \(ws.tag) ratio \(String(format: "%.2f", ws.ratio)) → \(String(format: "%.2f", r))")
+            ss.setRatio(r, workspace: wsIndex)
+        }
+        render()
+    }
+
     // MARK: - window search
 
     private func touch(_ id: WindowID) {
@@ -386,6 +420,7 @@ final class WindowManager {
                     result[id] = AXWindow(element: el, id: id, pid: pid, bundleID: app.bundleIdentifier)
                     if let obs = observers[pid] {
                         AXObserverAddNotification(obs, el, kAXUIElementDestroyedNotification as CFString, nil)
+                        AXObserverAddNotification(obs, el, kAXWindowResizedNotification as CFString, nil)
                     }
                 }
             }
@@ -416,7 +451,16 @@ final class WindowManager {
         CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
     }
 
-    fileprivate func onAXEvent(_ notification: String) {
+    fileprivate func onAXEvent(_ notification: String, element: AXUIElement) {
+        if notification == kAXWindowResizedNotification {
+            // Only your own drags count: the mouse button is down. Apps that
+            // refuse a size we asked for must not move the split.
+            if NSEvent.pressedMouseButtons & 1 != 0, let id = axWindowID(element), windows[id] != nil {
+                mouseResized = id
+                waitForMouseUp()
+            }
+            return
+        }
         if notification == kAXUIElementDestroyedNotification {
             lastWindowGone = Date()
         }

@@ -39,4 +39,23 @@ public enum Layout {
             return CGRect(x: r.minX, y: r.minY + CGFloat(i) * h, width: r.width, height: h)
         }
     }
+
+    /// The master ratio implied by a window the user resized with the mouse,
+    /// or nil if this layout has no split to move (Full, Column, or the
+    /// window isn't next to the split). The inverse of `tile`.
+    public static func ratio(afterResizing frame: CGRect, index: Int, count n: Int, kind: LayoutKind,
+                             in rect: CGRect, nMaster: Int, gap: CGFloat) -> Double? {
+        guard kind == .tall || kind == .mirrorTall, nMaster > 0, n > nMaster, index >= 0, index < n else { return nil }
+        let area = rect.insetBy(dx: gap / 2, dy: gap / 2)
+        let mirrored = kind == .mirrorTall
+        let start = mirrored ? area.minY : area.minX
+        let length = mirrored ? area.height : area.width
+        guard length > 0 else { return nil }
+        // Master windows: their far edge is the split. Stack windows: their near edge.
+        let edge = index < nMaster
+            ? (mirrored ? frame.maxY : frame.maxX) + gap / 2
+            : (mirrored ? frame.minY : frame.minX) - gap / 2
+        let r = Double((edge - start) / length)
+        return min(0.9, max(0.1, r))
+    }
 }
