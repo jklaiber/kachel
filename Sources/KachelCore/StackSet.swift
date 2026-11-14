@@ -211,10 +211,12 @@ public struct StackSet {
         return false
     }
 
-    public mutating func focusDown() { cycleFocus(+1) }
-    public mutating func focusUp() { cycleFocus(-1) }
-    public mutating func swapDown() { swapFocused(+1) }
-    public mutating func swapUp() { swapFocused(-1) }
+    /// `skipping`: windows that aren't on screen right now (kept after
+    /// closing, put-away scratchpads, minimized); cycling never stops on them.
+    public mutating func focusDown(skipping: Set<WindowID> = []) { cycleFocus(+1, skipping) }
+    public mutating func focusUp(skipping: Set<WindowID> = []) { cycleFocus(-1, skipping) }
+    public mutating func swapDown(skipping: Set<WindowID> = []) { swapFocused(+1, skipping) }
+    public mutating func swapUp(skipping: Set<WindowID> = []) { swapFocused(-1, skipping) }
 
     /// The master is the first *tiled* window; floating windows never are.
     public mutating func focusMaster() {
@@ -401,19 +403,30 @@ public struct StackSet {
         f(&workspaces[i])
     }
 
-    private mutating func cycleFocus(_ d: Int) {
+    /// The next window index `d` steps from `i` that isn't skipped.
+    private static func next(_ windows: [WindowID], from i: Int, _ d: Int, _ skipping: Set<WindowID>) -> Int? {
+        let n = windows.count
+        for step in 1..<max(n, 1) {
+            let j = ((i + d * step) % n + n) % n
+            if !skipping.contains(windows[j]) { return j }
+        }
+        return nil
+    }
+
+    private mutating func cycleFocus(_ d: Int, _ skipping: Set<WindowID>) {
         modifyCurrent { ws in
-            guard let f = ws.focused, let i = ws.windows.firstIndex(of: f), ws.windows.count > 1 else { return }
-            let n = ws.windows.count
-            ws.focused = ws.windows[(i + d + n) % n]
+            guard ws.windows.count > 1 else { return }
+            // From an invisible window (or none), start from the top.
+            let start = ws.focused.flatMap { ws.windows.firstIndex(of: $0) } ?? (d > 0 ? ws.windows.count - 1 : 0)
+            if let j = Self.next(ws.windows, from: start, d, skipping) { ws.focused = ws.windows[j] }
         }
     }
 
-    private mutating func swapFocused(_ d: Int) {
+    private mutating func swapFocused(_ d: Int, _ skipping: Set<WindowID>) {
         modifyCurrent { ws in
-            guard let f = ws.focused, let i = ws.windows.firstIndex(of: f), ws.windows.count > 1 else { return }
-            let n = ws.windows.count
-            ws.windows.swapAt(i, (i + d + n) % n)
+            guard let f = ws.focused, !skipping.contains(f), let i = ws.windows.firstIndex(of: f),
+                  let j = Self.next(ws.windows, from: i, d, skipping), j != i else { return }
+            ws.windows.swapAt(i, j)
         }
     }
 }

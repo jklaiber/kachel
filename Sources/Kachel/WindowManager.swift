@@ -1077,11 +1077,11 @@ final class WindowManager {
         render()
     }
 
-    func focusDown()   { act { $0.focusDown() } }
-    func focusUp()     { act { $0.focusUp() } }
+    func focusDown()   { act { [unowned self] in $0.focusDown(skipping: self.offScreen()) } }
+    func focusUp()     { act { [unowned self] in $0.focusUp(skipping: self.offScreen()) } }
     func focusMaster() { act { $0.focusMaster() } }
-    func swapDown()    { act { $0.swapDown() } }
-    func swapUp()      { act { $0.swapUp() } }
+    func swapDown()    { act { [unowned self] in $0.swapDown(skipping: self.offScreen()) } }
+    func swapUp()      { act { [unowned self] in $0.swapUp(skipping: self.offScreen()) } }
     func swapMaster()  { act { $0.swapMaster() } }
     func incMaster(_ d: Int)      { act { $0.incMaster(d) } }
     func adjustRatio(_ d: Double) { act { $0.adjustRatio(d) } }
@@ -1106,6 +1106,12 @@ final class WindowManager {
         p.executableURL = URL(fileURLWithPath: "/bin/sh")
         p.arguments = ["-c", command]
         try? p.run()
+    }
+
+    /// Windows of the current workspace that aren't on screen: kept after
+    /// closing (no Accessibility window), put-away scratchpads.
+    private func offScreen() -> Set<WindowID> {
+        Set(ss.current.windows.filter { windows[$0] == nil || scratchParked.contains($0) })
     }
 
     private func act(_ f: (inout StackSet) -> Void) {

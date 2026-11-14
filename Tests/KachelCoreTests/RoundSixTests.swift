@@ -144,3 +144,26 @@ final class MasterSkipsFloatingTests: XCTestCase {
         XCTAssertEqual(ss.current.windows, [1, 3, 2])
     }
 }
+
+
+final class CycleSkipsInvisibleTests: XCTestCase {
+    func testFocusAndSwapSkipInvisibleWindows() {
+        var ss = StackSet(tags: ["1"], screenCount: 1)
+        ss.insert(4); ss.insert(3); ss.insert(2); ss.insert(1)     // [1,2,3,4], focus 1
+        let ghost: Set<WindowID> = [1]                              // e.g. Calendar's closed window
+        ss.focus(2)
+        ss.focusUp(skipping: ghost)
+        XCTAssertEqual(ss.current.focused, 4)                       // wraps past the ghost
+        ss.focusDown(skipping: ghost)
+        XCTAssertEqual(ss.current.focused, 2)                       // and back, past it again
+        ss.swapUp(skipping: ghost)
+        XCTAssertEqual(ss.current.windows, [1, 4, 3, 2])            // swapped with 4, ghost untouched
+    }
+
+    func testFromAnInvisibleFocus() {
+        var ss = StackSet(tags: ["1"], screenCount: 1)
+        ss.insert(3); ss.insert(2); ss.insert(1)                    // focus 1
+        ss.focusDown(skipping: [1])
+        XCTAssertEqual(ss.current.focused, 2)
+    }
+}
