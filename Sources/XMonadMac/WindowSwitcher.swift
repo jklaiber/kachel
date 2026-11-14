@@ -135,6 +135,7 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         }
         list.set(rows: rows, selected: selected, emptyText: entries.isEmpty ? "No windows open" : "No matching windows")
         layout()
+        list.reveal()
     }
 
     private func layout() {
@@ -230,6 +231,13 @@ private final class SwitcherList: NSView {
         self.rows = rows
         self.emptyText = emptyText
         self.selected = min(selected, max(0, items.count - 1))
+        scroll = 0
+        needsDisplay = true
+    }
+
+    /// Call once the view has its final size: scrolls only if the selected
+    /// row really doesn't fit.
+    func reveal() {
         scroll = 0
         keepSelectionVisible()
         needsDisplay = true
