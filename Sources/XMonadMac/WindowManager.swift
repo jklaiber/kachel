@@ -28,6 +28,7 @@ final class WindowManager {
     private var refreshPending = false
     private var ignoreFocusEventsUntil = Date.distantPast
     private let bar = Bar()
+    private let menuBarItem = MenuBarItem()
     private var managing = false
     private var hotkeyProblems: [String] = []
     private var pollTimer: Timer?
@@ -48,16 +49,8 @@ final class WindowManager {
             Config.toggleWidget(w)
             self.reload()
         }
-        bar.menuActions = [
-            ("Reload Config", { [unowned self] in self.reload() }),
-            ("Edit Config…", { Config.openInEditor() }),
-            ("Show Log", { NSWorkspace.shared.open(Log.url) }),
-            ("-", {}),
-            ("Re-tile", { [unowned self] in self.refreshNow() }),
-            ("Open Accessibility Settings…", { WindowManager.openAccessibilitySettings() }),
-            ("-", {}),
-            ("Quit XMonadMac", { [unowned self] in self.quit() }),
-        ]
+        bar.menuActions = menuEntries()
+        menuBarItem.entries = { [unowned self] in self.menuEntries() }
         applySettings()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [unowned self] _ in
@@ -69,6 +62,21 @@ final class WindowManager {
             self.pollTick += 1
             if self.managing, self.pollTick % 2 == 0 { self.refresh(); self.updateBar() }
         }
+    }
+
+    /// Shared by the menu bar icon and the bar's right-click menu.
+    private func menuEntries() -> [(title: String, action: () -> Void)] {
+        [
+            ("Restart XMonadMac", { [unowned self] in self.restart() }),
+            ("Reload Config", { [unowned self] in self.reload() }),
+            ("Edit Config…", { Config.openInEditor() }),
+            ("Show Log", { NSWorkspace.shared.open(Log.url) }),
+            ("-", {}),
+            ("Re-tile", { [unowned self] in self.refreshNow() }),
+            ("Open Accessibility Settings…", { WindowManager.openAccessibilitySettings() }),
+            ("-", {}),
+            ("Quit XMonadMac", { [unowned self] in self.quit() }),
+        ]
     }
 
     static func openAccessibilitySettings() {
@@ -109,6 +117,8 @@ final class WindowManager {
             hotkeyProblems = HotKeys.shared.bind(cfg.keys) { [unowned self] cmd in self.perform(cmd) }
         }
         ss.setTags(cfg.workspaces)
+        ss.setLayoutIfUnlisted(cfg.layouts)
+        menuBarItem.setVisible(cfg.menubarIcon)
         screens = Screen.all(reserveBottom: cfg.bar.enabled ? Bar.height(for: cfg.bar) : 0)
         ss.setScreenCount(screens.count)
         bar.place(on: screens, settings: cfg.bar)
@@ -129,7 +139,11 @@ final class WindowManager {
     /// screen it currently sits on.
     private func adoptExistingWindows() {
         let found = enumerateWindows()
-        for (id, w) in found.sorted(by: { $0.key < $1.key }) {
+        if let snap = loadSnapshot() {
+            ss.restore(snap, existing: Set(found.keys))
+            Log.info("restored \(ss.allWindows.count) of \(found.count) windows to their workspaces from the last run")
+        }
+        for (id, w) in found.sorted(by: { $0.key < $1.key }) where ss.workspaceIndex(of: id) == nil {
             var target = ss.screenWorkspace[ss.currentScreen]
             if let f = w.frame, let s = screenIndex(containing: CGPoint(x: f.midX, y: f.midY)) {
                 target = ss.screenWorkspace[s]
@@ -159,9 +173,53 @@ final class WindowManager {
     }
 
     func quit() {
+        if managing { saveSnapshot() }
         restoreAllWindows()
         HotKeys.shared.unbindAll()
+        Log.info("quit")
         exit(0)
+    }
+
+    /// Quit and start again; windows keep their workspaces (see saveSnapshot).
+    func restart() {
+        Log.info("restarting")
+        if managing { saveSnapshot() }
+        restoreAllWindows()
+        HotKeys.shared.unbindAll()
+        let bundle = Bundle.main.bundlePath
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        if bundle.hasSuffix(".app") {
+            p.arguments = ["-c", "sleep 0.5; /usr/bin/open -n \"$0\"", bundle]
+        } else {
+            p.arguments = ["-c", "sleep 0.5; \"$0\" >/dev/null 2>&1 &", ProcessInfo.processInfo.arguments[0]]
+        }
+        try? p.run()
+        exit(0)
+    }
+
+    // MARK: - state across restarts
+
+    private static let stateURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Application Support/XMonadMac/state.json")
+
+    private func saveSnapshot() {
+        do {
+            try FileManager.default.createDirectory(at: Self.stateURL.deletingLastPathComponent(),
+                                                    withIntermediateDirectories: true)
+            try JSONEncoder().encode(ss.snapshot).write(to: Self.stateURL, options: .atomic)
+        } catch {
+            Log.info("could not save state: \(error)")
+        }
+    }
+
+    /// Window IDs only live as long as the apps do, so the snapshot is used
+    /// once and only if it's from this login session's apps (stale IDs just
+    /// don't match anything).
+    private func loadSnapshot() -> StackSet.Snapshot? {
+        defer { try? FileManager.default.removeItem(at: Self.stateURL) }
+        guard let data = try? Data(contentsOf: Self.stateURL) else { return nil }
+        return try? JSONDecoder().decode(StackSet.Snapshot.self, from: data)
     }
 
     /// Never leave windows stranded in a corner when we exit.
@@ -308,6 +366,7 @@ final class WindowManager {
             Log.info("ignoring \(cmd): no Accessibility permission yet")
             if case .quit = cmd { quit() }
             if case .reload = cmd { reload() }
+            if case .restart = cmd { restart() }
             return
         }
         let step = Config.current.ratioStep
@@ -323,7 +382,16 @@ final class WindowManager {
         case .swapDown: swapDown()
         case .swapUp: swapUp()
         case .swapMaster: swapMaster()
-        case .nextLayout: nextLayout()
+        case .nextLayout: act { $0.nextLayout(in: Config.current.layouts) }
+        case .focusNextScreen: focusScreen(ss.neighbourScreen(+1))
+        case .focusPrevScreen: focusScreen(ss.neighbourScreen(-1))
+        case .shiftToNextScreen: shiftToScreen(ss.neighbourScreen(+1))
+        case .shiftToPrevScreen: shiftToScreen(ss.neighbourScreen(-1))
+        case .workspaceNext: syncFocusFromSystem(followHidden: false); greedyView(ss.neighbour(+1))
+        case .workspacePrev: syncFocusFromSystem(followHidden: false); greedyView(ss.neighbour(-1))
+        case .shiftNext: syncFocusFromSystem(followHidden: false); shift(to: ss.neighbour(+1))
+        case .shiftPrev: syncFocusFromSystem(followHidden: false); shift(to: ss.neighbour(-1))
+        case .restart: restart()
         case .shrink: adjustRatio(-step)
         case .expand: adjustRatio(+step)
         case .incMaster: incMaster(+1)
@@ -375,7 +443,6 @@ final class WindowManager {
     func swapDown()    { act { $0.swapDown() } }
     func swapUp()      { act { $0.swapUp() } }
     func swapMaster()  { act { $0.swapMaster() } }
-    func nextLayout()  { act { $0.nextLayout() } }
     func incMaster(_ d: Int)      { act { $0.incMaster(d) } }
     func adjustRatio(_ d: Double) { act { $0.adjustRatio(d) } }
 

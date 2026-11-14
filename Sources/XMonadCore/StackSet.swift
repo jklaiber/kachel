@@ -2,10 +2,31 @@ import Foundation
 
 public typealias WindowID = UInt32
 
-public enum LayoutKind: String, CaseIterable {
-    case tall = "Tall"
-    case mirrorTall = "Mirror"
+public enum LayoutKind: String, CaseIterable, Codable {
+    case tall = "Tall"          // master left, stack right
+    case mirrorTall = "Wide"    // master on top, stack below (Amethyst "wide", xmonad Mirror Tall)
+    case column = "Column"      // all windows side by side, equal width
     case full = "Full"
+
+    /// Name in config.yaml.
+    public var configName: String {
+        switch self {
+        case .tall: return "tall"
+        case .mirrorTall: return "wide"
+        case .column: return "column"
+        case .full: return "full"
+        }
+    }
+
+    public init?(configName: String) {
+        switch configName.lowercased() {
+        case "tall": self = .tall
+        case "wide", "mirror", "mirror-tall": self = .mirrorTall
+        case "column", "columns": self = .column
+        case "full", "fullscreen": self = .full
+        default: return nil
+        }
+    }
 }
 
 public struct Workspace: Equatable {
@@ -176,12 +197,84 @@ public struct StackSet {
 
     // MARK: layout
 
-    public mutating func nextLayout() {
+    /// Cycle through `order` (the config's `layouts:` list).
+    public mutating func nextLayout(in order: [LayoutKind] = LayoutKind.allCases) {
+        guard !order.isEmpty else { return }
         modifyCurrent { ws in
-            let all = LayoutKind.allCases
-            let i = all.firstIndex(of: ws.layout)!
-            ws.layout = all[(i + 1) % all.count]
+            let i = order.firstIndex(of: ws.layout) ?? -1
+            ws.layout = order[(i + 1) % order.count]
         }
+    }
+
+    /// Set every workspace's layout (from config), e.g. the first of `layouts:`.
+    public mutating func setLayoutIfUnlisted(_ order: [LayoutKind]) {
+        guard let first = order.first else { return }
+        for i in workspaces.indices where !order.contains(workspaces[i].layout) {
+            workspaces[i].layout = first
+        }
+    }
+
+    /// Workspace index `d` steps from the current one, wrapping around.
+    public func neighbour(_ d: Int) -> Int {
+        let n = workspaces.count
+        return ((currentWorkspaceIndex + d) % n + n) % n
+    }
+
+    /// Screen index `d` steps from the current one, wrapping around.
+    public func neighbourScreen(_ d: Int) -> Int {
+        let n = screenWorkspace.count
+        return ((currentScreen + d) % n + n) % n
+    }
+
+    // MARK: persistence across restarts
+
+    public struct Snapshot: Codable {
+        public var windows: [WindowID: Int]
+        public var focused: [Int: WindowID]
+        public var order: [Int: [WindowID]]
+        public var floating: [WindowID]
+        public var screenWorkspace: [Int]
+        public var currentScreen: Int
+        public var layouts: [Int: LayoutKind]
+        public var ratios: [Int: Double]
+        public var nMaster: [Int: Int]
+    }
+
+    public var snapshot: Snapshot {
+        var windows: [WindowID: Int] = [:], focused: [Int: WindowID] = [:], order: [Int: [WindowID]] = [:]
+        var layouts: [Int: LayoutKind] = [:], ratios: [Int: Double] = [:], nMaster: [Int: Int] = [:]
+        for (i, ws) in workspaces.enumerated() {
+            ws.windows.forEach { windows[$0] = i }
+            order[i] = ws.windows
+            if let f = ws.focused { focused[i] = f }
+            layouts[i] = ws.layout; ratios[i] = ws.ratio; nMaster[i] = ws.nMaster
+        }
+        return Snapshot(windows: windows, focused: focused, order: order, floating: Array(floating),
+                        screenWorkspace: screenWorkspace, currentScreen: currentScreen,
+                        layouts: layouts, ratios: ratios, nMaster: nMaster)
+    }
+
+    /// Restore a snapshot. Windows not in `existing` are dropped; existing
+    /// windows the snapshot doesn't know are left for the caller to insert.
+    public mutating func restore(_ snap: Snapshot, existing: Set<WindowID>) {
+        for i in workspaces.indices {
+            var ws = workspaces[i]
+            ws.windows = (snap.order[i] ?? []).filter { existing.contains($0) && workspaceIndex(of: $0) == nil }
+            ws.focused = snap.focused[i].flatMap { ws.windows.contains($0) ? $0 : nil } ?? ws.windows.first
+            if let l = snap.layouts[i] { ws.layout = l }
+            if let r = snap.ratios[i] { ws.ratio = r }
+            if let n = snap.nMaster[i] { ws.nMaster = n }
+            workspaces[i] = ws
+        }
+        floating = Set(snap.floating.filter(existing.contains))
+        let screens = screenWorkspace.count
+        var restored: [Int] = []
+        for w in snap.screenWorkspace where workspaces.indices.contains(w) && !restored.contains(w) {
+            restored.append(w)
+        }
+        screenWorkspace = Array(restored.prefix(screens))
+        setScreenCount(screens)
+        currentScreen = min(max(0, snap.currentScreen), screenWorkspace.count - 1)
     }
 
     public mutating func incMaster(_ d: Int) {

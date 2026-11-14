@@ -12,6 +12,7 @@ public enum Layout {
         case .full:       cells = Array(repeating: area, count: n)
         case .tall:       cells = tall(n, area, nMaster, ratio, mirrored: false)
         case .mirrorTall: cells = tall(n, area, nMaster, ratio, mirrored: true)
+        case .column:     cells = stack(n, area, true)
         }
         return cells.map { $0.insetBy(dx: gap / 2, dy: gap / 2).integral }
     }

@@ -62,14 +62,40 @@ login, add `XMonadMac.app` under System Settings → General → Login Items.
 
 ## Keys
 
-Default `mod` = **Ctrl+Option**. Plain Option isn't the default because on Swiss and
-other European layouts Option+digit types `| @ # [ ]`.
+Default `mod` = **Option**, carried over from Amethyst (mod1 = Option,
+mod2 = Option+Shift). On Swiss and other European layouts this means Option+digit
+no longer types `# [ ] | { }`; set `mod: ctrl+alt` to keep them. skhd's
+Option + q / Return / f / b stay free.
+
+| Key | Action | From |
+|---|---|---|
+| `mod-1..9` | **greedyView**: bring workspace N here, swapping screens if needed | xmonad |
+| `mod-shift-1..9` | send focused window to workspace N | Amethyst throw-space-N |
+| `mod-shift-← / →` | send focused window to previous / next workspace | Amethyst throw-space-left/right |
+| `mod-j / k` | focus next / previous window | Amethyst focus-cw/ccw |
+| `mod-shift-j / k` | swap window down / up | Amethyst swap-cw/ccw |
+| `mod-h / l` | shrink / expand master area (5 %) | Amethyst shrink/expand-main |
+| `mod-shift-space` | next layout: Tall → Wide → Column → Full | Amethyst cycle-layout |
+| `mod-,` | focus next screen | Amethyst focus-screen-cw |
+| `mod-z` | re-scan windows and screens, then re-tile | Amethyst reevaluate-windows |
+| `mod-shift-,` | send focused window to next screen | xmonad |
+| `mod-m` / `mod-shift-m` | focus / swap with master | xmonad |
+| `mod-t` | toggle floating | xmonad |
+| `mod-shift-r` | restart XMonadMac (windows keep their workspaces) | |
+| `mod-shift-q` | quit (restores all parked windows first) | xmonad |
+
+Map keys to `view N` instead of `workspace N` for i3-style `W.view` (jump to the
+other screen instead of swapping). More commands (`workspace-next`,
+`focus-screen N`, `inc-master`, `spawn …`) are listed in the config file.
+
+The menu bar icon (`menubar-icon: true`) has Restart, Reload Config, Edit Config,
+Show Log, Re-tile and Quit.
 
 ## Configuration
 
 Everything lives in `~/.config/xmonadmac/config.yaml`, written with all defaults
-and comments on first launch. Saving the file applies it immediately (`mod-q`
-reloads by hand). If it has an error, the bar shows it and the previous settings
+and comments on first launch. Saving the file applies it immediately (Restart in
+the menu bar icon also works). If it has an error, the bar shows it and the previous settings
 stay in effect. Example:
 
 ```yaml

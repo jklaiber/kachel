@@ -1,22 +1,26 @@
 import XCTest
+import CoreGraphics
 @testable import XMonadCore
 
 final class SettingsTests: XCTestCase {
     func testDefaultsParse() throws {
         let s = try Settings.parse(Settings.defaultYAML)
-        XCTAssertEqual(s.mod, [.ctrl, .alt])
+        XCTAssertEqual(s.mod, [.alt])
         XCTAssertEqual(s.workspaces.count, 9)
-        XCTAssertEqual(s.keys.count, 42)
-        XCTAssertEqual(s.keys[KeyChord(modifiers: [.ctrl, .alt], key: "1")], .greedyView(0))
-        XCTAssertEqual(s.keys[KeyChord(modifiers: [.ctrl, .alt, .shift], key: "9")], .shift(8))
-        XCTAssertEqual(s.keys[KeyChord(modifiers: [.ctrl, .alt, .shift], key: "return")], .terminal)
+        XCTAssertEqual(s.keys.count, 35)
+        XCTAssertEqual(s.layouts, [.tall, .mirrorTall, .column, .full])
+        XCTAssertEqual(s.gap, 5)
+        XCTAssertEqual(s.ratioStep, 0.05)
+        XCTAssertTrue(s.menubarIcon)
+        XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt], key: "1")], .greedyView(0))
+        XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt, .shift], key: "9")], .shift(8))
         XCTAssertTrue(s.bar.enabled)
     }
 
     func testPartialFileKeepsDefaultKeysWithNewMod() throws {
         let s = try Settings.parse("mod: cmd+alt\ngap: 10\n")
         XCTAssertEqual(s.gap, 10)
-        XCTAssertEqual(s.keys.count, 42)
+        XCTAssertEqual(s.keys.count, 35)
         XCTAssertEqual(s.keys[KeyChord(modifiers: [.cmd, .alt], key: "j")], .focusDown)
     }
 
@@ -36,7 +40,7 @@ final class SettingsTests: XCTestCase {
     }
 
     func testEmptyFileIsDefaults() throws {
-        XCTAssertEqual(try Settings.parse("").keys.count, 42)
+        XCTAssertEqual(try Settings.parse("").keys.count, 35)
     }
 
     func testErrors() {
@@ -99,7 +103,7 @@ final class BarConfigTests: XCTestCase {
         let s = try Settings.parse(text)
         XCTAssertEqual(s.bar.right, [.cpu, .clock])
         XCTAssertEqual(s.bar.left, [.workspaces, .layout, .title])
-        XCTAssertEqual(s.keys.count, 42)
+        XCTAssertEqual(s.keys.count, 35)
         XCTAssertTrue(text.contains("# Widgets, in order"))
     }
 
@@ -110,5 +114,83 @@ final class BarConfigTests: XCTestCase {
         XCTAssertEqual(try Settings.parse(t1).bar.fontSize, 14)
         let t2 = Settings.setBarList("gap: 4\n", key: "left", [])
         XCTAssertEqual(try Settings.parse(t2).bar.left, [])
+    }
+}
+
+
+final class AmethystKeysTests: XCTestCase {
+    /// Your Amethyst config: mod1 = option, mod2 = option+shift.
+    func testAmethystBindingsCarriedOver() throws {
+        let k = try Settings.parse(Settings.defaultYAML).keys
+        let m1: Set<Modifier> = [.alt], m2: Set<Modifier> = [.alt, .shift]
+        XCTAssertEqual(k[KeyChord(modifiers: m2, key: "space")], .nextLayout)       // cycle-layout
+        XCTAssertEqual(k[KeyChord(modifiers: m1, key: "h")], .shrink)               // shrink-main
+        XCTAssertEqual(k[KeyChord(modifiers: m1, key: "l")], .expand)               // expand-main
+        XCTAssertEqual(k[KeyChord(modifiers: m1, key: "k")], .focusUp)              // focus-ccw
+        XCTAssertEqual(k[KeyChord(modifiers: m1, key: "j")], .focusDown)            // focus-cw
+        XCTAssertEqual(k[KeyChord(modifiers: m1, key: "comma")], .focusNextScreen)  // focus-screen-cw
+        XCTAssertEqual(k[KeyChord(modifiers: m2, key: "k")], .swapUp)               // swap-ccw
+        XCTAssertEqual(k[KeyChord(modifiers: m2, key: "j")], .swapDown)             // swap-cw
+        XCTAssertEqual(k[KeyChord(modifiers: m2, key: "3")], .shift(2))             // throw-space-3
+        XCTAssertEqual(k[KeyChord(modifiers: m2, key: "left")], .shiftPrev)         // throw-space-left
+        XCTAssertEqual(k[KeyChord(modifiers: m2, key: "right")], .shiftNext)        // throw-space-right
+        XCTAssertEqual(k[KeyChord(modifiers: m1, key: "z")], .refresh)              // reevaluate-windows
+    }
+
+    /// skhd binds lalt - q / return / f / b; those must stay free.
+    func testSkhdKeysStayFree() throws {
+        let k = try Settings.parse(Settings.defaultYAML).keys
+        for key in ["q", "return", "f", "b"] {
+            XCTAssertNil(k[KeyChord(modifiers: [.alt], key: key)], "alt-\(key) is skhd's")
+        }
+    }
+
+    func testLayoutsSetting() throws {
+        XCTAssertEqual(try Settings.parse("layouts: [full, fullscreen, mirror]").layouts, [.full, .full, .mirrorTall])
+        XCTAssertThrowsError(try Settings.parse("layouts: [bsp]"))
+    }
+}
+
+final class LayoutAndSnapshotTests: XCTestCase {
+    func testColumnLayout() {
+        let r = CGRect(x: 0, y: 0, width: 900, height: 600)
+        let rects = Layout.tile(.column, count: 3, in: r, nMaster: 1, ratio: 0.5, gap: 0)
+        XCTAssertEqual(rects.map(\.width), [300, 300, 300])
+        XCTAssertEqual(rects.map(\.minX), [0, 300, 600])
+    }
+
+    func testNextLayoutFollowsOrder() {
+        var ss = StackSet(tags: ["1"], screenCount: 1)
+        let order: [LayoutKind] = [.tall, .full]
+        ss.nextLayout(in: order); XCTAssertEqual(ss.current.layout, .full)
+        ss.nextLayout(in: order); XCTAssertEqual(ss.current.layout, .tall)
+    }
+
+    func testNeighbourWraps() {
+        var ss = StackSet(tags: (1...9).map(String.init), screenCount: 2)
+        XCTAssertEqual(ss.neighbour(-1), 8)
+        XCTAssertEqual(ss.neighbourScreen(+1), 1)
+        ss.focusScreen(1)
+        XCTAssertEqual(ss.neighbourScreen(+1), 0)
+    }
+
+    func testSnapshotRoundTripThroughJSON() throws {
+        var ss = StackSet(tags: (1...9).map(String.init), screenCount: 2)
+        ss.insert(10); ss.insert(11)
+        ss.insert(20, into: 4); ss.floating.insert(20)
+        ss.greedyView(6)                         // screen 0 shows 7
+        ss.nextLayout()
+        let data = try JSONEncoder().encode(ss.snapshot)
+        let snap = try JSONDecoder().decode(StackSet.Snapshot.self, from: data)
+
+        var fresh = StackSet(tags: (1...9).map(String.init), screenCount: 2)
+        fresh.restore(snap, existing: [10, 20, 99])       // 11 closed meanwhile, 99 is new
+        XCTAssertEqual(fresh.workspaceIndex(of: 10), 0)
+        XCTAssertNil(fresh.workspaceIndex(of: 11))
+        XCTAssertEqual(fresh.workspaceIndex(of: 20), 4)
+        XCTAssertTrue(fresh.floating.contains(20))
+        XCTAssertNil(fresh.workspaceIndex(of: 99))        // caller inserts unknown windows
+        XCTAssertEqual(fresh.screenWorkspace, [6, 1])
+        XCTAssertEqual(fresh.workspaces[6].layout, .mirrorTall)
     }
 }

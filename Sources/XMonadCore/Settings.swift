@@ -34,7 +34,9 @@ public enum Command: Equatable {
     case focusDown, focusUp, focusMaster
     case swapDown, swapUp, swapMaster
     case nextLayout, shrink, expand, incMaster, decMaster
-    case toggleFloat, refresh, close, terminal, reload, quit
+    case focusNextScreen, focusPrevScreen, shiftToNextScreen, shiftToPrevScreen
+    case workspaceNext, workspacePrev, shiftNext, shiftPrev
+    case toggleFloat, refresh, close, terminal, reload, restart, quit
     case spawn(String)
 }
 
@@ -78,6 +80,8 @@ public struct Settings {
     public var mouseFollowsFocus = true
     public var terminal = "open -na Terminal"
     public var floating: Set<String> = []
+    public var layouts: [LayoutKind] = [.tall, .mirrorTall, .column, .full]
+    public var menubarIcon = true
     public var bar = BarSettings()
     public var keys: [KeyChord: Command] = [:]
 
@@ -98,7 +102,7 @@ public struct Settings {
         }
 
         let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
-                                  "terminal", "floating", "bar", "keys"]
+                                  "terminal", "floating", "bar", "keys", "layouts", "menubar-icon"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -117,6 +121,16 @@ public struct Settings {
             guard let list = v as? [Any] else { throw SettingsError("floating must be a list of bundle IDs") }
             s.floating = Set(list.map { "\($0)" })
         }
+        if let v = dict["layouts"] {
+            guard let list = v as? [Any], !list.isEmpty else { throw SettingsError("layouts must be a non-empty list") }
+            s.layouts = try list.map {
+                guard let l = LayoutKind(configName: "\($0)") else {
+                    throw SettingsError("layouts: unknown layout '\($0)' (use tall, wide, column, full)")
+                }
+                return l
+            }
+        }
+        if let v = dict["menubar-icon"] { s.menubarIcon = try bool(v, "menubar-icon") }
         if let v = dict["bar"] {
             guard let b = v as? [String: Any] else { throw SettingsError("bar must be a mapping") }
             for (k, v) in b {
@@ -236,6 +250,15 @@ public struct Settings {
         case "expand":       return try noArg(.expand)
         case "inc-master":   return try noArg(.incMaster)
         case "dec-master":   return try noArg(.decMaster)
+        case "focus-next-screen":    return try noArg(.focusNextScreen)
+        case "focus-prev-screen":    return try noArg(.focusPrevScreen)
+        case "shift-to-next-screen": return try noArg(.shiftToNextScreen)
+        case "shift-to-prev-screen": return try noArg(.shiftToPrevScreen)
+        case "workspace-next":       return try noArg(.workspaceNext)
+        case "workspace-prev":       return try noArg(.workspacePrev)
+        case "shift-next":           return try noArg(.shiftNext)
+        case "shift-prev":           return try noArg(.shiftPrev)
+        case "restart":              return try noArg(.restart)
         case "toggle-float": return try noArg(.toggleFloat)
         case "refresh":      return try noArg(.refresh)
         case "close":        return try noArg(.close)
@@ -307,25 +330,29 @@ public struct Settings {
 extension Settings {
     public static let defaultYAML = #"""
 # XMonadMac configuration  (~/.config/xmonadmac/config.yaml)
-# Saved changes apply immediately. mod-q reloads by hand.
-# If the file has an error, the bar shows it and the previous settings stay.
+# Saved changes apply immediately. If the file has an error, the bar shows it
+# and the previous settings stay.
 
 # Modifier used by "mod-…" below. Combine cmd, ctrl, alt (= option), shift.
-# Ctrl+Option is the default because on Swiss/German keyboards Option+digit
-# types characters (| @ # …).
-mod: ctrl+alt
+# Option, like mod1 in your Amethyst config. On a Swiss keyboard this means
+# Option+3/5/6/7/8/9 no longer type # [ ] | { } (use ctrl+alt to keep them).
+mod: alt
 
 # Workspace names. All monitors share these, like in xmonad.
 workspaces: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-gap: 6                    # points between windows and at screen edges
+# Layouts cycled by next-layout, in order: tall, wide, column, full.
+layouts: [tall, wide, column, full]
+
+gap: 5                    # points between windows and at screen edges
 ratio: 0.5                # master area share for new workspaces
-ratio-step: 0.03          # how much shrink/expand change it
+ratio-step: 0.05          # how much shrink/expand change it
 mouse-follows-focus: true # warp the pointer when focus moves to another screen
+menubar-icon: true        # XMonadMac menu (restart, reload, quit …) in the top menu bar
 
 # Used by the `terminal` command. Examples: "open -na Ghostty",
 # "open -na Alacritty", "open -na kitty", "open -na WezTerm", "open -na iTerm"
-terminal: open -na Terminal
+terminal: open -na Alacritty
 
 # Bundle IDs whose windows always float (find one with: osascript -e 'id of app "Name"').
 floating:
@@ -357,16 +384,24 @@ bar:
 # layout (on a Swiss keyboard "z" is the key labelled Z).
 #
 # Commands:
-#   workspace N        greedyView: show workspace N here (swaps screens if it is visible elsewhere)
-#   view N             like xmonad's W.view: jump to the screen already showing N
-#   shift N            send the focused window to workspace N
-#   focus-screen N     shift-to-screen N
+#   workspace N            greedyView: show workspace N here (swaps screens if it is visible elsewhere)
+#   view N                 like xmonad's W.view: jump to the screen already showing N
+#   shift N                send the focused window to workspace N
+#   workspace-next / workspace-prev    show the next / previous workspace here
+#   shift-next / shift-prev            send the focused window to the next / previous workspace
+#   focus-screen N         shift-to-screen N
+#   focus-next-screen      focus-prev-screen
+#   shift-to-next-screen   shift-to-prev-screen
 #   focus-down  focus-up  focus-master  swap-down  swap-up  swap-master
 #   next-layout  shrink  expand  inc-master  dec-master  toggle-float
-#   refresh  close  terminal  reload  quit
+#   refresh  close  terminal  reload  restart  quit
 #   spawn <shell command>
 # A key mapped to ~ is unbound. This section replaces the defaults as a whole.
+#
+# Taken over from your Amethyst config (mod1 = Option, mod2 = Option+Shift).
+# skhd already uses Option + q / return / f / b, so those stay free.
 keys:
+  # Workspaces (Amethyst has no key for this; xmonad's mod-N)
   mod-1: workspace 1
   mod-2: workspace 2
   mod-3: workspace 3
@@ -376,6 +411,7 @@ keys:
   mod-7: workspace 7
   mod-8: workspace 8
   mod-9: workspace 9
+  # Amethyst throw-space-N
   mod-shift-1: shift 1
   mod-shift-2: shift 2
   mod-shift-3: shift 3
@@ -385,33 +421,31 @@ keys:
   mod-shift-7: shift 7
   mod-shift-8: shift 8
   mod-shift-9: shift 9
+  # Amethyst throw-space-left / -right
+  mod-shift-left: shift-prev
+  mod-shift-right: shift-next
 
-  mod-w: focus-screen 1
-  mod-e: focus-screen 2
-  mod-r: focus-screen 3
-  mod-shift-w: shift-to-screen 1
-  mod-shift-e: shift-to-screen 2
-  mod-shift-r: shift-to-screen 3
-
+  # Amethyst focus-cw / focus-ccw, swap-cw / swap-ccw
   mod-j: focus-down
   mod-k: focus-up
-  mod-tab: focus-down
-  mod-m: focus-master
   mod-shift-j: swap-down
   mod-shift-k: swap-up
-  mod-return: swap-master
-
+  # Amethyst shrink-main / expand-main
   mod-h: shrink
   mod-l: expand
-  mod-comma: inc-master
-  mod-period: dec-master
-  mod-space: next-layout
-  mod-t: toggle-float
-  mod-n: refresh
+  # Amethyst cycle-layout
+  mod-shift-space: next-layout
+  # Amethyst focus-screen-cw
+  mod-comma: focus-next-screen
+  # Amethyst reevaluate-windows
+  mod-z: refresh
 
-  mod-shift-return: terminal
-  mod-shift-c: close
-  mod-q: reload
+  # Not in your Amethyst config (xmonad-style extras)
+  mod-shift-comma: shift-to-next-screen
+  mod-m: focus-master
+  mod-shift-m: swap-master
+  mod-t: toggle-float
+  mod-shift-r: restart
   mod-shift-q: quit
 """#
 }
