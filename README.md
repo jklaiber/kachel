@@ -22,7 +22,7 @@ between monitors.
 
 ```
 Sources/XMonadCore/StackSet.swift   pure model: workspaces, screens, greedyView, shift, …
-Sources/XMonadCore/Layout.swift     Tall, Mirror Tall, Full
+Sources/XMonadCore/Layout.swift     Tall, Wide, Column, Full
 Sources/XMonadCore/Settings.swift   config.yaml parsing + the default config
 Sources/XMonadMac/Config.swift      loads ~/.config/xmonadmac/config.yaml, reloads on save
 Sources/XMonadMac/WindowManager.swift  Accessibility API glue, tracking, rendering
@@ -121,7 +121,7 @@ room for it. Widgets:
 | Widget | Shows | Click |
 |---|---|---|
 | `workspaces` | solid = active, outline = visible on a screen, dot = has windows, dim = empty | show it on this screen |
-| `layout` | Tall / Mirror / Full | |
+| `layout` | Tall / Wide / Column / Full | |
 | `title` | focused window on that screen | |
 | `network` | ↓ / ↑ throughput (Wi-Fi + Ethernet) | Activity Monitor |
 | `cpu` | total CPU load | Activity Monitor |
@@ -143,29 +143,6 @@ Edit Config, Show Log, Re-tile and Quit. `bar: {enabled: false}` removes the bar
 Problems (missing Accessibility permission, config errors, hotkeys taken by
 another app) appear in the bar in orange. The log is at
 `~/Library/Logs/XMonadMac.log`.
-
-| Key | Action (xmonad equivalent) |
-|---|---|
-| `mod-1..9` | **greedyView**: bring workspace N here, swapping screens if needed |
-| `mod-shift-1..9` | send focused window to workspace N (`W.shift`) |
-| `mod-w / e / r` | focus screen 1 / 2 / 3 (left to right) |
-| `mod-shift-w / e / r` | send window to the workspace on screen 1 / 2 / 3 |
-| `mod-j / k`, `mod-tab` | focus next / previous window |
-| `mod-m` | focus master |
-| `mod-shift-j / k` | swap window down / up |
-| `mod-return` | swap focused with master |
-| `mod-h / l` | shrink / expand master area |
-| `mod-, / .` | more / fewer windows in master |
-| `mod-space` | next layout (Tall → Mirror → Full) |
-| `mod-t` | toggle floating (sink) |
-| `mod-n` | re-scan windows and screens, then re-tile |
-| `mod-q` | reload config |
-| `mod-shift-return` | launch terminal |
-| `mod-shift-c` | close focused window |
-| `mod-shift-q` | quit (restores all parked windows first) |
-
-If you prefer i3-style `W.view` (jump to the other screen instead of swapping),
-map the keys to `view N` instead of `workspace N` in the config.
 
 ## Known limitations (v0.1)
 
