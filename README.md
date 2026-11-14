@@ -5,6 +5,8 @@
 *Kachel* is German for tile, as in a *Kachelofen*, the tiled stove in the icon:
 nine glazed tiles for nine workspaces.
 
+![Kachel: three tiled windows, the focused one framed in orange, Kachel's bar along the bottom](assets/screenshots/desktop.png)
+
 A small native macOS tiling window manager that copies xmonad's workspace model:
 9 workspaces shared by all monitors, each monitor showing one of them, and
 **`greedyView`**. If you're on screen A and press `mod-2` while workspace 2 is
@@ -48,6 +50,9 @@ signed, so macOS asks for Accessibility again after each upgrade. If macOS still
 refuses to open the app, install with `--no-quarantine`.
 
 ## Build and run
+
+The README images are drawn by Kachel itself with made-up windows:
+`./scripts/screenshots.sh` renders them again into `assets/screenshots/`.
 
 Requires macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`).
 
@@ -138,6 +143,8 @@ the defaults. Letter keys follow your keyboard layout.
 
 ## Bar
 
+![The bar: workspaces 1–9 (solid = active, outline = shown on another screen, dot = has windows), layout, window title, network, CPU, memory, date and clock](assets/screenshots/bar.png)
+
 Each screen gets a second menu bar along the bottom, just above the Dock. It has the
 same height, font and translucency as the one at the top, and tiled windows leave
 room for it. Widgets:
@@ -183,6 +190,22 @@ Kachel reads the trackpad through Apple's private `MultitouchSupport`
 framework, as BetterTouchTool and similar tools do. If a macOS update breaks
 it, swipes stop working and everything else keeps going. The switch is instant;
 there's no sliding animation.
+
+## Window search and app rules
+
+`mod-p` finds any open window on any workspace. Before you type, it lists
+everything by workspace; typing narrows it down. ↩ goes there, ⇧↩ brings the
+window to you.
+
+<p>
+<img src="assets/screenshots/window-search.png" width="49%" alt="Window search listing all windows grouped by workspace">
+<img src="assets/screenshots/window-search-query.png" width="49%" alt="Window search filtered by typing term">
+</p>
+
+`mod-shift-p` sets where the focused app always opens. The choice is written
+to `rules:` in your config.
+
+![App rule picker: Music, always open on workspace 9](assets/screenshots/app-rule.png)
 
 ## Scratchpads
 

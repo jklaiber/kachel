@@ -198,3 +198,14 @@ private final class PickerView: NSView {
         if let t = targets.first(where: { $0.1.contains(p) })?.0 { perform(t) }
     }
 }
+
+
+extension RulePicker {
+    /// Screenshots: the picker for an app, not shown on screen.
+    static func demoView(app: String, icon: NSImage?, tags: [String], current: Int?, floats: Bool) -> NSView {
+        let v = PickerView()
+        v.app = app; v.icon = icon; v.tags = tags; v.current = current; v.floats = floats; v.hasRule = current != nil
+        v.frame = NSRect(origin: .zero, size: v.preferredSize)
+        return v
+    }
+}

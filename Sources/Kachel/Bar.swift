@@ -31,6 +31,8 @@ final class Bar {
     var menuActions: [(title: String, action: () -> Void)] = []
 
     let stats = Stats()
+    /// Screenshots use a fixed time; nil = now.
+    var fixedNow: Date?
     private var panels: [BarPanel] = []
     private var screens: [Screen] = []
     private var appearanceTimer: Timer?
@@ -313,10 +315,10 @@ private final class BarView: NSView {
                                    action: .open("com.apple.ActivityMonitor")))
             case .date:
                 dateFmt.dateFormat = s.dateFormat
-                out.append(Segment(parts: [(nil, dateFmt.string(from: Date()))], action: .open("com.apple.iCal")))
+                out.append(Segment(parts: [(nil, dateFmt.string(from: bar.fixedNow ?? Date()))], action: .open("com.apple.iCal")))
             case .clock:
                 dateFmt.dateFormat = s.clockFormat
-                out.append(Segment(parts: [(nil, dateFmt.string(from: Date()))], action: .open("com.apple.iCal")))
+                out.append(Segment(parts: [(nil, dateFmt.string(from: bar.fixedNow ?? Date()))], action: .open("com.apple.iCal")))
             }
         }
         // Without a title widget, problems still need to be visible.
@@ -528,3 +530,23 @@ enum Wallpaper {
         return dark
     }
 }
+
+
+extension Bar {
+    /// For README screenshots (`Kachel --render-screenshots`): a bar view with
+    /// made-up content, not attached to any screen.
+    static func demoView(width: CGFloat, height: CGFloat, settings: BarSettings, content: Content,
+                         now: Date, cpu: Double, memory: UInt64, down: Double, up: Double) -> NSView {
+        let bar = Bar()
+        bar.settings = settings
+        bar.fixedNow = now
+        bar.stats.setDemo(cpu: cpu, memory: memory, down: down, up: up)
+        let v = BarView(bar: bar, index: 0)
+        v.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        v.content = content
+        v.transparent = settings.background == .transparent
+        objc_setAssociatedObject(v, &demoBarKey, bar, .OBJC_ASSOCIATION_RETAIN)   // BarView holds it unowned
+        return v
+    }
+}
+private var demoBarKey = 0

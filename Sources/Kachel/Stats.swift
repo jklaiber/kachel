@@ -12,6 +12,11 @@ final class Stats {
     private var lastTicks: (busy: UInt64, total: UInt64)?
     private var lastNet: (rx: UInt64, tx: UInt64, at: Date)?
 
+    /// Screenshots: fixed numbers instead of measurements.
+    func setDemo(cpu: Double, memory: UInt64, down: Double, up: Double) {
+        self.cpu = cpu; memoryUsed = memory; self.down = down; self.up = up
+    }
+
     func sample(cpu wantCPU: Bool, memory wantMemory: Bool, network wantNetwork: Bool) {
         if wantCPU { sampleCPU() }
         if wantMemory { sampleMemory() }

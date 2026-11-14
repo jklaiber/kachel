@@ -3,6 +3,13 @@ import ApplicationServices
 import KachelCore
 
 let app = NSApplication.shared
+
+// README images: `Kachel --render-screenshots assets/screenshots` (see Screenshots.swift).
+if let i = CommandLine.arguments.firstIndex(of: "--render-screenshots") {
+    let dir = CommandLine.arguments.count > i + 1 ? CommandLine.arguments[i + 1] : "assets/screenshots"
+    do { try Screenshots.render(to: URL(fileURLWithPath: dir)) } catch { print("error: \(error)"); exit(1) }
+    exit(0)
+}
 app.setActivationPolicy(.accessory)   // no Dock icon, no menu bar item: just our bar
 
 // Restore parked windows on Ctrl-C / kill, not just on mod-shift-q.

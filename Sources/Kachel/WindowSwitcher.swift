@@ -22,11 +22,11 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     var onBring: ((WindowID) -> Void)?
     var onCancel: (() -> Void)?
 
-    private let panel = SwitcherPanel()
-    private let field = NSTextField()
+    fileprivate let panel = SwitcherPanel()
+    fileprivate let field = NSTextField()
     private let list = SwitcherList()
     private let hint = NSTextField(labelWithString: "↩ go there     ⇧↩ bring here     esc close")
-    private var entries: [Entry] = []
+    fileprivate var entries: [Entry] = []
     private var closing = false
 
     var isOpen: Bool { panel.isVisible }
@@ -104,7 +104,7 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
 
     // MARK: filtering
 
-    private func refilter() {
+    fileprivate func refilter() {
         let q = field.stringValue
         let candidates = entries.map {
             WindowSearch.Candidate(id: $0.id, app: $0.app, title: $0.title, workspace: $0.workspace,
@@ -375,5 +375,18 @@ private final class SwitcherList: NSView {
     override func scrollWheel(with event: NSEvent) {
         scroll = min(max(0, scroll - event.scrollingDeltaY), max(0, contentHeight - bounds.height))
         needsDisplay = true
+    }
+}
+
+
+extension WindowSwitcher {
+    /// Screenshots: the panel's content with these windows and this query,
+    /// laid out at `width`, without showing it.
+    func demoView(_ entries: [Entry], query: String, width: CGFloat) -> NSView {
+        self.entries = entries
+        panel.setFrame(NSRect(x: 0, y: 0, width: width, height: 200), display: false)
+        field.stringValue = query
+        refilter()
+        return panel.contentView!
     }
 }
