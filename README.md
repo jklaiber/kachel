@@ -79,6 +79,7 @@ Option + q / Return / f / b stay free.
 | `mod-,` | focus next screen | Amethyst focus-screen-cw |
 | `mod-z` | re-scan windows and screens, then re-tile | Amethyst reevaluate-windows |
 | `mod-shift-,` | send focused window to next screen | xmonad |
+| `mod-p` | **window search**: type to find any open window; ↩ go there, ⇧↩ bring it here | xmonad Prompt.Window / dmenu |
 | `mod-m` / `mod-shift-m` | focus / swap with master | xmonad |
 | `mod-t` | toggle floating | xmonad |
 | `mod-shift-r` | restart XMonadMac (windows keep their workspaces) | |

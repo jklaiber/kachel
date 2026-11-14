@@ -33,6 +33,9 @@ final class WindowManager {
     private var followPending = false
     private let bar = Bar()
     private let menuBarItem = MenuBarItem()
+    private let switcher = WindowSwitcher()
+    /// Most recently focused first, for ranking search results.
+    private var mru: [WindowID] = []
     private var managing = false
     private var hotkeyProblems: [String] = []
     private var pollTimer: Timer?
@@ -55,6 +58,9 @@ final class WindowManager {
         }
         bar.menuActions = menuEntries()
         menuBarItem.entries = { [unowned self] in self.menuEntries() }
+        switcher.onGo = { [unowned self] id in self.goToWindow(id) }
+        switcher.onBring = { [unowned self] id in self.bringWindow(id) }
+        switcher.onCancel = { [unowned self] in self.focusCurrent() }
         applySettings()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [unowned self] _ in
@@ -201,6 +207,55 @@ final class WindowManager {
         }
         try? p.run()
         exit(0)
+    }
+
+    // MARK: - window search
+
+    private func touch(_ id: WindowID) {
+        if mru.first == id { return }
+        mru.removeAll { $0 == id }
+        mru.insert(id, at: 0)
+        if mru.count > 200 { mru.removeLast(mru.count - 200) }
+    }
+
+    func toggleWindowSearch() {
+        if switcher.isOpen { switcher.close(cancelled: true); return }
+        syncFocusFromSystem(followHidden: false)
+        let focused = ss.current.focused
+        var apps: [pid_t: NSRunningApplication] = [:]
+        var entries: [WindowSwitcher.Entry] = []
+        for (i, ws) in ss.workspaces.enumerated() {
+            for id in ws.windows {
+                guard let w = windows[id] else { continue }
+                let app = apps[w.pid] ?? NSRunningApplication(processIdentifier: w.pid)
+                apps[w.pid] = app
+                entries.append(.init(id: id, app: app?.localizedName ?? w.bundleID ?? "?", title: w.title,
+                                     icon: app?.icon, workspace: i, tag: ws.tag,
+                                     visible: ss.isVisible(workspace: i), active: i == ss.currentWorkspaceIndex,
+                                     recency: mru.firstIndex(of: id) ?? mru.count + Int(id % 1000),
+                                     focused: id == focused))
+            }
+        }
+        guard ss.currentScreen < screens.count else { return }
+        let scr = screens[ss.currentScreen]
+        let cfg = Config.current.bar
+        switcher.open(entries, area: scr.nsVisible, bottom: cfg.enabled ? Bar.height(for: cfg) : 0)
+    }
+
+    /// ↩ in the search: show the window's workspace here (greedyView) and focus it.
+    private func goToWindow(_ id: WindowID) {
+        guard let ws = ss.workspaceIndex(of: id) else { return }
+        if ws != ss.currentWorkspaceIndex { ss.greedyView(ws) }
+        ss.focus(id)
+        render()
+    }
+
+    /// ⇧↩ in the search: move the window to this workspace and focus it.
+    private func bringWindow(_ id: WindowID) {
+        let here = ss.currentWorkspaceIndex
+        if ss.workspaceIndex(of: id) != here { ss.shift(id, to: here) }
+        ss.focus(id)
+        render()
     }
 
     // MARK: - state across restarts
@@ -359,6 +414,7 @@ final class WindowManager {
               let id = focusedSystemWindow(),
               ss.workspaceIndex(of: id) != nil else { return }
         if ss.focus(id) {
+            touch(id)
             updateBar()
         } else if followHidden {
             followHiddenFocus(id)
@@ -424,6 +480,7 @@ final class WindowManager {
         case .shiftNext: syncFocusFromSystem(followHidden: false); shift(to: ss.neighbour(+1))
         case .shiftPrev: syncFocusFromSystem(followHidden: false); shift(to: ss.neighbour(-1))
         case .restart: restart()
+        case .windowSearch: toggleWindowSearch()
         case .shrink: adjustRatio(-step)
         case .expand: adjustRatio(+step)
         case .incMaster: incMaster(+1)
@@ -651,6 +708,7 @@ final class WindowManager {
         ignoreFocusEventsUntil = Date().addingTimeInterval(0.3)
         let ws = ss.current
         if let f = ws.focused, let w = windows[f] {
+            touch(f)
             w.focus()
         } else {
             // Empty workspace: take focus ourselves so keystrokes don't go

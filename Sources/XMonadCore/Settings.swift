@@ -37,6 +37,7 @@ public enum Command: Equatable {
     case focusNextScreen, focusPrevScreen, shiftToNextScreen, shiftToPrevScreen
     case workspaceNext, workspacePrev, shiftNext, shiftPrev
     case toggleFloat, refresh, close, terminal, reload, restart, quit
+    case windowSearch
     case spawn(String)
 }
 
@@ -259,6 +260,7 @@ public struct Settings {
         case "shift-next":           return try noArg(.shiftNext)
         case "shift-prev":           return try noArg(.shiftPrev)
         case "restart":              return try noArg(.restart)
+        case "window-search":        return try noArg(.windowSearch)
         case "toggle-float": return try noArg(.toggleFloat)
         case "refresh":      return try noArg(.refresh)
         case "close":        return try noArg(.close)
@@ -394,6 +396,7 @@ bar:
 #   shift-to-next-screen   shift-to-prev-screen
 #   focus-down  focus-up  focus-master  swap-down  swap-up  swap-master
 #   next-layout  shrink  expand  inc-master  dec-master  toggle-float
+#   window-search          search all open windows and jump to one
 #   refresh  close  terminal  reload  restart  quit
 #   spawn <shell command>
 # A key mapped to ~ is unbound. This section replaces the defaults as a whole.
@@ -441,6 +444,7 @@ keys:
   mod-z: refresh
 
   # Not in your Amethyst config (xmonad-style extras)
+  mod-p: window-search      # like dmenu / XMonad.Prompt.Window on mod-p
   mod-shift-comma: shift-to-next-screen
   mod-m: focus-master
   mod-shift-m: swap-master

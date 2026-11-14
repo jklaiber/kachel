@@ -7,7 +7,7 @@ final class SettingsTests: XCTestCase {
         let s = try Settings.parse(Settings.defaultYAML)
         XCTAssertEqual(s.mod, [.alt])
         XCTAssertEqual(s.workspaces.count, 9)
-        XCTAssertEqual(s.keys.count, 35)
+        XCTAssertEqual(s.keys.count, 36)
         XCTAssertEqual(s.layouts, [.tall, .mirrorTall, .column, .full])
         XCTAssertEqual(s.gap, 5)
         XCTAssertEqual(s.ratioStep, 0.05)
@@ -20,7 +20,7 @@ final class SettingsTests: XCTestCase {
     func testPartialFileKeepsDefaultKeysWithNewMod() throws {
         let s = try Settings.parse("mod: cmd+alt\ngap: 10\n")
         XCTAssertEqual(s.gap, 10)
-        XCTAssertEqual(s.keys.count, 35)
+        XCTAssertEqual(s.keys.count, 36)
         XCTAssertEqual(s.keys[KeyChord(modifiers: [.cmd, .alt], key: "j")], .focusDown)
     }
 
@@ -40,7 +40,7 @@ final class SettingsTests: XCTestCase {
     }
 
     func testEmptyFileIsDefaults() throws {
-        XCTAssertEqual(try Settings.parse("").keys.count, 35)
+        XCTAssertEqual(try Settings.parse("").keys.count, 36)
     }
 
     func testErrors() {
@@ -103,7 +103,7 @@ final class BarConfigTests: XCTestCase {
         let s = try Settings.parse(text)
         XCTAssertEqual(s.bar.right, [.cpu, .clock])
         XCTAssertEqual(s.bar.left, [.workspaces, .layout, .title])
-        XCTAssertEqual(s.keys.count, 35)
+        XCTAssertEqual(s.keys.count, 36)
         XCTAssertTrue(text.contains("# Widgets, in order"))
     }
 
@@ -135,6 +135,7 @@ final class AmethystKeysTests: XCTestCase {
         XCTAssertEqual(k[KeyChord(modifiers: m2, key: "left")], .shiftPrev)         // throw-space-left
         XCTAssertEqual(k[KeyChord(modifiers: m2, key: "right")], .shiftNext)        // throw-space-right
         XCTAssertEqual(k[KeyChord(modifiers: m1, key: "z")], .refresh)              // reevaluate-windows
+        XCTAssertEqual(k[KeyChord(modifiers: m1, key: "p")], .windowSearch)
     }
 
     /// skhd binds lalt - q / return / f / b; those must stay free.
