@@ -31,6 +31,9 @@ final class WindowManager {
     /// other app on its own; that must not drag us to that app's workspace.
     private var lastWindowGone = Date.distantPast
     private var followPending = false
+    /// Between "going to sleep" and shortly after waking: windows and screens
+    /// are in flux, so don't draw conclusions from them.
+    private var asleep = false
     /// A tiled window being resized with the mouse; applied on mouse-up.
     private var mouseResized: WindowID?
     private var mouseUpTimer: Timer?
@@ -125,6 +128,23 @@ final class WindowManager {
         }
         ws.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [unowned self] _ in
             self.scheduleRefresh()
+        }
+        for n in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification] {
+            ws.addObserver(forName: n, object: nil, queue: .main) { [unowned self] _ in
+                if !self.asleep { Log.info("sleeping: pausing window tracking") }
+                self.asleep = true
+            }
+        }
+        for n in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {
+            ws.addObserver(forName: n, object: nil, queue: .main) { [unowned self] _ in
+                // Give displays and apps a moment to come back, then re-check everything.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [unowned self] in
+                    guard self.asleep else { return }
+                    self.asleep = false
+                    Log.info("awake: re-checking screens and windows")
+                    self.screensChanged()
+                }
+            }
         }
 
         adoptExistingWindows()
@@ -538,20 +558,37 @@ final class WindowManager {
 
     /// Reconcile our model with the windows that actually exist.
     private func refresh() {
+        guard !asleep else { return }
         let found = enumerateWindows()
         var changed = false
-        for id in ss.allWindows where found[id] == nil {
-            ss.remove(id)
-            hidden.remove(id)
-            floatRel[id] = nil
+        let missing = ss.allWindows.filter { found[$0] == nil }
+        if !missing.isEmpty {
+            // Accessibility sometimes reports no windows at all: during sleep,
+            // for busy apps, for minimized or fullscreen windows. Only forget a
+            // window once the window server says it's really gone, or it would
+            // lose its workspace and come back on the current one.
+            let alive = windowServerIDs()
+            for id in missing {
+                if alive.contains(id) { continue }
+                Log.info("window \(id) closed (was on workspace \(ss.workspaceIndex(of: id).map { ss.workspaces[$0].tag } ?? "?"))")
+                ss.remove(id)
+                hidden.remove(id)
+                floatRel[id] = nil
+                changed = true
+                lastWindowGone = Date()
+            }
+        }
+        // Windows coming back (after sleep, un-minimized, app answering again)
+        // keep their workspace; just put them in place.
+        if found.keys.contains(where: { windows[$0] == nil && ss.workspaceIndex(of: $0) != nil }) {
             changed = true
-            lastWindowGone = Date()
         }
         for (id, w) in found where ss.workspaceIndex(of: id) == nil {
             if shouldFloat(w) {
                 ss.floating.insert(id)
                 if let f = w.frame, isOffscreen(f) { centerOnCurrentScreen(w, f.size) }
             }
+            Log.info("new window \(id): \(appName(of: w)) \"\(w.title.prefix(40))\"")
             if let ws = ruleWorkspace(for: w), ws != ss.currentWorkspaceIndex {
                 // A rule sends it elsewhere (xmonad doShift): it appears there, you stay here.
                 ss.insert(id, into: ws)
@@ -564,6 +601,13 @@ final class WindowManager {
         }
         windows = found
         if changed { render() }
+    }
+
+    /// Every window the window server knows, on any Space, visible or not.
+    private func windowServerIDs() -> Set<WindowID> {
+        guard let list = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return [] }
+        return Set(list.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value })
     }
 
     private func shouldFloat(_ w: AXWindow) -> Bool {
@@ -753,6 +797,9 @@ final class WindowManager {
     // MARK: - screens
 
     private func screensChanged() {
+        // While asleep the display list is meaningless (lid closed = no
+        // screens); the wake handler calls this again.
+        guard !asleep else { return }
         // Corners and bar positions moved: applySettings re-parks from scratch.
         applySettings(rebindKeys: false)
         if managing { refresh() }

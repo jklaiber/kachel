@@ -180,8 +180,8 @@ there's no sliding animation.
 
 ## Known limitations (v0.1)
 
-- Native fullscreen windows and minimized windows aren't managed. A window
-  you un-minimize comes back on the current workspace.
+- Native fullscreen windows and minimized windows aren't tiled, but they keep
+  their workspace and come back there.
 - Mouse resizing moves the master split (Tall and Wide) when you drag the edge
   between master and stack. Other drags, such as resizing in Column or Full,
   making one stack window taller, or moving a tiled window, snap back.
