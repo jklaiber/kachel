@@ -174,6 +174,7 @@ final class WindowManager {
             hotkeyProblems = HotKeys.shared.bind(cfg.keys) { [unowned self] cmd in self.perform(cmd) }
         }
         ss.setTags(cfg.workspaces)
+        ss.insertPosition = cfg.newWindows
         ss.setLayoutIfUnlisted(cfg.layouts)
         menuBarItem.setVisible(cfg.menubarIcon)
         LoginItem.apply(cfg.startAtLogin)

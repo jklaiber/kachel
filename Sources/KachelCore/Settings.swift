@@ -133,6 +133,8 @@ public struct Settings {
     public var focusFollowsMouse = false
     /// Pressing the key of the workspace you're on goes back to the previous one.
     public var workspaceBackAndForth = false
+    /// Where new windows go: end of the stack, below/above the focused one, or master.
+    public var newWindows: InsertPosition = .end
     /// Workspace name -> screen pattern (see ScreenMatcher): always shown there.
     public var workspaceScreens: [String: String] = [:]
     public var terminal = "open -na Terminal"
@@ -172,7 +174,7 @@ public struct Settings {
                                   "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
                                   "float-dialogs", "float-small-windows", "start-at-login",
                                   "scratchpads", "border", "focus-follows-mouse",
-                                  "workspace-back-and-forth", "workspace-screens"]
+                                  "workspace-back-and-forth", "workspace-screens", "new-windows"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -191,6 +193,12 @@ public struct Settings {
             else { throw SettingsError("mouse-follows-focus must be window, screen or off") }
         }
         if let v = dict["focus-follows-mouse"] { s.focusFollowsMouse = try bool(v, "focus-follows-mouse") }
+        if let v = dict["new-windows"] {
+            guard let p = InsertPosition(rawValue: "\(v)") else {
+                throw SettingsError("new-windows must be end, below, above or master")
+            }
+            s.newWindows = p
+        }
         if let v = dict["workspace-back-and-forth"] { s.workspaceBackAndForth = try bool(v, "workspace-back-and-forth") }
         if let v = dict["workspace-screens"] {
             if v is NSNull { s.workspaceScreens = [:] }
@@ -565,6 +573,8 @@ ratio-step: 0.05          # how much shrink/expand change it
 mouse-follows-focus: window   # pointer to the focused window's centre; screen = only between screens; off
 focus-follows-mouse: false    # true: the window under the pointer gets focus when the pointer rests
 workspace-back-and-forth: false   # true: the key of the workspace you're on goes back to the previous one
+new-windows: end              # where new windows go: end (last in the stack), below / above the
+                              # focused window, or master (xmonad's default is above)
 
 # Pin workspaces to a screen (AeroSpace's workspace-to-monitor assignment):
 # they always show there while that screen is connected. Screens: main (menu

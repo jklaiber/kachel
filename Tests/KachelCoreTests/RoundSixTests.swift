@@ -167,3 +167,29 @@ final class CycleSkipsInvisibleTests: XCTestCase {
         XCTAssertEqual(ss.current.focused, 2)
     }
 }
+
+final class InsertPositionTests: XCTestCase {
+    func order(_ p: InsertPosition) -> [WindowID] {
+        var ss = StackSet(tags: ["1"], screenCount: 1)
+        ss.insertPosition = .end
+        ss.insert(1); ss.insert(2); ss.insert(3)        // [1,2,3]
+        ss.focus(1)                                      // the master has focus
+        ss.insertPosition = p
+        ss.insert(9)
+        XCTAssertEqual(ss.current.focused, 9)            // a new window always gets focus
+        return ss.current.windows
+    }
+
+    func testPositions() {
+        XCTAssertEqual(order(.end), [1, 2, 3, 9])        // a child at the end, master stays
+        XCTAssertEqual(order(.below), [1, 9, 2, 3])      // right below the focused master
+        XCTAssertEqual(order(.above), [9, 1, 2, 3])      // xmonad: becomes master
+        XCTAssertEqual(order(.master), [9, 1, 2, 3])
+    }
+
+    func testSetting() throws {
+        XCTAssertEqual(try Settings.parse(Settings.defaultYAML).newWindows, .end)
+        XCTAssertEqual(try Settings.parse("new-windows: below").newWindows, .below)
+        XCTAssertThrowsError(try Settings.parse("new-windows: middle"))
+    }
+}

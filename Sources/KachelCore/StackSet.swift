@@ -2,6 +2,14 @@ import Foundation
 
 public typealias WindowID = UInt32
 
+/// Where a new window goes in its workspace (xmonad's InsertPosition).
+public enum InsertPosition: String {
+    case above      // above the focused window (xmonad's insertUp, the default there)
+    case below      // right below the focused window
+    case master     // first: it becomes the master
+    case end        // last in the stack (Amethyst's default)
+}
+
 public enum LayoutKind: String, CaseIterable, Codable {
     case tall = "Tall"          // master left, stack right
     case mirrorTall = "Wide"    // master on top, stack below (Amethyst "wide", xmonad Mirror Tall)
@@ -63,6 +71,8 @@ public struct StackSet {
     /// screen index -> the workspace it showed before (for back and forth)
     public private(set) var previousOnScreen: [Int: Int] = [:]
     public var floating: Set<WindowID> = []
+    /// Where insert() puts new windows.
+    public var insertPosition: InsertPosition = .above
 
     public init(tags: [String], screenCount: Int, ratio: Double = 0.5) {
         precondition(!tags.isEmpty, "need at least one workspace")
@@ -152,7 +162,14 @@ public struct StackSet {
         let i = target ?? currentWorkspaceIndex
         guard workspaces.indices.contains(i) else { return }
         var ws = workspaces[i]
-        let at = ws.focused.flatMap { ws.windows.firstIndex(of: $0) } ?? 0
+        let focusedIndex = ws.focused.flatMap { ws.windows.firstIndex(of: $0) }
+        let at: Int
+        switch insertPosition {
+        case .above:  at = focusedIndex ?? 0
+        case .below:  at = focusedIndex.map { $0 + 1 } ?? ws.windows.count
+        case .master: at = 0
+        case .end:    at = ws.windows.count
+        }
         ws.windows.insert(w, at: at)
         ws.focused = w
         workspaces[i] = ws
