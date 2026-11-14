@@ -36,6 +36,11 @@ public struct Workspace: Equatable {
     public var layout: LayoutKind = .tall
     public var nMaster: Int = 1
     public var ratio: Double = 0.5
+    /// Toggled fullscreen (xmonad ToggleLayouts): show Full until toggled back.
+    public var fullscreen = false
+
+    /// The layout actually used for tiling.
+    public var effectiveLayout: LayoutKind { fullscreen ? .full : layout }
 
     public init(tag: String, ratio: Double = 0.5) {
         self.tag = tag
@@ -218,6 +223,7 @@ public struct StackSet {
     public mutating func nextLayout(in order: [LayoutKind] = LayoutKind.allCases) {
         guard !order.isEmpty else { return }
         modifyCurrent { ws in
+            ws.fullscreen = false
             let i = order.firstIndex(of: ws.layout) ?? -1
             ws.layout = order[(i + 1) % order.count]
         }
@@ -272,20 +278,23 @@ public struct StackSet {
         public var layouts: [Int: LayoutKind]
         public var ratios: [Int: Double]
         public var nMaster: [Int: Int]
+        public var fullscreen: [Int: Bool]? = nil     // optional: older saved states lack it
     }
 
     public var snapshot: Snapshot {
         var windows: [WindowID: Int] = [:], focused: [Int: WindowID] = [:], order: [Int: [WindowID]] = [:]
         var layouts: [Int: LayoutKind] = [:], ratios: [Int: Double] = [:], nMaster: [Int: Int] = [:]
+        var fullscreen: [Int: Bool] = [:]
         for (i, ws) in workspaces.enumerated() {
             ws.windows.forEach { windows[$0] = i }
             order[i] = ws.windows
             if let f = ws.focused { focused[i] = f }
             layouts[i] = ws.layout; ratios[i] = ws.ratio; nMaster[i] = ws.nMaster
+            if ws.fullscreen { fullscreen[i] = true }
         }
         return Snapshot(windows: windows, focused: focused, order: order, floating: Array(floating),
                         screenWorkspace: screenWorkspace, currentScreen: currentScreen,
-                        layouts: layouts, ratios: ratios, nMaster: nMaster)
+                        layouts: layouts, ratios: ratios, nMaster: nMaster, fullscreen: fullscreen)
     }
 
     /// Restore a snapshot. Windows not in `existing` are dropped; existing
@@ -298,6 +307,7 @@ public struct StackSet {
             if let l = snap.layouts[i] { ws.layout = l }
             if let r = snap.ratios[i] { ws.ratio = r }
             if let n = snap.nMaster[i] { ws.nMaster = n }
+            ws.fullscreen = snap.fullscreen?[i] ?? false
             workspaces[i] = ws
         }
         floating = Set(snap.floating.filter(existing.contains))
@@ -313,6 +323,17 @@ public struct StackSet {
 
     public mutating func incMaster(_ d: Int) {
         modifyCurrent { ws in ws.nMaster = max(0, ws.nMaster + d) }
+    }
+
+    /// Move focus off `w` (e.g. a scratchpad being hidden) to another window
+    /// of its workspace that isn't in `excluding`, or to nothing.
+    public mutating func focusOther(than w: WindowID, excluding: Set<WindowID> = []) {
+        guard let i = workspaceIndex(of: w), workspaces[i].focused == w else { return }
+        workspaces[i].focused = workspaces[i].windows.first { $0 != w && !excluding.contains($0) }
+    }
+
+    public mutating func toggleFullscreen() {
+        modifyCurrent { ws in ws.fullscreen.toggle() }
     }
 
     /// Set a workspace's master ratio directly (mouse resize).

@@ -41,6 +41,11 @@ final class WindowManager {
     /// Where render() put each tiled window, to notice apps that didn't comply.
     private var expected: [WindowID: CGRect] = [:]
     private var verifyPending = false
+    private let border = FocusBorder()
+    /// Scratchpads: which window each one is, which are put away, which are starting.
+    private var scratchWindow: [String: WindowID] = [:]
+    private var scratchParked: Set<WindowID> = []
+    private var scratchPending: [String: Date] = [:]
     /// Minimum sizes learned from windows that refused to get smaller.
     private var minSize: [WindowID: CGSize] = [:]
     private var savePending = false
@@ -279,7 +284,7 @@ final class WindowManager {
         let ws = ss.workspaces[wsIndex]
         let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
         if let i = tiled.firstIndex(of: id),
-           let r = Layout.ratio(afterResizing: frame, index: i, count: tiled.count, kind: ws.layout,
+           let r = Layout.ratio(afterResizing: frame, index: i, count: tiled.count, kind: ws.effectiveLayout,
                                 in: screens[s].visible, nMaster: ws.nMaster, gap: CGFloat(Config.current.gap)) {
             Log.info("mouse resize: workspace \(ws.tag) ratio \(String(format: "%.2f", ws.ratio)) → \(String(format: "%.2f", r))")
             ss.setRatio(r, workspace: wsIndex)
@@ -367,6 +372,113 @@ final class WindowManager {
         render()
     }
 
+    // MARK: - focus border
+
+    /// Frame the focused window (if it's on screen and the border is wanted).
+    func updateBorder() {
+        let cfg = Config.current.border
+        guard managing, cfg.enabled, !switcher.isOpen, !rulePicker.isOpen,
+              let f = ss.current.focused, let w = windows[f], !hidden.contains(f), !scratchParked.contains(f),
+              let frame = w.frame else { border.hide(); return }
+        if cfg.smart, !ss.floating.contains(f),
+           ss.current.windows.filter({ windows[$0] != nil && !ss.floating.contains($0) }).count == 1 {
+            border.hide(); return
+        }
+        border.show(around: frame, of: f, settings: cfg)
+    }
+
+    // MARK: - directional focus
+
+    /// Focus (or swap with) the window in a direction, across screens.
+    private func focusDirection(_ d: Direction, swap: Bool) {
+        syncFocusFromSystem(followHidden: false)
+        guard let f = ss.current.focused, let from = windows[f]?.frame else { return }
+        var candidates: [(id: WindowID, frame: CGRect)] = []
+        for wsIndex in ss.screenWorkspace {
+            for id in ss.workspaces[wsIndex].windows where id != f && !scratchParked.contains(id) && !hidden.contains(id) {
+                if let fr = windows[id]?.frame { candidates.append((id, fr)) }
+            }
+        }
+        guard let target = Navigation.neighbour(of: from, in: d, among: candidates) else { return }
+        if swap {
+            ss.swap(f, target)
+            ss.focus(f)
+        } else {
+            ss.focus(target)
+        }
+        render()
+    }
+
+    // MARK: - scratchpads
+
+    private func scratchpad(named name: String) -> Scratchpad? {
+        Config.current.scratchpads.first { $0.name == name }
+    }
+
+    private func matches(_ w: AXWindow, _ sp: Scratchpad, checkTitle: Bool = true) -> Bool {
+        var m = sp.matcher
+        if !checkTitle { m.title = nil }
+        return m.matches(bundleID: w.bundleID, appName: appName(of: w), title: w.title)
+    }
+
+    /// A new window that a scratchpad we just started is waiting for. Titles
+    /// are often set a moment later, so only the app has to match.
+    private func startingScratchpad(for w: AXWindow) -> Scratchpad? {
+        for (name, started) in scratchPending where Date().timeIntervalSince(started) < 15 {
+            if let sp = scratchpad(named: name), matches(w, sp, checkTitle: false) { return sp }
+        }
+        return nil
+    }
+
+    /// Show it here if it's away (or on another workspace), put it away if
+    /// it's showing here; start it if it isn't open.
+    func toggleScratchpad(_ name: String) {
+        guard let sp = scratchpad(named: name) else { return }
+        syncFocusFromSystem(followHidden: false)
+        var id = scratchWindow[name].flatMap { windows[$0] != nil ? $0 : nil }
+        if id == nil {
+            // Adopt an open window that fits (e.g. after a restart).
+            let taken = Set(scratchWindow.values)
+            id = windows.first { !taken.contains($0.key) && matches($0.value, sp) }?.key
+            if let id { scratchWindow[name] = id }
+        }
+        guard let id else {
+            guard let run = sp.run else {
+                Log.info("scratchpad \(name): no window and nothing to run")
+                NSSound.beep(); return
+            }
+            Log.info("scratchpad \(name): starting \(run)")
+            scratchPending[name] = Date()
+            spawn(run)
+            return
+        }
+        let here = ss.currentWorkspaceIndex
+        if ss.workspaceIndex(of: id) == here, !scratchParked.contains(id) {
+            Log.info("scratchpad \(name): away")
+            scratchParked.insert(id)
+            ss.focusOther(than: id, excluding: scratchParked)
+            render()
+        } else {
+            Log.info("scratchpad \(name): here")
+            if ss.workspaceIndex(of: id) != here { ss.shift(id, to: here) }
+            ss.floating.insert(id)
+            showScratchpad(id, sp)
+            render()
+        }
+    }
+
+    /// Float it at its size and position on the current screen, and focus it.
+    private func showScratchpad(_ id: WindowID, _ sp: Scratchpad) {
+        scratchParked.remove(id)
+        guard ss.currentScreen < screens.count, let w = windows[id] else { return }
+        let v = screens[ss.currentScreen].visible
+        let size = CGSize(width: v.width * sp.width, height: v.height * sp.height)
+        let y = sp.position == .top ? v.minY + CGFloat(Config.current.gap) : v.midY - size.height / 2
+        w.setFrame(CGRect(x: v.midX - size.width / 2, y: y, width: size.width, height: size.height))
+        hidden.remove(id)
+        ss.focus(id)
+    }
+
     // MARK: - window search
 
     private func touch(_ id: WindowID) {
@@ -383,7 +495,7 @@ final class WindowManager {
         var apps: [pid_t: NSRunningApplication] = [:]
         var entries: [WindowSwitcher.Entry] = []
         for (i, ws) in ss.workspaces.enumerated() {
-            for id in ws.windows {
+            for id in ws.windows where !scratchParked.contains(id) {
                 guard let w = windows[id] else { continue }
                 let app = apps[w.pid] ?? NSRunningApplication(processIdentifier: w.pid)
                 apps[w.pid] = app
@@ -593,6 +705,10 @@ final class WindowManager {
     }
 
     fileprivate func onAXEvent(_ notification: String, element: AXUIElement) {
+        if notification == kAXWindowMovedNotification || notification == kAXWindowResizedNotification,
+           let id = axWindowID(element), id == ss.current.focused {
+            updateBorder()
+        }
         if notification == kAXWindowMovedNotification {
             // A drag with the mouse (title bar): swap on drop, see applyMouseMove.
             if NSEvent.pressedMouseButtons & 1 != 0, let id = axWindowID(element), windows[id] != nil {
@@ -647,6 +763,8 @@ final class WindowManager {
                 hidden.remove(id)
                 floatRel[id] = nil
                 minSize[id] = nil
+                scratchParked.remove(id)
+                scratchWindow = scratchWindow.filter { $0.value != id }
                 changed = true
                 lastWindowGone = Date()
             }
@@ -662,6 +780,17 @@ final class WindowManager {
                 if let f = w.frame, isOffscreen(f) { centerOnCurrentScreen(w, f.size) }
             }
             Log.info("new window \(id): \(appName(of: w)) \"\(w.title.prefix(40))\"")
+            if let sp = startingScratchpad(for: w) {
+                scratchPending[sp.name] = nil
+                scratchWindow[sp.name] = id
+                ss.floating.insert(id)
+                ss.insert(id)
+                hidden.remove(id)
+                windows[id] = w
+                showScratchpad(id, sp)
+                changed = true
+                continue
+            }
             if let ws = ruleWorkspace(for: w), ws != ss.currentWorkspaceIndex {
                 // A rule sends it elsewhere (xmonad doShift): it appears there, you stay here.
                 ss.insert(id, into: ws)
@@ -731,6 +860,7 @@ final class WindowManager {
         if ss.focus(id) {
             touch(id)
             updateBar()
+            updateBorder()
         } else if followHidden {
             followHiddenFocus(id)
         }
@@ -797,6 +927,10 @@ final class WindowManager {
         case .restart: restart()
         case .windowSearch: toggleWindowSearch()
         case .appRule: toggleRulePicker()
+        case .toggleFullscreen: act { $0.toggleFullscreen() }
+        case .focusDirection(let d): focusDirection(d, swap: false)
+        case .swapDirection(let d): focusDirection(d, swap: true)
+        case .scratchpad(let name): toggleScratchpad(name)
         case .shrink: adjustRatio(-step)
         case .expand: adjustRatio(+step)
         case .incMaster: incMaster(+1)
@@ -919,7 +1053,7 @@ final class WindowManager {
             let ws = ss.workspaces[wsIndex]
             let scr = screens[s]
             let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
-            let rects = Layout.tile(ws.layout, count: tiled.count, in: scr.visible,
+            let rects = Layout.tile(ws.effectiveLayout, count: tiled.count, in: scr.visible,
                                     nMaster: ws.nMaster, ratio: ws.ratio, gap: CGFloat(Config.current.gap),
                                     minSizes: tiled.map { minSize[$0] })
             for (id, r) in zip(tiled, rects) {
@@ -929,6 +1063,7 @@ final class WindowManager {
             }
             let from = lastScreen[wsIndex]
             for id in ws.windows where ss.floating.contains(id) {
+                if scratchParked.contains(id) { hide(id); continue }
                 if hidden.contains(id) {
                     showFloating(id, on: scr)
                 } else if let from, from != s, from < screens.count {
@@ -937,7 +1072,7 @@ final class WindowManager {
                     moveFloating(id, from: screens[from], to: scr)
                 }
             }
-            if ws.layout == .full, let f = ws.focused, s != ss.currentScreen {
+            if ws.effectiveLayout == .full, let f = ws.focused, s != ss.currentScreen {
                 windows[f]?.raise()
             }
         }
@@ -1073,10 +1208,10 @@ final class WindowManager {
                 c.tags.append(Bar.Tag(name: ws.tag,
                                       active: i == ss.currentWorkspaceIndex,
                                       visible: ss.isVisible(workspace: i),
-                                      hasWindows: !ws.windows.isEmpty))
+                                      hasWindows: ws.windows.contains { !scratchParked.contains($0) }))
             }
             let ws = ss.workspaces[wsIndex]
-            c.layout = ws.layout.rawValue
+            c.layout = ws.effectiveLayout.rawValue
             if managing, let f = ws.focused, let w = windows[f] { c.title = w.title }
             contents.append(c)
         }
@@ -1089,7 +1224,9 @@ final class WindowManager {
         if let f = ws.focused, let w = windows[f] {
             touch(f)
             w.focus()
+            DispatchQueue.main.async { self.updateBorder() }
         } else {
+            border.hide()
             // Empty workspace: take focus ourselves so keystrokes don't go
             // to a window that's parked in a corner.
             NSApp.activate(ignoringOtherApps: true)

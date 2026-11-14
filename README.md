@@ -96,6 +96,10 @@ Option + q / Return / f / b stay free.
 | `mod-z` | re-scan windows and screens, then re-tile | Amethyst reevaluate-windows |
 | `mod-shift-,` / `mod-shift-.` | send focused window to next / previous screen | xmonad |
 | `mod-p` | **window search**: type to find any open window; ↩ go there, ⇧↩ bring it here | xmonad Prompt.Window / dmenu |
+| `mod-s` | **scratchpad**: show/hide a floating terminal over any workspace (see `scratchpads:`) | xmonad NamedScratchpad |
+| `mod-shift-f` | toggle fullscreen: show the workspace in Full until pressed again | xmonad ToggleLayouts |
+| `ctrl-alt-←/→/↑/↓` | focus the window in that direction, also across screens | xmonad Navigation2D, AeroSpace |
+| `ctrl-alt-shift-←/→/↑/↓` | swap with the window in that direction | |
 | `mod-shift-p` | **app rule**: always open the focused app on workspace N (1–9), F float, ⌫ remove; saved under `rules:` | xmonad manageHook |
 | `mod-m` / `mod-shift-m` | focus / swap with master | xmonad |
 | `mod-t` | toggle floating | xmonad |
@@ -177,6 +181,34 @@ Kachel reads the trackpad through Apple's private `MultitouchSupport`
 framework, as BetterTouchTool and similar tools do. If a macOS update breaks
 it, swipes stop working and everything else keeps going. The switch is instant;
 there's no sliding animation.
+
+## Scratchpads
+
+A scratchpad is a window you summon with one key: it floats over whatever
+workspace you're on, and the same key puts it away again. If it isn't open,
+Kachel starts it. The default is a terminal:
+
+```yaml
+scratchpads:
+  - name: term
+    app: org.alacritty                  # bundle ID or app name
+    title: scratchpad                   # optional: only windows with this in the title
+    run: open -na Alacritty --args --title scratchpad -o window.dynamic_title=false
+    size: [0.6, 0.55]                   # share of the screen
+    position: center                    # or top, like a drop-down terminal
+  - name: notes
+    app: com.apple.Notes
+    run: open -a Notes
+keys:
+  mod-s: scratchpad term
+  mod-n: scratchpad notes
+```
+
+## Focus border
+
+A frame in your accent colour around the focused window. `border:` sets
+`width`, `color` (`accent` or `"#RRGGBB"`), `radius` (match your windows'
+corners) and `smart` (no frame when a window is alone on its screen).
 
 ## Mouse
 

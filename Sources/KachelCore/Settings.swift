@@ -38,6 +38,9 @@ public enum Command: Equatable {
     case workspaceNext, workspacePrev, shiftNext, shiftPrev
     case toggleFloat, refresh, close, terminal, reload, restart, quit
     case windowSearch, appRule
+    case toggleFullscreen
+    case focusDirection(Direction), swapDirection(Direction)
+    case scratchpad(String)
     case spawn(String)
 }
 
@@ -84,6 +87,32 @@ public struct GestureSettings: Equatable {
     public init() {}
 }
 
+/// A window you summon and dismiss with one key (xmonad's NamedScratchpad).
+public struct Scratchpad: Equatable {
+    public var name: String
+    public var app: String               // bundle ID or app name of its window
+    public var title: String?            // only windows whose title contains this
+    public var run: String?              // shell command that opens it if none is open
+    public var width = 0.6               // share of the screen
+    public var height = 0.6
+    public var position: Position = .center
+    public enum Position: String { case center, top }
+
+    public init(name: String, app: String) { self.name = name; self.app = app }
+
+    public var matcher: Rule { Rule(app: app, title: title) }
+}
+
+/// A coloured frame around the focused window.
+public struct BorderSettings: Equatable {
+    public var enabled = true
+    public var width = 3.0
+    public var color = "accent"           // "accent" (system accent colour) or "#RRGGBB"
+    public var radius = 12.0              // match your windows' corner radius
+    public var smart = false              // no border when it's the only window on the screen
+    public init() {}
+}
+
 public struct SettingsError: Error, CustomStringConvertible {
     public let description: String
     init(_ d: String) { description = d }
@@ -107,6 +136,8 @@ public struct Settings {
     /// Float windows smaller than this in both directions (Amethyst's float-small-windows); 0 = off.
     public var floatSmallWindows = 0
     public var startAtLogin = false
+    public var scratchpads: [Scratchpad] = []
+    public var border = BorderSettings()
     public var bar = BarSettings()
     public var keys: [KeyChord: Command] = [:]
 
@@ -120,7 +151,8 @@ public struct Settings {
     public static func parse(_ yaml: String) throws -> Settings {
         let root: Any?
         do { root = try Yams.load(yaml: yaml) } catch { throw SettingsError("YAML: \(error)") }
-        var s = Settings()
+        // Anything the file leaves out comes from the documented defaults.
+        var s = yaml == defaultYAML ? Settings() : Settings.defaults
         // An empty file means "all defaults".
         guard let dict = (root ?? [String: Any]()) as? [String: Any] else {
             throw SettingsError("top level must be a mapping")
@@ -128,7 +160,8 @@ public struct Settings {
 
         let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
                                   "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
-                                  "float-dialogs", "float-small-windows", "start-at-login"]
+                                  "float-dialogs", "float-small-windows", "start-at-login",
+                                  "scratchpads", "border"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -162,6 +195,65 @@ public struct Settings {
             else { s.floatSmallWindows = max(0, Int(try number(v, "float-small-windows"))) }
         }
         if let v = dict["start-at-login"] { s.startAtLogin = try bool(v, "start-at-login") }
+        if dict["scratchpads"] == nil, yaml != defaultYAML {
+            s.scratchpads = Settings.defaults.scratchpads
+        }
+        if let v = dict["scratchpads"], !(v is NSNull) {
+            guard let list = v as? [Any] else { throw SettingsError("scratchpads must be a list") }
+            s.scratchpads = try list.enumerated().map { i, item in
+                let ctx = "scratchpads[\(i + 1)]"
+                guard let d = item as? [String: Any] else { throw SettingsError("\(ctx) must be a mapping") }
+                let allowed = ["name", "app", "title", "run", "size", "position"]
+                if let bad = d.keys.first(where: { !allowed.contains($0) }) {
+                    throw SettingsError("\(ctx): unknown setting '\(bad)' (use \(allowed.joined(separator: ", ")))")
+                }
+                guard let name = d["name"].map({ "\($0)" }), !name.isEmpty, !name.contains(" ") else {
+                    throw SettingsError("\(ctx) needs a name: without spaces")
+                }
+                guard let app = d["app"].map({ "\($0)" }), !app.isEmpty else { throw SettingsError("\(ctx) needs app:") }
+                var sp = Scratchpad(name: name, app: app)
+                if let t = d["title"], !(t is NSNull) { sp.title = "\(t)" }
+                if let r = d["run"], !(r is NSNull) { sp.run = "\(r)" }
+                if let z = d["size"] {
+                    guard let pair = z as? [Any], pair.count == 2,
+                          let w = (pair[0] as? Double) ?? (pair[0] as? Int).map(Double.init),
+                          let h = (pair[1] as? Double) ?? (pair[1] as? Int).map(Double.init),
+                          (0.1...1).contains(w), (0.1...1).contains(h) else {
+                        throw SettingsError("\(ctx): size must be [width, height] as shares of the screen, e.g. [0.6, 0.5]")
+                    }
+                    sp.width = w; sp.height = h
+                }
+                if let p = d["position"] {
+                    guard let pos = Scratchpad.Position(rawValue: "\(p)") else {
+                        throw SettingsError("\(ctx): position must be center or top")
+                    }
+                    sp.position = pos
+                }
+                return sp
+            }
+            let names = s.scratchpads.map(\.name)
+            if let dup = names.first(where: { n in names.filter { $0 == n }.count > 1 }) {
+                throw SettingsError("scratchpads: name '\(dup)' is used twice")
+            }
+        }
+        if let v = dict["border"] {
+            guard let b = v as? [String: Any] else { throw SettingsError("border must be a mapping") }
+            for (k, v) in b {
+                switch k {
+                case "enabled": s.border.enabled = try bool(v, "border.enabled")
+                case "width": s.border.width = max(1, min(12, try number(v, "border.width")))
+                case "radius": s.border.radius = max(0, try number(v, "border.radius"))
+                case "smart": s.border.smart = try bool(v, "border.smart")
+                case "color":
+                    let c = "\(v)"
+                    guard c == "accent" || c.range(of: "^#[0-9a-fA-F]{6}$", options: .regularExpression) != nil else {
+                        throw SettingsError("border.color must be accent or a colour like \"#5DCAA5\"")
+                    }
+                    s.border.color = c
+                default: throw SettingsError("unknown setting 'border.\(k)'")
+                }
+            }
+        }
         if let v = dict["gestures"] {
             guard let g = v as? [String: Any] else { throw SettingsError("gestures must be a mapping") }
             for (k, v) in g {
@@ -229,6 +321,17 @@ public struct Settings {
             s.keys = try parseKeys(k, mod: s.mod, workspaceCount: s.workspaces.count)
         } else {
             s.keys = try parseKeys(try defaultKeyMap(), mod: s.mod, workspaceCount: s.workspaces.count)
+        }
+        // Every `scratchpad NAME` must name a scratchpad.
+        let names = Set(s.scratchpads.map(\.name))
+        let used = s.keys.map { ($0.key.description, $0.value) }
+            + [("gestures.swipe-left", s.gestures.left), ("gestures.swipe-right", s.gestures.right),
+               ("gestures.swipe-up", s.gestures.up), ("gestures.swipe-down", s.gestures.down)]
+                .compactMap { k, v in v.map { (k, $0) } }
+        for (where_, cmd) in used {
+            if case .scratchpad(let n) = cmd, !names.contains(n) {
+                throw SettingsError("\(where_): there is no scratchpad '\(n)' (add it under scratchpads:)")
+            }
         }
         return s
     }
@@ -320,6 +423,12 @@ public struct Settings {
         case "restart":              return try noArg(.restart)
         case "window-search":        return try noArg(.windowSearch)
         case "app-rule":             return try noArg(.appRule)
+        case "toggle-fullscreen":    return try noArg(.toggleFullscreen)
+        case "scratchpad":
+            guard !arg.isEmpty, !arg.contains(" ") else {
+                throw SettingsError("\(context): 'scratchpad' needs a scratchpad name")
+            }
+            return .scratchpad(arg)
         case "toggle-float": return try noArg(.toggleFloat)
         case "refresh":      return try noArg(.refresh)
         case "close":        return try noArg(.close)
@@ -329,6 +438,13 @@ public struct Settings {
         case "spawn":
             guard !arg.isEmpty else { throw SettingsError("\(context): 'spawn' needs a shell command") }
             return .spawn(arg)
+        case "focus", "swap":
+            // focus left / swap right … (focus-down / swap-down without a space
+            // are the stack's next/previous and stay as they are)
+            guard let d = Direction(rawValue: arg.lowercased()) else {
+                throw SettingsError("\(context): '\(name)' needs a direction: left, right, up or down")
+            }
+            return name == "focus" ? .focusDirection(d) : .swapDirection(d)
         default:
             throw SettingsError("\(context): unknown command '\(name)'")
         }
@@ -460,6 +576,31 @@ gestures:
   swipe-up: ~
   swipe-down: ~
 
+# Scratchpads, like xmonad's NamedScratchpad: one key shows the window
+# floating over whatever workspace you're on, the same key hides it again.
+# If it isn't open yet, `run` starts it.
+#   name      used by the command: scratchpad <name>
+#   app       bundle ID or app name of its window; title (optional) narrows it down
+#   size      [width, height] as shares of the screen; position: center or top
+scratchpads:
+  - name: term
+    app: org.alacritty
+    title: scratchpad
+    run: open -na Alacritty --args --title scratchpad -o window.dynamic_title=false
+    size: [0.6, 0.55]
+  # - name: notes
+  #   app: com.apple.Notes
+  #   run: open -a Notes
+  #   size: [0.45, 0.7]
+
+# A frame around the focused window, so you always see where you are.
+border:
+  enabled: true
+  width: 3
+  color: accent           # accent = your macOS accent colour, or "#RRGGBB"
+  radius: 12              # corner radius; match your windows
+  smart: false            # true: no frame when a window is alone on its screen
+
 # Rules, like xmonad's manageHook: where an app's windows open, or whether
 # they float. mod-shift-p sets one for the focused app and writes it here.
 #   - app: com.tinyspeck.slackmacgap   # bundle ID or app name
@@ -488,6 +629,10 @@ rules: []
 #   shift-to-next-screen   shift-to-prev-screen
 #   focus-down  focus-up  focus-master  swap-down  swap-up  swap-master
 #   next-layout  shrink  expand  inc-master  dec-master  toggle-float
+#   focus left|right|up|down   focus the window in that direction (across screens)
+#   swap left|right|up|down    swap the focused window with the one in that direction
+#   toggle-fullscreen      show the workspace in Full until toggled back
+#   scratchpad <name>      show or hide a scratchpad (see scratchpads:)
 #   window-search          search all open windows and jump to one
 #   app-rule               choose the workspace the focused app always opens on
 #   refresh  close  terminal  reload  restart  quit
@@ -539,6 +684,17 @@ keys:
 
   # Not in your Amethyst config (xmonad-style extras)
   mod-p: window-search      # like dmenu / XMonad.Prompt.Window on mod-p
+  mod-s: scratchpad term    # show/hide the scratchpad terminal
+  mod-shift-f: toggle-fullscreen   # mod-f is skhd's
+  # Directional focus and swap (mod-arrows would break word jumps in text)
+  ctrl-alt-left: focus left
+  ctrl-alt-right: focus right
+  ctrl-alt-up: focus up
+  ctrl-alt-down: focus down
+  ctrl-alt-shift-left: swap left
+  ctrl-alt-shift-right: swap right
+  ctrl-alt-shift-up: swap up
+  ctrl-alt-shift-down: swap down
   mod-shift-p: app-rule     # "always open this app on workspace N" (writes rules: above)
   mod-shift-comma: shift-to-next-screen
   mod-shift-period: shift-to-prev-screen
