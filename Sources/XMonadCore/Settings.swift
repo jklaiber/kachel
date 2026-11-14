@@ -1,0 +1,334 @@
+import Foundation
+import Yams
+
+// Settings come from ~/.config/xmonadmac/config.yaml. The default file below is
+// the single source of truth: it is written to disk on first launch and is
+// also what any missing setting falls back to.
+
+public enum Modifier: String, CaseIterable {
+    case cmd, ctrl, alt, shift
+}
+
+public struct KeyChord: Hashable, CustomStringConvertible {
+    public var modifiers: Set<Modifier>
+    /// Key name as written in the config: "j", "1", "return", "comma", "f5", …
+    public var key: String
+
+    public init(modifiers: Set<Modifier>, key: String) {
+        self.modifiers = modifiers
+        self.key = key
+    }
+
+    public var description: String {
+        let order: [Modifier] = [.cmd, .ctrl, .alt, .shift]
+        return (order.filter(modifiers.contains).map(\.rawValue) + [key]).joined(separator: "-")
+    }
+}
+
+public enum Command: Equatable {
+    case greedyView(Int)        // 0-based workspace index
+    case view(Int)
+    case shift(Int)
+    case focusScreen(Int)       // 0-based screen index
+    case shiftToScreen(Int)
+    case focusDown, focusUp, focusMaster
+    case swapDown, swapUp, swapMaster
+    case nextLayout, shrink, expand, incMaster, decMaster
+    case toggleFloat, refresh, close, terminal, reload, quit
+    case spawn(String)
+}
+
+public struct BarSettings: Equatable {
+    public var enabled = true
+    public var height: Double = 24
+    public var fontSize: Double = 12
+    public var showTitle = true
+    public var clockFormat = "EEE d MMM  HH:mm"   // empty string hides the clock
+    public init() {}
+}
+
+public struct SettingsError: Error, CustomStringConvertible {
+    public let description: String
+    init(_ d: String) { description = d }
+}
+
+public struct Settings {
+    public var mod: Set<Modifier> = [.ctrl, .alt]
+    public var workspaces = (1...9).map(String.init)
+    public var gap: Double = 6
+    public var ratio: Double = 0.5
+    public var ratioStep: Double = 0.03
+    public var mouseFollowsFocus = true
+    public var terminal = "open -na Terminal"
+    public var floating: Set<String> = []
+    public var bar = BarSettings()
+    public var keys: [KeyChord: Command] = [:]
+
+    public init() {}
+
+    /// Parsed built-in defaults. The default YAML is tested, so this can't fail.
+    public static let defaults: Settings = try! Settings.parse(defaultYAML)
+
+    // MARK: - parsing
+
+    public static func parse(_ yaml: String) throws -> Settings {
+        let root: Any?
+        do { root = try Yams.load(yaml: yaml) } catch { throw SettingsError("YAML: \(error)") }
+        var s = Settings()
+        // An empty file means "all defaults".
+        guard let dict = (root ?? [String: Any]()) as? [String: Any] else {
+            throw SettingsError("top level must be a mapping")
+        }
+
+        let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
+                                  "terminal", "floating", "bar", "keys"]
+        if let bad = dict.keys.first(where: { !known.contains($0) }) {
+            throw SettingsError("unknown setting '\(bad)'")
+        }
+
+        if let v = dict["mod"] { s.mod = try parseModifiers(string(v, "mod"), "mod") }
+        if let v = dict["workspaces"] {
+            guard let list = v as? [Any], !list.isEmpty else { throw SettingsError("workspaces must be a non-empty list") }
+            s.workspaces = list.map { "\($0)" }
+        }
+        if let v = dict["gap"] { s.gap = try number(v, "gap") }
+        if let v = dict["ratio"] { s.ratio = min(0.9, max(0.1, try number(v, "ratio"))) }
+        if let v = dict["ratio-step"] { s.ratioStep = try number(v, "ratio-step") }
+        if let v = dict["mouse-follows-focus"] { s.mouseFollowsFocus = try bool(v, "mouse-follows-focus") }
+        if let v = dict["terminal"] { s.terminal = try string(v, "terminal") }
+        if let v = dict["floating"] {
+            guard let list = v as? [Any] else { throw SettingsError("floating must be a list of bundle IDs") }
+            s.floating = Set(list.map { "\($0)" })
+        }
+        if let v = dict["bar"] {
+            guard let b = v as? [String: Any] else { throw SettingsError("bar must be a mapping") }
+            for (k, v) in b {
+                switch k {
+                case "enabled": s.bar.enabled = try bool(v, "bar.enabled")
+                case "height": s.bar.height = try number(v, "bar.height")
+                case "font-size": s.bar.fontSize = try number(v, "bar.font-size")
+                case "show-title": s.bar.showTitle = try bool(v, "bar.show-title")
+                case "clock-format": s.bar.clockFormat = v is NSNull ? "" : "\(v)"
+                default: throw SettingsError("unknown setting 'bar.\(k)'")
+                }
+            }
+        }
+
+        // `keys:` replaces the whole default keymap; leave it out to keep the defaults.
+        if let v = dict["keys"] {
+            guard let k = v as? [String: Any] else { throw SettingsError("keys must be a mapping") }
+            s.keys = try parseKeys(k, mod: s.mod, workspaceCount: s.workspaces.count)
+        } else {
+            s.keys = try parseKeys(try defaultKeyMap(), mod: s.mod, workspaceCount: s.workspaces.count)
+        }
+        return s
+    }
+
+    private static func defaultKeyMap() throws -> [String: Any] {
+        let d = try Yams.load(yaml: defaultYAML) as? [String: Any]
+        return d?["keys"] as? [String: Any] ?? [:]
+    }
+
+    static func parseKeys(_ map: [String: Any], mod: Set<Modifier>, workspaceCount: Int) throws -> [KeyChord: Command] {
+        var out: [KeyChord: Command] = [:]
+        for (chordText, value) in map {
+            let chord = try parseChord(chordText, mod: mod)
+            if value is NSNull { continue }                      // `mod-x: ~` unbinds
+            let cmd = try parseCommand("\(value)", workspaceCount: workspaceCount, context: chordText)
+            out[chord] = cmd
+        }
+        return out
+    }
+
+    /// "mod-shift-j", "ctrl+alt+return", "cmd-f5"
+    public static func parseChord(_ text: String, mod: Set<Modifier>) throws -> KeyChord {
+        let parts = text.lowercased().split(whereSeparator: { $0 == "-" || $0 == "+" }).map(String.init)
+        guard let key = parts.last, !key.isEmpty else { throw SettingsError("bad key '\(text)'") }
+        var mods: Set<Modifier> = []
+        for p in parts.dropLast() {
+            if p == "mod" { mods.formUnion(mod) } else { mods.insert(try modifier(p, text)) }
+        }
+        return KeyChord(modifiers: mods, key: key)
+    }
+
+    static func parseModifiers(_ text: String, _ ctx: String) throws -> Set<Modifier> {
+        let parts = text.lowercased().split(whereSeparator: { $0 == "-" || $0 == "+" || $0 == " " })
+        guard !parts.isEmpty else { throw SettingsError("\(ctx): empty modifier") }
+        return Set(try parts.map { try modifier(String($0), ctx) })
+    }
+
+    static func modifier(_ p: String, _ ctx: String) throws -> Modifier {
+        switch p {
+        case "cmd", "command", "super", "win": return .cmd
+        case "ctrl", "control": return .ctrl
+        case "alt", "opt", "option": return .alt
+        case "shift": return .shift
+        default: throw SettingsError("\(ctx): unknown modifier '\(p)' (use cmd, ctrl, alt, shift or mod)")
+        }
+    }
+
+    public static func parseCommand(_ text: String, workspaceCount: Int, context: String) throws -> Command {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        let name = trimmed.prefix { !$0.isWhitespace }.lowercased()
+        let arg = trimmed.dropFirst(name.count).trimmingCharacters(in: .whitespaces)
+
+        func index(max: Int, what: String) throws -> Int {
+            guard let n = Int(arg), n >= 1, n <= max else {
+                throw SettingsError("\(context): '\(name)' needs a \(what) number 1…\(max)")
+            }
+            return n - 1
+        }
+        func noArg(_ c: Command) throws -> Command {
+            guard arg.isEmpty else { throw SettingsError("\(context): '\(name)' takes no argument") }
+            return c
+        }
+
+        switch name {
+        case "workspace", "greedy-view": return .greedyView(try index(max: workspaceCount, what: "workspace"))
+        case "view":                     return .view(try index(max: workspaceCount, what: "workspace"))
+        case "shift", "move-to":         return .shift(try index(max: workspaceCount, what: "workspace"))
+        case "focus-screen":             return .focusScreen(try index(max: 9, what: "screen"))
+        case "shift-to-screen":          return .shiftToScreen(try index(max: 9, what: "screen"))
+        case "focus-down":   return try noArg(.focusDown)
+        case "focus-up":     return try noArg(.focusUp)
+        case "focus-master": return try noArg(.focusMaster)
+        case "swap-down":    return try noArg(.swapDown)
+        case "swap-up":      return try noArg(.swapUp)
+        case "swap-master":  return try noArg(.swapMaster)
+        case "next-layout":  return try noArg(.nextLayout)
+        case "shrink":       return try noArg(.shrink)
+        case "expand":       return try noArg(.expand)
+        case "inc-master":   return try noArg(.incMaster)
+        case "dec-master":   return try noArg(.decMaster)
+        case "toggle-float": return try noArg(.toggleFloat)
+        case "refresh":      return try noArg(.refresh)
+        case "close":        return try noArg(.close)
+        case "terminal":     return try noArg(.terminal)
+        case "reload":       return try noArg(.reload)
+        case "quit":         return try noArg(.quit)
+        case "spawn":
+            guard !arg.isEmpty else { throw SettingsError("\(context): 'spawn' needs a shell command") }
+            return .spawn(arg)
+        default:
+            throw SettingsError("\(context): unknown command '\(name)'")
+        }
+    }
+
+    private static func string(_ v: Any, _ k: String) throws -> String {
+        guard let s = v as? String else { throw SettingsError("\(k) must be text") }
+        return s
+    }
+    private static func number(_ v: Any, _ k: String) throws -> Double {
+        if let d = v as? Double { return d }
+        if let i = v as? Int { return Double(i) }
+        throw SettingsError("\(k) must be a number")
+    }
+    private static func bool(_ v: Any, _ k: String) throws -> Bool {
+        guard let b = v as? Bool else { throw SettingsError("\(k) must be true or false") }
+        return b
+    }
+}
+
+extension Settings {
+    public static let defaultYAML = #"""
+# XMonadMac configuration  (~/.config/xmonadmac/config.yaml)
+# Saved changes apply immediately. mod-q reloads by hand.
+# If the file has an error, the bar shows it and the previous settings stay.
+
+# Modifier used by "mod-…" below. Combine cmd, ctrl, alt (= option), shift.
+# Ctrl+Option is the default because on Swiss/German keyboards Option+digit
+# types characters (| @ # …).
+mod: ctrl+alt
+
+# Workspace names. All monitors share these, like in xmonad.
+workspaces: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+gap: 6                    # points between windows and at screen edges
+ratio: 0.5                # master area share for new workspaces
+ratio-step: 0.03          # how much shrink/expand change it
+mouse-follows-focus: true # warp the pointer when focus moves to another screen
+
+# Used by the `terminal` command. Examples: "open -na Ghostty",
+# "open -na Alacritty", "open -na kitty", "open -na WezTerm", "open -na iTerm"
+terminal: open -na Terminal
+
+# Bundle IDs whose windows always float (find one with: osascript -e 'id of app "Name"').
+floating:
+  - com.apple.systempreferences
+  - com.apple.calculator
+  - com.apple.archiveutility
+
+# The bar at the bottom of every screen. Click a workspace to show it on that
+# screen, right-click for the menu.
+bar:
+  enabled: true
+  height: 24
+  font-size: 12
+  show-title: true
+  clock-format: "EEE d MMM  HH:mm"   # Unicode date pattern; "" hides the clock
+
+# Keys: <modifiers>-<key>: <command>.  Modifiers: mod, cmd, ctrl, alt, shift.
+# Key names: a–z, 0–9, return, tab, space, escape, delete, left, right, up,
+# down, f1–f12, comma, period, slash, minus, equal, semicolon, quote,
+# leftbracket, rightbracket, backslash, grave. Letters follow your keyboard
+# layout (on a Swiss keyboard "z" is the key labelled Z).
+#
+# Commands:
+#   workspace N        greedyView: show workspace N here (swaps screens if it is visible elsewhere)
+#   view N             like xmonad's W.view: jump to the screen already showing N
+#   shift N            send the focused window to workspace N
+#   focus-screen N     shift-to-screen N
+#   focus-down  focus-up  focus-master  swap-down  swap-up  swap-master
+#   next-layout  shrink  expand  inc-master  dec-master  toggle-float
+#   refresh  close  terminal  reload  quit
+#   spawn <shell command>
+# A key mapped to ~ is unbound. This section replaces the defaults as a whole.
+keys:
+  mod-1: workspace 1
+  mod-2: workspace 2
+  mod-3: workspace 3
+  mod-4: workspace 4
+  mod-5: workspace 5
+  mod-6: workspace 6
+  mod-7: workspace 7
+  mod-8: workspace 8
+  mod-9: workspace 9
+  mod-shift-1: shift 1
+  mod-shift-2: shift 2
+  mod-shift-3: shift 3
+  mod-shift-4: shift 4
+  mod-shift-5: shift 5
+  mod-shift-6: shift 6
+  mod-shift-7: shift 7
+  mod-shift-8: shift 8
+  mod-shift-9: shift 9
+
+  mod-w: focus-screen 1
+  mod-e: focus-screen 2
+  mod-r: focus-screen 3
+  mod-shift-w: shift-to-screen 1
+  mod-shift-e: shift-to-screen 2
+  mod-shift-r: shift-to-screen 3
+
+  mod-j: focus-down
+  mod-k: focus-up
+  mod-tab: focus-down
+  mod-m: focus-master
+  mod-shift-j: swap-down
+  mod-shift-k: swap-up
+  mod-return: swap-master
+
+  mod-h: shrink
+  mod-l: expand
+  mod-comma: inc-master
+  mod-period: dec-master
+  mod-space: next-layout
+  mod-t: toggle-float
+  mod-n: refresh
+
+  mod-shift-return: terminal
+  mod-shift-c: close
+  mod-q: reload
+  mod-shift-q: quit
+"""#
+}

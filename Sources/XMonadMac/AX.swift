@@ -105,6 +105,8 @@ final class AXWindow {
         NSRunningApplication(processIdentifier: pid)?.activate(options: [])
     }
 
+    var title: String { axString(element, kAXTitleAttribute) ?? "" }
+
     func close() {
         if let button = axElement(element, kAXCloseButtonAttribute) {
             AXUIElementPerformAction(button, kAXPressAction as CFString)
@@ -142,19 +144,26 @@ final class AXWindow {
 struct Screen {
     /// Whole display, AX coordinates (top-left origin, y down).
     let frame: CGRect
-    /// Without menu bar and Dock.
+    /// Area windows may use: without menu bar, Dock and our bar (AX coordinates).
     let visible: CGRect
+    /// Without menu bar and Dock, Cocoa coordinates (bottom-left origin). The bar goes here.
+    let nsVisible: NSRect
 
     /// Screens ordered left-to-right (then top-to-bottom), like xmonad's
     /// physical screen order for mod-w / mod-e / mod-r.
-    static func all() -> [Screen] {
+    static func all(reserveBottom: CGFloat = 0) -> [Screen] {
         guard let primary = NSScreen.screens.first else { return [] }
         let h = primary.frame.height
         func toAX(_ r: NSRect) -> CGRect {
             CGRect(x: r.minX, y: h - r.maxY, width: r.width, height: r.height)
         }
         return NSScreen.screens
-            .map { Screen(frame: toAX($0.frame), visible: toAX($0.visibleFrame)) }
+            .map { ns in
+                var usable = ns.visibleFrame
+                usable.origin.y += reserveBottom
+                usable.size.height -= reserveBottom
+                return Screen(frame: toAX(ns.frame), visible: toAX(usable), nsVisible: ns.visibleFrame)
+            }
             .sorted { ($0.frame.minX, $0.frame.minY) < ($1.frame.minX, $1.frame.minY) }
     }
 }

@@ -23,11 +23,12 @@ between monitors.
 ```
 Sources/XMonadCore/StackSet.swift   pure model: workspaces, screens, greedyView, shift, …
 Sources/XMonadCore/Layout.swift     Tall, Mirror Tall, Full
-Sources/XMonadMac/Config.swift      ← your xmonad.hs: keys, mod, gaps, terminal, float rules
+Sources/XMonadCore/Settings.swift   config.yaml parsing + the default config
+Sources/XMonadMac/Config.swift      loads ~/.config/xmonadmac/config.yaml, reloads on save
 Sources/XMonadMac/WindowManager.swift  Accessibility API glue, tracking, rendering
 Sources/XMonadMac/AX.swift          AXUIElement helpers, screens
 Sources/XMonadMac/HotKeys.swift     global hotkeys (Carbon RegisterEventHotKey)
-Sources/XMonadMac/StatusBar.swift   xmobar-ish menu bar item:  [1] <2> 5  Tall
+Sources/XMonadMac/Bar.swift         xmobar-like bar at the bottom of every screen
 ```
 
 ## Build and run
@@ -62,7 +63,41 @@ login, add `XMonadMac.app` under System Settings → General → Login Items.
 ## Keys
 
 Default `mod` = **Ctrl+Option**. Plain Option isn't the default because on Swiss and
-other European layouts Option+digit types `| @ # [ ]`. Change it in `Config.swift`.
+other European layouts Option+digit types `| @ # [ ]`.
+
+## Configuration
+
+Everything lives in `~/.config/xmonadmac/config.yaml`, written with all defaults
+and comments on first launch. Saving the file applies it immediately (`mod-q`
+reloads by hand). If it has an error, the bar shows it and the previous settings
+stay in effect. Example:
+
+```yaml
+mod: ctrl+alt
+workspaces: [web, code, chat, 4, 5]
+gap: 8
+terminal: open -na Ghostty
+keys:
+  mod-1: workspace 1        # greedyView; use `view 1` for W.view
+  mod-shift-1: shift 1
+  cmd-shift-b: spawn open -a Safari
+```
+
+The `keys:` section replaces the default keymap as a whole; leave it out to keep
+the defaults. Letter keys follow your keyboard layout.
+
+## Bar
+
+Each screen gets a translucent bar along the bottom, just above the Dock:
+workspaces (filled = focused screen, tinted = shown on this screen, outlined =
+shown on another screen, dim = empty), the layout, the focused window's title
+and a clock. Click a workspace to show it on that screen. Right-click for
+Reload Config, Edit Config, Show Log, Re-tile and Quit. Tiled windows leave
+room for it. Turn it off with `bar: {enabled: false}`.
+
+Problems (missing Accessibility permission, config errors, hotkeys taken by
+another app) appear in the bar in orange. The log is at
+`~/Library/Logs/XMonadMac.log`.
 
 | Key | Action (xmonad equivalent) |
 |---|---|
@@ -79,12 +114,13 @@ other European layouts Option+digit types `| @ # [ ]`. Change it in `Config.swif
 | `mod-space` | next layout (Tall → Mirror → Full) |
 | `mod-t` | toggle floating (sink) |
 | `mod-n` | re-scan windows and screens, then re-tile |
+| `mod-q` | reload config |
 | `mod-shift-return` | launch terminal |
 | `mod-shift-c` | close focused window |
 | `mod-shift-q` | quit (restores all parked windows first) |
 
 If you prefer i3-style `W.view` (jump to the other screen instead of swapping),
-change `wm.greedyView(i)` to `wm.view(i)` in `Config.swift`.
+map the keys to `view N` instead of `workspace N` in the config.
 
 ## Known limitations (v0.1)
 

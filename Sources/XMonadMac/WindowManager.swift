@@ -16,7 +16,7 @@ private let axCallback: AXObserverCallback = { _, _, notification, _ in
 final class WindowManager {
     static let shared = WindowManager()
 
-    private(set) var ss = StackSet(tags: Config.workspaces, screenCount: 1, ratio: Config.defaultRatio)
+    private(set) var ss = StackSet(tags: Config.current.workspaces, screenCount: 1, ratio: Config.current.ratio)
     private var windows: [WindowID: AXWindow] = [:]
     private var observers: [pid_t: AXObserver] = [:]
     private var screens: [Screen] = []
@@ -27,17 +27,57 @@ final class WindowManager {
     private var lastScreen: [Int: Int] = [:]
     private var refreshPending = false
     private var ignoreFocusEventsUntil = Date.distantPast
-    private var statusBar: StatusBar?
+    private let bar = Bar()
+    private var managing = false
+    private var hotkeyProblems: [String] = []
     private var pollTimer: Timer?
+    private var pollTick = 0
 
     // MARK: - lifecycle
 
-    func start() {
+    /// Runs at launch, before Accessibility is granted: config, bar, hotkeys.
+    /// Without this nothing at all is visible while permission is missing.
+    func startUI() {
+        Log.info("starting (pid \(getpid()))")
+        Config.load(force: true)
+        bar.onClickWorkspace = { [unowned self] s, i in
+            guard self.managing else { return }
+            self.ss.focusScreen(s)
+            self.greedyView(i)
+        }
+        bar.menuActions = [
+            ("Reload Config", { [unowned self] in self.reload() }),
+            ("Edit Config…", { Config.openInEditor() }),
+            ("Show Log", { NSWorkspace.shared.open(Log.url) }),
+            ("-", {}),
+            ("Re-tile", { [unowned self] in self.refreshNow() }),
+            ("Open Accessibility Settings…", { WindowManager.openAccessibilitySettings() }),
+            ("-", {}),
+            ("Quit XMonadMac", { [unowned self] in self.quit() }),
+        ]
+        applySettings()
+        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
+                                               object: nil, queue: .main) { [unowned self] _ in
+            self.screensChanged()
+        }
+        // Picks up config edits; does the AX safety-net refresh once managing.
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [unowned self] _ in
+            if Config.load() { self.applySettings() }
+            self.pollTick += 1
+            if self.managing, self.pollTick % 2 == 0 { self.refresh(); self.updateBar() }
+        }
+    }
+
+    static func openAccessibilitySettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+    }
+
+    /// Runs once Accessibility permission is granted.
+    func startManaging() {
+        guard !managing else { return }
+        managing = true
+        Log.info("Accessibility granted, managing windows")
         AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), 1.0)
-        screens = Screen.all()
-        ss.setScreenCount(screens.count)
-        statusBar = StatusBar(wm: self)
-        Config.bindKeys(self)
 
         let ws = NSWorkspace.shared.notificationCenter
         ws.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [unowned self] _ in
@@ -55,17 +95,31 @@ final class WindowManager {
         ws.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [unowned self] _ in
             self.scheduleRefresh()
         }
-        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
-                                               object: nil, queue: .main) { [unowned self] _ in
-            self.screensChanged()
-        }
 
         adoptExistingWindows()
+    }
 
-        // Safety net in case an AX notification gets lost.
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [unowned self] _ in
-            self.refresh()
+    /// (Re)apply Config.current: hotkeys, workspaces, bar, screen geometry.
+    private func applySettings(rebindKeys: Bool = true) {
+        let cfg = Config.current
+        if rebindKeys {
+            hotkeyProblems = HotKeys.shared.bind(cfg.keys) { [unowned self] cmd in self.perform(cmd) }
         }
+        ss.setTags(cfg.workspaces)
+        screens = Screen.all(reserveBottom: cfg.bar.enabled ? CGFloat(cfg.bar.height) : 0)
+        ss.setScreenCount(screens.count)
+        bar.place(on: screens, settings: cfg.bar)
+        if managing {
+            hidden.removeAll()       // geometry may have changed: re-park from scratch
+            render()
+        } else {
+            updateBar()
+        }
+    }
+
+    func reload() {
+        Config.load(force: true)
+        applySettings()
     }
 
     /// On startup every existing window joins the workspace shown on the
@@ -198,7 +252,7 @@ final class WindowManager {
     }
 
     private func shouldFloat(_ w: AXWindow) -> Bool {
-        if let b = w.bundleID, Config.floatingBundleIDs.contains(b) { return true }
+        if let b = w.bundleID, Config.current.floating.contains(b) { return true }
         return !w.isResizable
     }
 
@@ -218,7 +272,7 @@ final class WindowManager {
               let id = focusedSystemWindow(),
               let wsIndex = ss.workspaceIndex(of: id) else { return }
         if ss.focus(id) {
-            statusBar?.update(ss)
+            updateBar()
         } else if followHidden {
             ss.greedyView(wsIndex)
             ss.focus(id)
@@ -227,6 +281,41 @@ final class WindowManager {
     }
 
     // MARK: - actions (bound in Config.swift)
+
+    func perform(_ cmd: Command) {
+        guard managing else {
+            Log.info("ignoring \(cmd): no Accessibility permission yet")
+            if case .quit = cmd { quit() }
+            if case .reload = cmd { reload() }
+            return
+        }
+        let step = Config.current.ratioStep
+        switch cmd {
+        case .greedyView(let i): greedyView(i)
+        case .view(let i): view(i)
+        case .shift(let i): shift(to: i)
+        case .focusScreen(let s): focusScreen(s)
+        case .shiftToScreen(let s): shiftToScreen(s)
+        case .focusDown: focusDown()
+        case .focusUp: focusUp()
+        case .focusMaster: focusMaster()
+        case .swapDown: swapDown()
+        case .swapUp: swapUp()
+        case .swapMaster: swapMaster()
+        case .nextLayout: nextLayout()
+        case .shrink: adjustRatio(-step)
+        case .expand: adjustRatio(+step)
+        case .incMaster: incMaster(+1)
+        case .decMaster: incMaster(-1)
+        case .toggleFloat: toggleFloat()
+        case .refresh: refreshNow()
+        case .close: closeFocused()
+        case .terminal: spawn(Config.current.terminal)
+        case .spawn(let c): spawn(c)
+        case .reload: reload()
+        case .quit: quit()
+        }
+    }
 
     func greedyView(_ i: Int) { syncFocusFromSystem(followHidden: false); ss.greedyView(i); render() }
     func view(_ i: Int)       { syncFocusFromSystem(followHidden: false); ss.view(i); render() }
@@ -292,12 +381,9 @@ final class WindowManager {
     // MARK: - screens
 
     private func screensChanged() {
-        screens = Screen.all()
-        ss.setScreenCount(screens.count)
-        // Corners moved, so re-park everything from scratch.
-        hidden.removeAll()
-        refresh()
-        render()
+        // Corners and bar positions moved: applySettings re-parks from scratch.
+        applySettings(rebindKeys: false)
+        if managing { refresh() }
     }
 
     private func screenIndex(containing p: CGPoint) -> Int? {
@@ -330,7 +416,7 @@ final class WindowManager {
             let scr = screens[s]
             let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
             let rects = Layout.tile(ws.layout, count: tiled.count, in: scr.visible,
-                                    nMaster: ws.nMaster, ratio: ws.ratio, gap: Config.gap)
+                                    nMaster: ws.nMaster, ratio: ws.ratio, gap: CGFloat(Config.current.gap))
             for (id, r) in zip(tiled, rects) {
                 windows[id]?.setFrame(r)
                 hidden.remove(id)
@@ -354,7 +440,7 @@ final class WindowManager {
         for (s, wsIndex) in ss.screenWorkspace.enumerated() { lastScreen[wsIndex] = s }
 
         focusCurrent()
-        statusBar?.update(ss)
+        updateBar()
     }
 
     private func moveFloating(_ id: WindowID, from old: Screen, to new: Screen) {
@@ -406,6 +492,35 @@ final class WindowManager {
         return CGPoint(x: last.maxX - 1, y: last.maxY - 1)
     }
 
+    private func updateBar() {
+        var warning: String?
+        if !managing {
+            warning = "XMonadMac needs Accessibility permission. Right-click → Open Accessibility Settings, then switch XMonadMac on."
+        } else if let e = Config.error {
+            warning = "config: \(e)"
+        } else if let p = hotkeyProblems.first {
+            warning = p + (hotkeyProblems.count > 1 ? " (+\(hotkeyProblems.count - 1) more, see log)" : "")
+        }
+        var contents: [Bar.Content] = []
+        for (s, wsIndex) in ss.screenWorkspace.enumerated() {
+            var c = Bar.Content()
+            c.isCurrentScreen = s == ss.currentScreen
+            for (i, ws) in ss.workspaces.enumerated() {
+                let state: Bar.TagState
+                if i == wsIndex { state = c.isCurrentScreen ? .focused : .shownHere }
+                else if ss.isVisible(workspace: i) { state = .shownElsewhere }
+                else if !ws.windows.isEmpty { state = .occupied }
+                else { state = .empty }
+                c.tags.append((ws.tag, state))
+            }
+            let ws = ss.workspaces[wsIndex]
+            c.layout = ws.layout.rawValue
+            if managing, let f = ws.focused, let w = windows[f] { c.title = w.title }
+            contents.append(c)
+        }
+        bar.update(contents, warning: warning)
+    }
+
     private func focusCurrent() {
         ignoreFocusEventsUntil = Date().addingTimeInterval(0.3)
         let ws = ss.current
@@ -416,7 +531,7 @@ final class WindowManager {
             // to a window that's parked in a corner.
             NSApp.activate(ignoringOtherApps: true)
         }
-        if Config.mouseFollowsFocus, ss.currentScreen < screens.count {
+        if Config.current.mouseFollowsFocus, ss.currentScreen < screens.count {
             let scr = screens[ss.currentScreen]
             let mouse = CGEvent(source: nil)?.location ?? .zero
             if !scr.frame.contains(mouse) {

@@ -9,7 +9,7 @@ public enum LayoutKind: String, CaseIterable {
 }
 
 public struct Workspace: Equatable {
-    public let tag: String
+    public internal(set) var tag: String
     public internal(set) var windows: [WindowID] = []   // index 0 = master
     public internal(set) var focused: WindowID?
     public var layout: LayoutKind = .tall
@@ -66,6 +66,24 @@ public struct StackSet {
     public mutating func focusScreen(_ s: Int) {
         guard screenWorkspace.indices.contains(s) else { return }
         currentScreen = s
+    }
+
+    /// Apply a new workspace list from the config. Windows of removed
+    /// workspaces move to the last remaining one.
+    public mutating func setTags(_ tags: [String]) {
+        guard !tags.isEmpty else { return }
+        if tags.count < workspaces.count {
+            let orphans = workspaces[tags.count...].flatMap(\.windows)
+            workspaces.removeLast(workspaces.count - tags.count)
+            for w in orphans.reversed() { insert(w, into: tags.count - 1) }
+            let screens = screenWorkspace.count
+            screenWorkspace = screenWorkspace.filter { $0 < tags.count }
+            setScreenCount(screens)
+        }
+        while workspaces.count < tags.count {
+            workspaces.append(Workspace(tag: tags[workspaces.count], ratio: workspaces.last?.ratio ?? 0.5))
+        }
+        for i in workspaces.indices { workspaces[i].tag = tags[i] }
     }
 
     // MARK: workspace switching

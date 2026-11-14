@@ -1,80 +1,52 @@
 import AppKit
-import Carbon.HIToolbox
 import XMonadCore
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  This file is your xmonad.hs: edit it and rebuild (scripts/bundle.sh).
-// ─────────────────────────────────────────────────────────────────────────────
-
+/// Loads ~/.config/xmonadmac/config.yaml, writes the commented default on
+/// first launch, and notices when the file is saved.
 enum Config {
-    /// modMask. Default is Ctrl+Option: on a Swiss (or any European) keyboard,
-    /// Option+digit types characters like | @ # [ ], so plain Option clashes.
-    /// Alternatives: UInt32(optionKey), UInt32(cmdKey | optionKey), …
-    static let modMask = UInt32(controlKey | optionKey)
-    static let shiftMask = UInt32(shiftKey)
+    /// The settings in effect. Starts with the built-in defaults.
+    static private(set) var current = Settings.defaults
+    /// Last error from loading the file, shown in the bar.
+    static private(set) var error: String?
 
-    static let workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    static let url: URL = {
+        let base = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"].map(URL.init(fileURLWithPath:))
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config")
+        return base.appendingPathComponent("xmonadmac/config.yaml")
+    }()
 
-    /// Gap in points, between windows and at screen edges.
-    static let gap: CGFloat = 6
-    static let defaultRatio = 0.5
-    static let ratioStep = 0.03
+    private static var lastModified: Date?
 
-    /// Warp the mouse to the focused screen when focus changes screens.
-    static let mouseFollowsFocus = true
-
-    /// mod-shift-return. Examples:
-    ///   "open -na Alacritty"   "open -na kitty"   "open -na WezTerm"
-    ///   "open -na Ghostty"     "open -na iTerm"
-    static let terminal =
-        #"osascript -e 'tell application "Terminal" to do script ""' -e 'tell application "Terminal" to activate'"#
-
-    /// Like a manageHook `doFloat`: apps whose windows never tile.
-    static let floatingBundleIDs: Set<String> = [
-        "com.apple.systempreferences",
-        "com.apple.calculator",
-        "com.apple.archiveutility",
-    ]
-
-    static func bindKeys(_ wm: WindowManager) {
-        let M = modMask, S = shiftMask
-        let k = HotKeys.shared
-
-        // mod-[1..9]        greedyView: bring workspace N to this screen
-        //                   (swaps with the other screen if it's visible there)
-        // mod-shift-[1..9]  send focused window to workspace N
-        let numberKeys = [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4, kVK_ANSI_5,
-                          kVK_ANSI_6, kVK_ANSI_7, kVK_ANSI_8, kVK_ANSI_9]
-        for (i, key) in numberKeys.enumerated() where i < workspaces.count {
-            k.bind(key, M) { wm.greedyView(i) }      // use wm.view(i) for plain W.view
-            k.bind(key, M | S) { wm.shift(to: i) }
+    /// Returns true if the file was (re)read, successfully or not.
+    @discardableResult
+    static func load(force: Bool = false) -> Bool {
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: url.path) {
+            do {
+                try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try Settings.defaultYAML.write(to: url, atomically: true, encoding: .utf8)
+                Log.info("wrote default config to \(url.path)")
+            } catch {
+                Log.info("could not write default config: \(error)")
+            }
         }
+        let mtime = (try? fm.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+        guard force || mtime != lastModified else { return false }
+        lastModified = mtime
 
-        // mod-{w,e,r}       focus screen 1/2/3
-        // mod-shift-{w,e,r} send focused window to screen 1/2/3
-        for (s, key) in [kVK_ANSI_W, kVK_ANSI_E, kVK_ANSI_R].enumerated() {
-            k.bind(key, M) { wm.focusScreen(s) }
-            k.bind(key, M | S) { wm.shiftToScreen(s) }
+        do {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            current = try Settings.parse(text)
+            error = nil
+            Log.info("loaded \(url.path): \(current.keys.count) keys, mod=\(KeyChord(modifiers: current.mod, key: "").description)")
+        } catch {
+            self.error = "\(error)"
+            Log.info("config error (keeping previous settings): \(error)")
         }
+        return true
+    }
 
-        k.bind(kVK_ANSI_J, M) { wm.focusDown() }
-        k.bind(kVK_ANSI_K, M) { wm.focusUp() }
-        k.bind(kVK_Tab, M) { wm.focusDown() }
-        k.bind(kVK_ANSI_M, M) { wm.focusMaster() }
-        k.bind(kVK_ANSI_J, M | S) { wm.swapDown() }
-        k.bind(kVK_ANSI_K, M | S) { wm.swapUp() }
-        k.bind(kVK_Return, M) { wm.swapMaster() }
-
-        k.bind(kVK_ANSI_H, M) { wm.adjustRatio(-ratioStep) }
-        k.bind(kVK_ANSI_L, M) { wm.adjustRatio(+ratioStep) }
-        k.bind(kVK_ANSI_Comma, M) { wm.incMaster(+1) }
-        k.bind(kVK_ANSI_Period, M) { wm.incMaster(-1) }
-        k.bind(kVK_Space, M) { wm.nextLayout() }
-        k.bind(kVK_ANSI_T, M) { wm.toggleFloat() }       // xmonad "sink" (and float)
-        k.bind(kVK_ANSI_N, M) { wm.refreshNow() }
-
-        k.bind(kVK_Return, M | S) { wm.spawn(terminal) }
-        k.bind(kVK_ANSI_C, M | S) { wm.closeFocused() }
-        k.bind(kVK_ANSI_Q, M | S) { wm.quit() }
+    static func openInEditor() {
+        NSWorkspace.shared.open(url)
     }
 }

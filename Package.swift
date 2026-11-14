@@ -4,10 +4,13 @@ import PackageDescription
 let package = Package(
     name: "XMonadMac",
     platforms: [.macOS(.v13)],
+    dependencies: [
+        .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
+    ],
     targets: [
-        // Pure model: StackSet + layouts. No macOS APIs, fully unit-testable.
-        .target(name: "XMonadCore"),
-        // The actual window manager (Accessibility API, hotkeys, menu bar).
+        // Pure model: StackSet, layouts, settings parsing. No AppKit, fully unit-testable.
+        .target(name: "XMonadCore", dependencies: ["Yams"]),
+        // The actual window manager (Accessibility API, hotkeys, bar).
         .executableTarget(name: "XMonadMac", dependencies: ["XMonadCore"]),
         .testTarget(name: "XMonadCoreTests", dependencies: ["XMonadCore"]),
     ]
