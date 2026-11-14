@@ -213,6 +213,9 @@ final class GestureSettingsTests: XCTestCase {
         XCTAssertEqual(g.up, .windowSearch)
         XCTAssertNil(g.left)
         XCTAssertEqual(g.right, .workspacePrev)
+        XCTAssertEqual(g.direction, .auto)
+        XCTAssertEqual(try Settings.parse("gestures:\n  direction: reversed").gestures.direction, .reversed)
+        XCTAssertThrowsError(try Settings.parse("gestures:\n  direction: up"))
     }
 
     func testBad() {

@@ -73,6 +73,10 @@ public struct GestureSettings: Equatable {
     public var fingers = 3
     /// workspace-next / -prev from a swipe skip empty workspaces (xmonad's HiddenNonEmptyWS).
     public var skipEmpty = true
+    /// auto: like macOS's Spaces swipe, which follows the "Natural scrolling"
+    /// setting. natural: fingers left = next. reversed: fingers left = previous.
+    public var direction: SwipeDirection = .auto
+    public enum SwipeDirection: String { case auto, natural, reversed }
     public var left: Command? = .workspaceNext     // fingers move left → like macOS, the space to the right
     public var right: Command? = .workspacePrev
     public var up: Command?
@@ -159,6 +163,11 @@ public struct Settings {
                     guard n == 3 || n == 4 else { throw SettingsError("gestures.fingers must be 3 or 4") }
                     s.gestures.fingers = n
                 case "skip-empty": s.gestures.skipEmpty = try bool(v, "gestures.skip-empty")
+                case "direction":
+                    guard let d = GestureSettings.SwipeDirection(rawValue: "\(v)") else {
+                        throw SettingsError("gestures.direction must be auto, natural or reversed")
+                    }
+                    s.gestures.direction = d
                 case "swipe-left": s.gestures.left = try cmd()
                 case "swipe-right": s.gestures.right = try cmd()
                 case "swipe-up": s.gestures.up = try cmd()
@@ -424,7 +433,8 @@ gestures:
   enabled: true
   fingers: 3              # 3 or 4
   skip-empty: true        # swipes skip empty workspaces and ones shown on another screen
-  swipe-left: workspace-next    # any command; ~ for nothing
+  direction: auto         # auto = like macOS (follows "Natural scrolling"); natural; reversed
+  swipe-left: workspace-next    # natural direction; any command, ~ for nothing
   swipe-right: workspace-prev
   swipe-up: ~
   swipe-down: ~

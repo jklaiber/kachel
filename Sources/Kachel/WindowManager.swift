@@ -266,6 +266,18 @@ final class WindowManager {
     private func swiped(_ dir: Gestures.Direction) {
         guard managing, !switcher.isOpen, !rulePicker.isOpen else { return }
         let g = Config.current.gestures
+        // With natural scrolling off, macOS flips its Spaces swipe; so do we.
+        let natural = UserDefaults.standard.object(forKey: "com.apple.swipescrolldirection") as? Bool ?? true
+        let flip = g.direction == .reversed || (g.direction == .auto && !natural)
+        var dir = dir
+        if flip {
+            switch dir {
+            case .left: dir = .right
+            case .right: dir = .left
+            case .up: dir = .down
+            case .down: dir = .up
+            }
+        }
         let cmd: Command?
         switch dir {
         case .left: cmd = g.left
