@@ -108,7 +108,8 @@ public struct BorderSettings: Equatable {
     public var enabled = true
     public var width = 3.0
     public var color = "accent"           // "accent" (system accent colour) or "#RRGGBB"
-    public var radius = 12.0              // match your windows' corner radius
+    /// nil = automatic: follows each window's own corners (see FocusBorder).
+    public var radius: Double? = nil
     public var smart = false              // no border when it's the only window on the screen
     public init() {}
 }
@@ -242,7 +243,9 @@ public struct Settings {
                 switch k {
                 case "enabled": s.border.enabled = try bool(v, "border.enabled")
                 case "width": s.border.width = max(1, min(12, try number(v, "border.width")))
-                case "radius": s.border.radius = max(0, try number(v, "border.radius"))
+                case "radius":
+                    if let a = v as? String, a == "auto" { s.border.radius = nil }
+                    else { s.border.radius = max(0, try number(v, "border.radius")) }
                 case "smart": s.border.smart = try bool(v, "border.smart")
                 case "color":
                     let c = "\(v)"
@@ -598,7 +601,7 @@ border:
   enabled: true
   width: 3
   color: accent           # accent = your macOS accent colour, or "#RRGGBB"
-  radius: 12              # corner radius; match your windows
+  radius: auto            # auto = follow each window's corners, or a number
   smart: false            # true: no frame when a window is alone on its screen
 
 # Rules, like xmonad's manageHook: where an app's windows open, or whether

@@ -20,13 +20,15 @@ final class FocusBorder {
     }
 
     /// `frame` in AX coordinates (top-left origin).
-    func show(around frame: CGRect, of window: WindowID, settings: BorderSettings) {
+    /// The stroke sits on the window's edge, half inside and half outside,
+    /// so there's never a gap between frame and window.
+    func show(around frame: CGRect, of window: WindowID, radius: CGFloat, settings: BorderSettings) {
         guard let primary = NSScreen.screens.first else { return }
         let w = CGFloat(settings.width)
-        let cocoa = NSRect(x: frame.minX - w, y: primary.frame.height - frame.maxY - w,
-                           width: frame.width + 2 * w, height: frame.height + 2 * w)
+        let cocoa = NSRect(x: frame.minX - w / 2, y: primary.frame.height - frame.maxY - w / 2,
+                           width: frame.width + w, height: frame.height + w)
         view.width = w
-        view.radius = CGFloat(settings.radius) + w / 2
+        view.radius = radius + w / 2
         view.color = settings.color == "accent" ? .controlAccentColor : NSColor(hex: settings.color) ?? .controlAccentColor
         panel.setFrame(cocoa, display: true)
         view.needsDisplay = true

@@ -384,7 +384,8 @@ final class WindowManager {
            ss.current.windows.filter({ windows[$0] != nil && !ss.floating.contains($0) }).count == 1 {
             border.hide(); return
         }
-        border.show(around: frame, of: f, settings: cfg)
+        border.show(around: frame, of: f, radius: cfg.radius.map { CGFloat($0) } ?? WindowCorners.radius(of: w),
+                    settings: cfg)
     }
 
     // MARK: - directional focus

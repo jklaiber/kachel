@@ -79,5 +79,7 @@ final class ScratchpadAndBorderSettingsTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("scratchpads:\n  - name: a\n    app: X\n  - name: a\n    app: Y"))
         XCTAssertThrowsError(try Settings.parse("border:\n  color: red"))
         XCTAssertNoThrow(try Settings.parse("border:\n  color: \"#5DCAA5\"\n  width: 4"))
+        XCTAssertNil(try Settings.parse(Settings.defaultYAML).border.radius)                 // auto
+        XCTAssertEqual(try Settings.parse("border:\n  radius: 18").border.radius, 18)
     }
 }
