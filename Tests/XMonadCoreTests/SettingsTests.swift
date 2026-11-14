@@ -80,6 +80,16 @@ final class BarConfigTests: XCTestCase {
         XCTAssertFalse(b.shows(.title))
     }
 
+    func testBackgroundAndAppearance() throws {
+        let d = try Settings.parse(Settings.defaultYAML).bar
+        XCTAssertEqual(d.background, .transparent)
+        XCTAssertEqual(d.appearance, .auto)
+        let b = try Settings.parse("bar:\n  background: blur\n  appearance: dark\n").bar
+        XCTAssertEqual(b.background, .blur)
+        XCTAssertEqual(b.appearance, .dark)
+        XCTAssertThrowsError(try Settings.parse("bar:\n  background: glass"))
+    }
+
     func testBadWidget() {
         XCTAssertThrowsError(try Settings.parse("bar:\n  right: [cpu, gpu]"))
     }

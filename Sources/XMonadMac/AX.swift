@@ -152,6 +152,7 @@ struct Screen {
     let visible: CGRect
     /// Without menu bar and Dock, Cocoa coordinates (bottom-left origin). The bar goes here.
     let nsVisible: NSRect
+    let ns: NSScreen
 
     /// Screens ordered left-to-right (then top-to-bottom), like xmonad's
     /// physical screen order for mod-w / mod-e / mod-r.
@@ -166,7 +167,7 @@ struct Screen {
                 var usable = ns.visibleFrame
                 usable.origin.y += reserveBottom
                 usable.size.height -= reserveBottom
-                return Screen(frame: toAX(ns.frame), visible: toAX(usable), nsVisible: ns.visibleFrame)
+                return Screen(frame: toAX(ns.frame), visible: toAX(usable), nsVisible: ns.visibleFrame, ns: ns)
             }
             .sorted { ($0.frame.minX, $0.frame.minY) < ($1.frame.minX, $1.frame.minY) }
     }

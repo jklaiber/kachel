@@ -53,7 +53,13 @@ public struct BarSettings: Equatable {
     public var clockFormat = "HH:mm"
     public var dateFormat = "EEE d MMM"
     public var interval: Double = 2          // seconds between cpu/memory/network samples
+    public var background: Background = .transparent
+    public var appearance: Appearance = .auto
     public init() {}
+
+    public enum Background: String { case transparent, blur }
+    /// auto = white or black text depending on the wallpaper, like the menu bar.
+    public enum Appearance: String { case auto, light, dark }
 
     public func shows(_ w: BarWidget) -> Bool { left.contains(w) || right.contains(w) }
 }
@@ -126,6 +132,16 @@ public struct Settings {
                 case "clock-format": s.bar.clockFormat = try string(v, "bar.clock-format")
                 case "date-format": s.bar.dateFormat = try string(v, "bar.date-format")
                 case "interval": s.bar.interval = max(0.5, try number(v, "bar.interval"))
+                case "background":
+                    guard let b = BarSettings.Background(rawValue: "\(v)") else {
+                        throw SettingsError("bar.background must be transparent or blur")
+                    }
+                    s.bar.background = b
+                case "appearance":
+                    guard let a = BarSettings.Appearance(rawValue: "\(v)") else {
+                        throw SettingsError("bar.appearance must be auto, light or dark")
+                    }
+                    s.bar.appearance = a
                 // from the first config version
                 case "show-title":
                     if try !bool(v, "bar.show-title") { s.bar.left.removeAll { $0 == .title } }
@@ -323,6 +339,8 @@ bar:
   enabled: true
   height: auto            # auto = same as the menu bar at the top, or a number
   font-size: 13
+  background: transparent # transparent = like the macOS menu bar; blur = frosted glass
+  appearance: auto        # auto = white/black text depending on the wallpaper; light; dark
   # Widgets, in order: workspaces, layout, title, cpu, memory, network, date, clock.
   # Leave one out to hide it.
   left: [workspaces, layout, title]

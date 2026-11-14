@@ -24,11 +24,24 @@ final class Bar {
 
     let stats = Stats()
     private var panels: [BarPanel] = []
+    private var screens: [Screen] = []
+    private var appearanceTimer: Timer?
     private var clockTimer: Timer?
     private var statsTimer: Timer?
     private(set) var settings = BarSettings()
 
     init() {
+        // Follow wallpaper, Space and light/dark changes, like the menu bar does.
+        DistributedNotificationCenter.default().addObserver(forName: .init("com.apple.desktop"), object: "BackgroundChanged",
+                                                            queue: .main) { [weak self] _ in self?.updateAppearance() }
+        DistributedNotificationCenter.default().addObserver(forName: .init("AppleInterfaceThemeChangedNotification"),
+                                                            object: nil, queue: .main) { [weak self] _ in self?.updateAppearance() }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification,
+                                                          object: nil, queue: .main) { [weak self] _ in self?.updateAppearance() }
+        // Dynamic wallpapers change over the day.
+        appearanceTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+            self?.updateAppearance()
+        }
         clockTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, self.settings.shows(.clock) || self.settings.shows(.date) else { return }
             self.redraw()
@@ -57,11 +70,14 @@ final class Bar {
         while panels.count > screens.count { panels.removeLast().orderOut(nil) }
         while panels.count < screens.count { panels.append(BarPanel(bar: self, index: panels.count)) }
         let h = Bar.height(for: settings)
+        self.screens = screens
         for (p, s) in zip(panels, screens) {
             let v = s.nsVisible
             p.setFrame(NSRect(x: v.minX, y: v.minY, width: v.width, height: h), display: true)
+            p.setBackground(settings.background)
             p.orderFrontRegardless()
         }
+        updateAppearance()
 
         statsTimer?.invalidate()
         let needStats = settings.shows(.cpu) || settings.shows(.memory) || settings.shows(.network)
@@ -73,6 +89,28 @@ final class Bar {
             }
         }
         redraw()
+    }
+
+    /// White text on dark wallpapers, black on light ones (per screen), unless
+    /// the config forces one.
+    func updateAppearance() {
+        for (p, s) in zip(panels, screens) {
+            let dark: Bool
+            switch settings.appearance {
+            case .light: dark = false
+            case .dark: dark = true
+            case .auto:
+                if settings.background == .blur {
+                    dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                } else {
+                    dark = Wallpaper.isDark(behind: p.frame, on: s.ns)
+                        ?? (NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua)
+                }
+            }
+            p.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            p.view.transparent = settings.background == .transparent
+            p.view.needsDisplay = true
+        }
     }
 
     private func sampleStats() {
@@ -159,14 +197,21 @@ private final class BarPanel: NSPanel {
         acceptsMouseMovedEvents = true
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenNone]
 
-        let effect = NSVisualEffectView()
         effect.material = .menu
         effect.blendingMode = .behindWindow
         effect.state = .active
         effect.autoresizingMask = [.width, .height]
         view.autoresizingMask = [.width, .height]
-        effect.addSubview(view)
-        contentView = effect
+        let root = NSView()
+        root.addSubview(effect)
+        root.addSubview(view)
+        contentView = root
+    }
+
+    private let effect = NSVisualEffectView()
+
+    func setBackground(_ b: BarSettings.Background) {
+        effect.isHidden = b == .transparent
     }
 
     override var canBecomeKey: Bool { false }
@@ -175,6 +220,7 @@ private final class BarPanel: NSPanel {
     override func setFrame(_ frameRect: NSRect, display flag: Bool) {
         super.setFrame(frameRect, display: flag)
         view.frame = contentView?.bounds ?? .zero
+        effect.frame = contentView?.bounds ?? .zero
     }
 }
 
@@ -194,6 +240,8 @@ private final class BarView: NSView {
     let index: Int
     var content = Bar.Content()
     var warning: String?
+    /// No background: give text a soft shadow so it reads on busy wallpapers.
+    var transparent = true
     private var hits: [(rect: CGRect, action: Segment.Action)] = []
     private var hover: CGPoint?
     private let dateFmt = DateFormatter()
@@ -319,6 +367,16 @@ private final class BarView: NSView {
         let style = NSMutableParagraphStyle()
         style.lineBreakMode = .byTruncatingTail
         let attrs: [NSAttributedString.Key: Any] = [.font: f, .foregroundColor: seg.color, .paragraphStyle: style]
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        if transparent {
+            let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            let shadow = NSShadow()
+            shadow.shadowColor = (dark ? NSColor.black : NSColor.white).withAlphaComponent(0.35)
+            shadow.shadowBlurRadius = 3
+            shadow.shadowOffset = .zero
+            shadow.set()
+        }
         var x = rect.minX + pad
         let maxX = rect.maxX - pad
         for (i, p) in seg.parts.enumerated() {
@@ -390,5 +448,52 @@ private final class BarView: NSView {
 
     override func rightMouseDown(with event: NSEvent) {
         bar.showMenu(for: event, in: self)
+    }
+}
+
+/// Brightness of the wallpaper behind the bar, so the text can be white or
+/// black like the menu bar's.
+enum Wallpaper {
+    private static var cache: [String: Bool] = [:]
+
+    static func isDark(behind barFrame: NSRect, on screen: NSScreen) -> Bool? {
+        guard let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
+        let f = screen.frame
+        // Bar position as a fraction of the screen, measured from the top (image rows).
+        let top = (f.maxY - barFrame.maxY) / f.height
+        let height = barFrame.height / f.height
+        let key = "\(url.path)|\(top)|\(height)|\((try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast)"
+        if let hit = cache[key] { return hit }
+
+        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let img = CGImageSourceCreateThumbnailAtIndex(src, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 512,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+              ] as CFDictionary) else { return nil }
+
+        // The wallpaper is scaled to fill the screen; crop the band behind the bar.
+        let scale = max(f.width / CGFloat(img.width), f.height / CGFloat(img.height))
+        let shownW = f.width / scale, shownH = f.height / scale
+        let x0 = (CGFloat(img.width) - shownW) / 2, y0 = (CGFloat(img.height) - shownH) / 2
+        let band = CGRect(x: x0, y: y0 + top * shownH, width: shownW, height: max(1, height * shownH)).integral
+        guard let crop = img.cropping(to: band) else { return nil }
+
+        var px = [UInt8](repeating: 0, count: 16 * 4)
+        guard let ctx = CGContext(data: &px, width: 16, height: 1, bitsPerComponent: 8, bytesPerRow: 64,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.interpolationQuality = .medium
+        ctx.draw(crop, in: CGRect(x: 0, y: 0, width: 16, height: 1))
+        var lum = 0.0
+        for i in 0..<16 {
+            let r = Double(px[i * 4]), g = Double(px[i * 4 + 1]), b = Double(px[i * 4 + 2])
+            lum += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+        }
+        lum /= 16
+        let dark = lum < 0.6
+        Log.info("wallpaper \(url.lastPathComponent): brightness behind bar \(String(format: "%.2f", lum)) → \(dark ? "white" : "black") text")
+        cache[key] = dark
+        return dark
     }
 }
