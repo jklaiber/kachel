@@ -42,8 +42,11 @@ final class WindowManager {
         Config.load(force: true)
         bar.onClickWorkspace = { [unowned self] s, i in
             guard self.managing else { return }
-            self.ss.focusScreen(s)
-            self.greedyView(i)
+            self.greedyView(i, onScreen: s)
+        }
+        bar.onToggleWidget = { [unowned self] w in
+            Config.toggleWidget(w)
+            self.reload()
         }
         bar.menuActions = [
             ("Reload Config", { [unowned self] in self.reload() }),
@@ -106,7 +109,7 @@ final class WindowManager {
             hotkeyProblems = HotKeys.shared.bind(cfg.keys) { [unowned self] cmd in self.perform(cmd) }
         }
         ss.setTags(cfg.workspaces)
-        screens = Screen.all(reserveBottom: cfg.bar.enabled ? CGFloat(cfg.bar.height) : 0)
+        screens = Screen.all(reserveBottom: cfg.bar.enabled ? Bar.height(for: cfg.bar) : 0)
         ss.setScreenCount(screens.count)
         bar.place(on: screens, settings: cfg.bar)
         if managing {
@@ -333,6 +336,14 @@ final class WindowManager {
         case .reload: reload()
         case .quit: quit()
         }
+    }
+
+    /// Clicking workspace `i` in screen `s`'s bar: show it on that screen.
+    func greedyView(_ i: Int, onScreen s: Int) {
+        syncFocusFromSystem(followHidden: false)   // before focusScreen, or it would undo it
+        ss.focusScreen(s)
+        ss.greedyView(i)
+        render()
     }
 
     func greedyView(_ i: Int) { syncFocusFromSystem(followHidden: false); ss.greedyView(i); render() }

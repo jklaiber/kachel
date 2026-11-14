@@ -65,3 +65,40 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(ss.workspaces.count, 3)
     }
 }
+
+final class BarConfigTests: XCTestCase {
+    func testDefaultBar() throws {
+        let b = try Settings.parse(Settings.defaultYAML).bar
+        XCTAssertNil(b.height)
+        XCTAssertEqual(b.left, [.workspaces, .layout, .title])
+        XCTAssertEqual(b.right, [.network, .cpu, .memory, .date, .clock])
+    }
+
+    func testOldConfigStillLoads() throws {
+        let b = try Settings.parse("bar:\n  height: 24\n  show-title: false\n  clock-format: \"HH:mm\"\n").bar
+        XCTAssertEqual(b.height, 24)
+        XCTAssertFalse(b.shows(.title))
+    }
+
+    func testBadWidget() {
+        XCTAssertThrowsError(try Settings.parse("bar:\n  right: [cpu, gpu]"))
+    }
+
+    func testSetBarListKeepsCommentsAndOtherLines() throws {
+        let text = Settings.setBarList(Settings.defaultYAML, key: "right", [.cpu, .clock])
+        let s = try Settings.parse(text)
+        XCTAssertEqual(s.bar.right, [.cpu, .clock])
+        XCTAssertEqual(s.bar.left, [.workspaces, .layout, .title])
+        XCTAssertEqual(s.keys.count, 42)
+        XCTAssertTrue(text.contains("# Widgets, in order"))
+    }
+
+    func testSetBarListBlockStyleAndMissing() throws {
+        let block = "gap: 4\nbar:\n  right:\n    - cpu\n    - memory\n  font-size: 14\nkeys:\n  mod-1: workspace 1\n"
+        let t1 = Settings.setBarList(block, key: "right", [.clock])
+        XCTAssertEqual(try Settings.parse(t1).bar.right, [.clock])
+        XCTAssertEqual(try Settings.parse(t1).bar.fontSize, 14)
+        let t2 = Settings.setBarList("gap: 4\n", key: "left", [])
+        XCTAssertEqual(try Settings.parse(t2).bar.left, [])
+    }
+}

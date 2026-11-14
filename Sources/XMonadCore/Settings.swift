@@ -38,13 +38,24 @@ public enum Command: Equatable {
     case spawn(String)
 }
 
+public enum BarWidget: String, CaseIterable {
+    case workspaces, layout, title, cpu, memory, network, date, clock
+}
+
 public struct BarSettings: Equatable {
     public var enabled = true
-    public var height: Double = 24
-    public var fontSize: Double = 12
-    public var showTitle = true
-    public var clockFormat = "EEE d MMM  HH:mm"   // empty string hides the clock
+    /// nil = same height as the menu bar at the top.
+    public var height: Double?
+    public var fontSize: Double = 13
+    public var left: [BarWidget] = [.workspaces, .layout, .title]
+    public var right: [BarWidget] = [.network, .cpu, .memory, .date, .clock]
+    public var hideEmptyWorkspaces = false
+    public var clockFormat = "HH:mm"
+    public var dateFormat = "EEE d MMM"
+    public var interval: Double = 2          // seconds between cpu/memory/network samples
     public init() {}
+
+    public func shows(_ w: BarWidget) -> Bool { left.contains(w) || right.contains(w) }
 }
 
 public struct SettingsError: Error, CustomStringConvertible {
@@ -105,10 +116,19 @@ public struct Settings {
             for (k, v) in b {
                 switch k {
                 case "enabled": s.bar.enabled = try bool(v, "bar.enabled")
-                case "height": s.bar.height = try number(v, "bar.height")
+                case "height":
+                    if let t = v as? String, t == "auto" { s.bar.height = nil }
+                    else { s.bar.height = try number(v, "bar.height") }
                 case "font-size": s.bar.fontSize = try number(v, "bar.font-size")
-                case "show-title": s.bar.showTitle = try bool(v, "bar.show-title")
-                case "clock-format": s.bar.clockFormat = v is NSNull ? "" : "\(v)"
+                case "left": s.bar.left = try widgets(v, "bar.left")
+                case "right": s.bar.right = try widgets(v, "bar.right")
+                case "hide-empty-workspaces": s.bar.hideEmptyWorkspaces = try bool(v, "bar.hide-empty-workspaces")
+                case "clock-format": s.bar.clockFormat = try string(v, "bar.clock-format")
+                case "date-format": s.bar.dateFormat = try string(v, "bar.date-format")
+                case "interval": s.bar.interval = max(0.5, try number(v, "bar.interval"))
+                // from the first config version
+                case "show-title":
+                    if try !bool(v, "bar.show-title") { s.bar.left.removeAll { $0 == .title } }
                 default: throw SettingsError("unknown setting 'bar.\(k)'")
                 }
             }
@@ -214,6 +234,45 @@ public struct Settings {
         }
     }
 
+    /// Rewrite one `bar.<key>:` line in a config file's text.
+    public static func setBarList(_ text: String, key: String, _ items: [BarWidget]) -> String {
+        var lines = text.components(separatedBy: "\n")
+        let value = "[\(items.map(\.rawValue).joined(separator: ", "))]"
+        guard let barLine = lines.firstIndex(where: { $0.hasPrefix("bar:") }) else {
+            return text + (text.hasSuffix("\n") ? "" : "\n") + "bar:\n  \(key): \(value)\n"
+        }
+        // The bar section: following lines that are indented, blank or comments.
+        var end = barLine + 1
+        while end < lines.count, lines[end].isEmpty || lines[end].hasPrefix(" ") || lines[end].hasPrefix("#") { end += 1 }
+        if let i = (barLine + 1..<end).first(where: { lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("\(key):") }) {
+            let indent = String(lines[i].prefix { $0 == " " })
+            let comment = lines[i].range(of: " #").map { String(lines[i][$0.lowerBound...]) } ?? ""
+            lines[i] = "\(indent)\(key): \(value)\(comment)"
+            // Drop a block-style list ("- cpu" lines) that followed the key.
+            let j = i + 1
+            while j < end, lines[j].trimmingCharacters(in: .whitespaces).hasPrefix("- "),
+                  lines[j].prefix(while: { $0 == " " }).count >= indent.count {
+                lines.remove(at: j)
+                end -= 1
+            }
+        } else {
+            lines.insert("  \(key): \(value)", at: barLine + 1)
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func widgets(_ v: Any, _ k: String) throws -> [BarWidget] {
+        if v is NSNull { return [] }
+        guard let list = v as? [Any] else { throw SettingsError("\(k) must be a list, e.g. [cpu, clock]") }
+        return try list.map {
+            guard let w = BarWidget(rawValue: "\($0)") else {
+                let all = BarWidget.allCases.map(\.rawValue).joined(separator: ", ")
+                throw SettingsError("\(k): unknown widget '\($0)' (use \(all))")
+            }
+            return w
+        }
+    }
+
     private static func string(_ v: Any, _ k: String) throws -> String {
         guard let s = v as? String else { throw SettingsError("\(k) must be text") }
         return s
@@ -259,13 +318,19 @@ floating:
   - com.apple.archiveutility
 
 # The bar at the bottom of every screen. Click a workspace to show it on that
-# screen, right-click for the menu.
+# screen; right-click for the menu, where widgets can also be switched on and off.
 bar:
   enabled: true
-  height: 24
-  font-size: 12
-  show-title: true
-  clock-format: "EEE d MMM  HH:mm"   # Unicode date pattern; "" hides the clock
+  height: auto            # auto = same as the menu bar at the top, or a number
+  font-size: 13
+  # Widgets, in order: workspaces, layout, title, cpu, memory, network, date, clock.
+  # Leave one out to hide it.
+  left: [workspaces, layout, title]
+  right: [network, cpu, memory, date, clock]
+  hide-empty-workspaces: false
+  date-format: "EEE d MMM"   # Unicode date patterns
+  clock-format: "HH:mm"
+  interval: 2               # seconds between cpu / memory / network updates
 
 # Keys: <modifiers>-<key>: <command>.  Modifiers: mod, cmd, ctrl, alt, shift.
 # Key names: a–z, 0–9, return, tab, space, escape, delete, left, right, up,

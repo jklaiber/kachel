@@ -88,12 +88,31 @@ the defaults. Letter keys follow your keyboard layout.
 
 ## Bar
 
-Each screen gets a translucent bar along the bottom, just above the Dock:
-workspaces (filled = focused screen, tinted = shown on this screen, outlined =
-shown on another screen, dim = empty), the layout, the focused window's title
-and a clock. Click a workspace to show it on that screen. Right-click for
-Reload Config, Edit Config, Show Log, Re-tile and Quit. Tiled windows leave
-room for it. Turn it off with `bar: {enabled: false}`.
+Each screen gets a second menu bar along the bottom, just above the Dock. It has the
+same height, font and translucency as the one at the top, and tiled windows leave
+room for it. Widgets:
+
+| Widget | Shows | Click |
+|---|---|---|
+| `workspaces` | highlighted = focused, faint = shown on this screen, outlined = on another screen, dim = empty | show it on this screen |
+| `layout` | Tall / Mirror / Full | |
+| `title` | focused window on that screen | |
+| `network` | ↓ / ↑ throughput (Wi-Fi + Ethernet) | Activity Monitor |
+| `cpu` | total CPU load | Activity Monitor |
+| `memory` | memory used, like Activity Monitor | Activity Monitor |
+| `date`, `clock` | `date-format` / `clock-format` | Calendar |
+
+```yaml
+bar:
+  height: auto        # or a number
+  left: [workspaces, layout, title]
+  right: [network, cpu, memory, date, clock]
+  hide-empty-workspaces: false
+```
+
+Right-click the bar → **Show in Bar** to switch widgets on and off; that rewrites
+only the `left:` / `right:` lines of your config. The same menu has Reload Config,
+Edit Config, Show Log, Re-tile and Quit. `bar: {enabled: false}` removes the bar.
 
 Problems (missing Accessibility permission, config errors, hotkeys taken by
 another app) appear in the bar in orange. The log is at

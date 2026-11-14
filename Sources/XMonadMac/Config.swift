@@ -46,6 +46,38 @@ enum Config {
         return true
     }
 
+    /// Show or hide a bar widget by rewriting just `bar.left` / `bar.right` in
+    /// the file, leaving comments and everything else alone.
+    static func toggleWidget(_ w: BarWidget) {
+        var bar = current.bar
+        if bar.shows(w) {
+            bar.left.removeAll { $0 == w }
+            bar.right.removeAll { $0 == w }
+        } else {
+            let defaults = BarSettings()
+            if defaults.left.contains(w) { bar.left = insert(w, into: bar.left, order: defaults.left) }
+            else { bar.right = insert(w, into: bar.right, order: defaults.right) }
+        }
+        do {
+            var text = try String(contentsOf: url, encoding: .utf8)
+            text = Settings.setBarList(text, key: "left", bar.left)
+            text = Settings.setBarList(text, key: "right", bar.right)
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            Log.info("bar: \(w.rawValue) \(bar.shows(w) ? "on" : "off")")
+        } catch {
+            Log.info("could not update config: \(error)")
+        }
+    }
+
+    /// Put `w` where it sits in the default order, relative to what's already shown.
+    private static func insert(_ w: BarWidget, into list: [BarWidget], order: [BarWidget]) -> [BarWidget] {
+        var list = list
+        let rank = order.firstIndex(of: w) ?? order.count
+        let at = list.firstIndex { (order.firstIndex(of: $0) ?? order.count) > rank } ?? list.count
+        list.insert(w, at: at)
+        return list
+    }
+
     static func openInEditor() {
         NSWorkspace.shared.open(url)
     }
