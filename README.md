@@ -36,6 +36,17 @@ Sources/Kachel/HotKeys.swift     global hotkeys (Carbon RegisterEventHotKey)
 Sources/Kachel/Bar.swift         xmobar-like bar at the bottom of every screen
 ```
 
+## Install
+
+```bash
+brew install --cask jklaiber/tap/kachel
+```
+
+Then grant Accessibility (System Settings → Privacy & Security → Accessibility)
+and quit Amethyst, yabai or AeroSpace if they're running. Releases are ad-hoc
+signed, so macOS asks for Accessibility again after each upgrade. If macOS still
+refuses to open the app, install with `--no-quarantine`.
+
 ## Build and run
 
 Requires macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`).

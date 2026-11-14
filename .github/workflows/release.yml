@@ -1,0 +1,35 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    env:
+      TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+      - name: Build universal Kachel.app
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          VERSION="$V" UNIVERSAL=1 ./scripts/bundle.sh
+          lipo -archs build/Kachel.app/Contents/MacOS/Kachel
+          ditto -c -k --sequesterRsrc --keepParent build/Kachel.app "Kachel-$V.zip"
+          echo "V=$V" >> "$GITHUB_ENV"
+          echo "SHA=$(shasum -a 256 "Kachel-$V.zip" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "Kachel-$V.zip" --title "Kachel $V" --generate-notes
+      - name: Update the Homebrew cask
+        if: env.TAP_GITHUB_TOKEN != ''
+        run: ./scripts/update-cask.sh "$V" "$SHA"
+      - name: Cask not updated
+        if: env.TAP_GITHUB_TOKEN == ''
+        run: |
+          echo "::warning::No TAP_GITHUB_TOKEN secret: run ./scripts/update-cask.sh $V $SHA locally"

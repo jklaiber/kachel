@@ -4,15 +4,22 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-swift build -c release
+# VERSION=0.2.0 sets the version shown in Finder; UNIVERSAL=1 builds for
+# Apple Silicon and Intel in one binary (what releases ship).
+VERSION="${VERSION:-0.0.0-dev}"
+ARCHS=()
+if [[ "${UNIVERSAL:-0}" == 1 ]]; then ARCHS=(--arch arm64 --arch x86_64); fi
+
+swift build -c release ${ARCHS[@]+"${ARCHS[@]}"}
+BIN="$(swift build -c release ${ARCHS[@]+"${ARCHS[@]}"} --show-bin-path)/Kachel"
 
 APP="build/Kachel.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/release/Kachel "$APP/Contents/MacOS/Kachel"
+cp "$BIN" "$APP/Contents/MacOS/Kachel"
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"   # regenerate: ./scripts/make-icon.swift
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -22,7 +29,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIconFile</key>        <string>AppIcon</string>
     <key>CFBundleExecutable</key>      <string>Kachel</string>
     <key>CFBundlePackageType</key>     <string>APPL</string>
-    <key>CFBundleShortVersionString</key> <string>0.1</string>
+    <key>CFBundleShortVersionString</key> <string>$VERSION</string>
+    <key>CFBundleVersion</key>         <string>$VERSION</string>
     <key>LSMinimumSystemVersion</key>  <string>13.0</string>
     <key>LSUIElement</key>             <true/>
 </dict>
