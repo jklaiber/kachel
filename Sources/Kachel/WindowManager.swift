@@ -816,8 +816,16 @@ final class WindowManager {
             // window once the window server says it's really gone, or it would
             // lose its workspace and come back on the current one.
             let alive = windowServerIDs()
+            let gone = Set(missing)
             for id in missing {
-                if alive.contains(id) { continue }
+                if alive.contains(id) {
+                    // Still there, just not showing (closed but kept by its app,
+                    // minimized, asleep): keep its workspace, but tile without it
+                    // and don't leave focus on it.
+                    if windows[id] != nil { changed = true }
+                    ss.focusOther(than: id, excluding: gone)
+                    continue
+                }
                 Log.info("window \(id) closed (was on workspace \(ss.workspaceIndex(of: id).map { ss.workspaces[$0].tag } ?? "?"))")
                 ss.remove(id)
                 hidden.remove(id)
@@ -1302,7 +1310,7 @@ final class WindowManager {
                 c.tags.append(Bar.Tag(name: ws.tag,
                                       active: i == ss.currentWorkspaceIndex,
                                       visible: ss.isVisible(workspace: i),
-                                      hasWindows: ws.windows.contains { !scratchParked.contains($0) }))
+                                      hasWindows: ws.windows.contains { windows[$0] != nil && !scratchParked.contains($0) }))
             }
             let ws = ss.workspaces[wsIndex]
             c.layout = ws.effectiveLayout.rawValue
