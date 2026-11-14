@@ -134,3 +134,31 @@ final class CycleTests: XCTestCase {
         XCTAssertNil(one.cycleTarget(+1, skipEmpty: true))                   // all empty
     }
 }
+
+final class SwapTests: XCTestCase {
+    func testSwapWithinWorkspace() {
+        var ss = StackSet(tags: ["1", "2"], screenCount: 1)
+        ss.insert(1); ss.insert(2); ss.insert(3)          // [3,2,1]
+        ss.swap(3, 1)
+        XCTAssertEqual(ss.current.windows, [1, 2, 3])
+        XCTAssertEqual(ss.current.focused, 3)              // focus stays on the dragged window
+    }
+
+    func testSwapAcrossWorkspaces() {
+        var ss = StackSet(tags: ["1", "2"], screenCount: 2)
+        ss.insert(1, into: 0); ss.insert(2, into: 0)       // ws1 [2,1]
+        ss.insert(9, into: 1)                              // ws2 [9]
+        ss.swap(2, 9)
+        XCTAssertEqual(ss.workspaces[0].windows, [9, 1])
+        XCTAssertEqual(ss.workspaces[1].windows, [2])
+        XCTAssertEqual(ss.workspaces[0].focused, 9)
+        XCTAssertEqual(ss.workspaces[1].focused, 2)
+    }
+
+    func testSwapUnknownIsNoop() {
+        var ss = StackSet(tags: ["1"], screenCount: 1)
+        ss.insert(1)
+        ss.swap(1, 42)
+        XCTAssertEqual(ss.current.windows, [1])
+    }
+}

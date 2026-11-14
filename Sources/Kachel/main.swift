@@ -15,6 +15,18 @@ for sig in [SIGINT, SIGTERM, SIGHUP] {
     signalSources.append(src)
 }
 
+// If Kachel crashes, don't leave windows parked in a corner: put them back
+// on screen first, then crash as usual. The next start restores workspaces
+// from the state saved after every change.
+for sig in [SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP] {
+    signal(sig) { s in
+        WindowManager.shared.emergencyRestore()
+        signal(s, SIG_DFL)
+        raise(s)
+    }
+}
+NSSetUncaughtExceptionHandler { _ in WindowManager.shared.emergencyRestore() }
+
 // Debug hooks for scripts:
 //   kachel-ctl dump              → state into ~/Library/Logs/Kachel.log
 //   kachel-ctl "workspace 2"     → run any config command

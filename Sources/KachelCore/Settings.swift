@@ -102,6 +102,11 @@ public struct Settings {
     public var menubarIcon = false
     public var rules: [Rule] = []
     public var gestures = GestureSettings()
+    /// Windows without a fullscreen button are dialogs: float them (AeroSpace's heuristic).
+    public var floatDialogs = true
+    /// Float windows smaller than this in both directions (Amethyst's float-small-windows); 0 = off.
+    public var floatSmallWindows = 0
+    public var startAtLogin = false
     public var bar = BarSettings()
     public var keys: [KeyChord: Command] = [:]
 
@@ -122,7 +127,8 @@ public struct Settings {
         }
 
         let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
-                                  "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures"]
+                                  "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
+                                  "float-dialogs", "float-small-windows", "start-at-login"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -150,6 +156,12 @@ public struct Settings {
                 return l
             }
         }
+        if let v = dict["float-dialogs"] { s.floatDialogs = try bool(v, "float-dialogs") }
+        if let v = dict["float-small-windows"] {
+            if let b = v as? Bool { s.floatSmallWindows = b ? 500 : 0 }
+            else { s.floatSmallWindows = max(0, Int(try number(v, "float-small-windows"))) }
+        }
+        if let v = dict["start-at-login"] { s.startAtLogin = try bool(v, "start-at-login") }
         if let v = dict["gestures"] {
             guard let g = v as? [String: Any] else { throw SettingsError("gestures must be a mapping") }
             for (k, v) in g {
@@ -402,6 +414,15 @@ menubar-icon: false       # Kachel icon in the top menu bar (same menu as right-
 # Used by the `terminal` command. Examples: "open -na Ghostty",
 # "open -na Alacritty", "open -na kitty", "open -na WezTerm", "open -na iTerm"
 terminal: open -na Alacritty
+
+# Dialogs (windows without a fullscreen button, e.g. preferences, progress
+# windows) float automatically. Terminals are tiled regardless.
+float-dialogs: true
+# Also float windows smaller than this many points in both directions, like
+# Amethyst's float-small-windows (0 = off; true = 500).
+float-small-windows: 0
+
+start-at-login: false     # launch Kachel when you log in (needs Kachel.app in /Applications)
 
 # Bundle IDs whose windows always float (find one with: osascript -e 'id of app "Name"').
 floating:

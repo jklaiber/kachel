@@ -71,6 +71,10 @@ final class AXWindow {
         return CGRect(origin: p, size: s)
     }
 
+    /// The green "full screen" button. Dialogs, panels and utility windows
+    /// don't have one.
+    var hasFullscreenButton: Bool { axElement(element, "AXFullScreenButton") != nil }
+
     var isResizable: Bool {
         var settable: DarwinBoolean = false
         AXUIElementIsAttributeSettable(element, kAXSizeAttribute as CFString, &settable)

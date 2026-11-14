@@ -166,6 +166,23 @@ public struct StackSet {
         if wasFloating { floating.insert(w) }
     }
 
+    /// Swap two windows' places, like dragging one onto the other: within a
+    /// workspace they trade positions; across workspaces they trade
+    /// workspaces (and positions). Focus marks follow the windows.
+    public mutating func swap(_ a: WindowID, _ b: WindowID) {
+        guard a != b, let wa = workspaceIndex(of: a), let wb = workspaceIndex(of: b),
+              let ia = workspaces[wa].windows.firstIndex(of: a),
+              let ib = workspaces[wb].windows.firstIndex(of: b) else { return }
+        if wa == wb {
+            workspaces[wa].windows.swapAt(ia, ib)
+            return
+        }
+        workspaces[wa].windows[ia] = b
+        workspaces[wb].windows[ib] = a
+        if workspaces[wa].focused == a { workspaces[wa].focused = b }
+        if workspaces[wb].focused == b { workspaces[wb].focused = a }
+    }
+
     /// Mark `w` focused in its workspace. Returns true if that workspace is
     /// visible (and makes its screen current).
     @discardableResult

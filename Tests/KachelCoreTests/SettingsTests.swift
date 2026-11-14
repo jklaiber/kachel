@@ -225,3 +225,21 @@ final class GestureSettingsTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("gestures:\n  pinch: quit"))
     }
 }
+
+
+final class FloatingAndLoginSettingsTests: XCTestCase {
+    func testDefaults() throws {
+        let s = try Settings.parse(Settings.defaultYAML)
+        XCTAssertTrue(s.floatDialogs)
+        XCTAssertEqual(s.floatSmallWindows, 0)
+        XCTAssertFalse(s.startAtLogin)
+    }
+
+    func testValues() throws {
+        XCTAssertEqual(try Settings.parse("float-small-windows: true").floatSmallWindows, 500)
+        XCTAssertEqual(try Settings.parse("float-small-windows: 300").floatSmallWindows, 300)
+        XCTAssertFalse(try Settings.parse("float-dialogs: false").floatDialogs)
+        XCTAssertTrue(try Settings.parse("start-at-login: true").startAtLogin)
+        XCTAssertThrowsError(try Settings.parse("start-at-login: soon"))
+    }
+}

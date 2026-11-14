@@ -37,6 +37,12 @@ final class WindowManager {
     /// A tiled window being resized with the mouse; applied on mouse-up.
     private var mouseResized: WindowID?
     private var mouseUpTimer: Timer?
+    private var mouseMoved: WindowID?
+    /// Where render() put each tiled window, to notice apps that didn't comply.
+    private var expected: [WindowID: CGRect] = [:]
+    private var verifyPending = false
+    private var stubborn: Set<WindowID> = []
+    private var savePending = false
     private let bar = Bar()
     private let menuBarItem = MenuBarItem()
     private let switcher = WindowSwitcher()
@@ -90,6 +96,9 @@ final class WindowManager {
     private func menuEntries() -> [(title: String, action: () -> Void)] {
         [
             ("Restart Kachel", { [unowned self] in self.restart() }),
+            (Config.current.startAtLogin ? "Start at Login ✓" : "Start at Login", {
+                Config.setTopLevel(key: "start-at-login", value: Config.current.startAtLogin ? "false" : "true")
+            }),
             ("Reload Config", { [unowned self] in self.reload() }),
             ("Edit Config…", { Config.openInEditor() }),
             ("Show Log", { NSWorkspace.shared.open(Log.url) }),
@@ -160,6 +169,7 @@ final class WindowManager {
         ss.setTags(cfg.workspaces)
         ss.setLayoutIfUnlisted(cfg.layouts)
         menuBarItem.setVisible(cfg.menubarIcon)
+        LoginItem.apply(cfg.startAtLogin)
         updateGestures()
         bar.menuBarIconShown = cfg.menubarIcon
         screens = Screen.all(reserveBottom: cfg.bar.enabled ? Bar.height(for: cfg.bar) : 0)
@@ -250,8 +260,11 @@ final class WindowManager {
             guard NSEvent.pressedMouseButtons & 1 == 0 else { return }
             t.invalidate()
             self.mouseUpTimer = nil
+            // Resizing from the left/top edge also moves the window: a resize wins.
             if let id = self.mouseResized { self.applyMouseResize(id) }
+            else if let id = self.mouseMoved { self.applyMouseMove(id) }
             self.mouseResized = nil
+            self.mouseMoved = nil
         }
     }
 
@@ -326,6 +339,31 @@ final class WindowManager {
             Log.info("swipe \(dir.rawValue): \(cmd)")
             perform(cmd)
         }
+    }
+
+    /// A tiled window was dragged and dropped (Amethyst's mouse-swaps-windows):
+    /// onto another tiled window, the two swap (also across screens); onto
+    /// an empty part of another screen, it moves to that screen's workspace.
+    /// Anything else snaps back.
+    private func applyMouseMove(_ id: WindowID) {
+        guard let from = ss.workspaceIndex(of: id), !ss.floating.contains(id),
+              let primary = NSScreen.screens.first else { return }
+        let m = NSEvent.mouseLocation
+        let drop = CGPoint(x: m.x, y: primary.frame.height - m.y)
+        guard let s = screenIndex(containing: drop) else { render(); return }
+        let wsIndex = ss.screenWorkspace[s]
+        let target = ss.workspaces[wsIndex].windows.first { t in
+            t != id && !ss.floating.contains(t) && (expected[t] ?? windows[t]?.frame)?.contains(drop) == true
+        }
+        if let t = target {
+            Log.info("mouse drag: swap window \(id) with \(t)")
+            ss.swap(id, t)
+        } else if wsIndex != from {
+            Log.info("mouse drag: window \(id) → workspace \(ss.workspaces[wsIndex].tag)")
+            ss.shift(id, to: wsIndex)
+        }
+        ss.focus(id)
+        render()
     }
 
     // MARK: - window search
@@ -444,7 +482,8 @@ final class WindowManager {
         do {
             try FileManager.default.createDirectory(at: Self.stateURL.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)
-            try JSONEncoder().encode(ss.snapshot).write(to: Self.stateURL, options: .atomic)
+            try JSONEncoder().encode(SavedState(boot: Self.bootTime, state: ss.snapshot))
+                .write(to: Self.stateURL, options: .atomic)
         } catch {
             Log.info("could not save state: \(error)")
         }
@@ -454,9 +493,32 @@ final class WindowManager {
     /// once and only if it's from this login session's apps (stale IDs just
     /// don't match anything).
     private func loadSnapshot() -> StackSet.Snapshot? {
-        defer { try? FileManager.default.removeItem(at: Self.stateURL) }
-        guard let data = try? Data(contentsOf: Self.stateURL) else { return nil }
-        return try? JSONDecoder().decode(StackSet.Snapshot.self, from: data)
+        guard let data = try? Data(contentsOf: Self.stateURL),
+              let saved = try? JSONDecoder().decode(SavedState.self, from: data) else { return nil }
+        // Window IDs start over after a reboot; old ones would match random windows.
+        guard abs(saved.boot - Self.bootTime) < 1 else {
+            Log.info("saved state is from before the last reboot, ignoring it")
+            return nil
+        }
+        return saved.state
+    }
+
+    private struct SavedState: Codable {
+        var boot: Double
+        var state: StackSet.Snapshot
+    }
+
+    private static let bootTime: Double = {
+        var tv = timeval()
+        var size = MemoryLayout<timeval>.size
+        sysctlbyname("kern.boottime", &tv, &size, nil, 0)
+        return Double(tv.tv_sec) + Double(tv.tv_usec) / 1_000_000
+    }()
+
+    /// Last resort when Kachel is crashing: put parked windows back on screen
+    /// (AeroSpace does the same). Not async-signal-safe, but it's the end anyway.
+    func emergencyRestore() {
+        restoreAllWindows()
     }
 
     /// Never leave windows stranded in a corner when we exit.
@@ -498,6 +560,7 @@ final class WindowManager {
                     if let obs = observers[pid] {
                         AXObserverAddNotification(obs, el, kAXUIElementDestroyedNotification as CFString, nil)
                         AXObserverAddNotification(obs, el, kAXWindowResizedNotification as CFString, nil)
+                        AXObserverAddNotification(obs, el, kAXWindowMovedNotification as CFString, nil)
                     }
                 }
             }
@@ -529,6 +592,14 @@ final class WindowManager {
     }
 
     fileprivate func onAXEvent(_ notification: String, element: AXUIElement) {
+        if notification == kAXWindowMovedNotification {
+            // A drag with the mouse (title bar): swap on drop, see applyMouseMove.
+            if NSEvent.pressedMouseButtons & 1 != 0, let id = axWindowID(element), windows[id] != nil {
+                mouseMoved = id
+                waitForMouseUp()
+            }
+            return
+        }
         if notification == kAXWindowResizedNotification {
             // Only your own drags count: the mouse button is down. Apps that
             // refuse a size we asked for must not move the split.
@@ -611,10 +682,22 @@ final class WindowManager {
     }
 
     private func shouldFloat(_ w: AXWindow) -> Bool {
-        if let b = w.bundleID, Config.current.floating.contains(b) { return true }
+        let cfg = Config.current
+        if let b = w.bundleID, cfg.floating.contains(b) { return true }
         if rule(for: w)?.float == true { return true }
-        return !w.isResizable
+        if !w.isResizable { return true }
+        // Dialogs: no fullscreen button (AeroSpace's heuristic). Terminals often
+        // hide theirs, so they're tiled regardless.
+        if cfg.floatDialogs, !w.hasFullscreenButton, !Self.terminals.contains(w.bundleID ?? "") { return true }
+        if cfg.floatSmallWindows > 0, let f = w.frame,
+           f.width < CGFloat(cfg.floatSmallWindows), f.height < CGFloat(cfg.floatSmallWindows) { return true }
+        return false
     }
+
+    private static let terminals: Set<String> = [
+        "org.alacritty", "com.apple.Terminal", "com.googlecode.iterm2", "net.kovidgoyal.kitty",
+        "com.mitchellh.ghostty", "com.github.wez.wezterm", "dev.warp.Warp-Stable", "co.zeit.hyper",
+    ]
 
     private func appName(of w: AXWindow) -> String {
         NSRunningApplication(processIdentifier: w.pid)?.localizedName ?? w.bundleID ?? "?"
@@ -838,6 +921,7 @@ final class WindowManager {
                                     nMaster: ws.nMaster, ratio: ws.ratio, gap: CGFloat(Config.current.gap))
             for (id, r) in zip(tiled, rects) {
                 windows[id]?.setFrame(r)
+                expected[id] = r.integral
                 hidden.remove(id)
             }
             let from = lastScreen[wsIndex]
@@ -857,9 +941,49 @@ final class WindowManager {
 
         lastScreen = [:]
         for (s, wsIndex) in ss.screenWorkspace.enumerated() { lastScreen[wsIndex] = s }
+        // Only tiled, visible windows have a place to be checked against.
+        let placed = Set(ss.screenWorkspace.flatMap { ss.workspaces[$0].windows }).subtracting(ss.floating)
+        expected = expected.filter { placed.contains($0.key) }
 
         focusCurrent()
         updateBar()
+        scheduleVerify()
+        scheduleSave()
+    }
+
+    /// Some apps (Electron, apps that animate) don't take a new size on the
+    /// first try. Check shortly after and ask once more; if it still doesn't
+    /// fit, the app has a minimum size and we leave it.
+    private func scheduleVerify() {
+        guard !verifyPending else { return }
+        verifyPending = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [unowned self] in
+            self.verifyPending = false
+            guard NSEvent.pressedMouseButtons & 1 == 0 else { return }     // you're dragging
+            for (id, r) in self.expected {
+                guard let w = self.windows[id], let f = w.frame else { continue }
+                let off = abs(f.minX - r.minX) > 2 || abs(f.minY - r.minY) > 2
+                    || abs(f.width - r.width) > 2 || abs(f.height - r.height) > 2
+                guard off else { self.stubborn.remove(id); continue }
+                w.setFrame(r)
+                if !self.stubborn.contains(id), let g = w.frame,
+                   abs(g.width - r.width) > 2 || abs(g.height - r.height) > 2 {
+                    Log.info("window \(id) (\(w.bundleID ?? "?")) keeps \(Int(g.width))×\(Int(g.height)) instead of \(Int(r.width))×\(Int(r.height)): minimum size")
+                    self.stubborn.insert(id)
+                }
+            }
+        }
+    }
+
+    /// Save the workspace state a moment after every change, so a crash or a
+    /// reboot of Kachel puts every window back where it was.
+    private func scheduleSave() {
+        guard !savePending else { return }
+        savePending = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [unowned self] in
+            self.savePending = false
+            self.saveSnapshot()
+        }
     }
 
     private func moveFloating(_ id: WindowID, from old: Screen, to new: Screen) {

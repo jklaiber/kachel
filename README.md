@@ -178,15 +178,34 @@ framework, as BetterTouchTool and similar tools do. If a macOS update breaks
 it, swipes stop working and everything else keeps going. The switch is instant;
 there's no sliding animation.
 
-## Known limitations (v0.1)
+## Mouse
 
-- Native fullscreen windows and minimized windows aren't tiled, but they keep
-  their workspace and come back there.
-- Mouse resizing moves the master split (Tall and Wide) when you drag the edge
-  between master and stack. Other drags, such as resizing in Column or Full,
-  making one stack window taller, or moving a tiled window, snap back.
-- Workspace state lives in memory. If the app crashes, windows stay parked
-  in a corner. Relaunch it and they're adopted again, and `mod-shift-q` or Ctrl-C
-  restores them properly.
-- Apps that ignore Accessibility resize requests (some Electron apps, apps with
-  a minimum size) may not fill their tile exactly.
+- Drag the edge between master and stack (Tall, Wide) to move the split.
+- Drag a tiled window by its title bar onto another one to swap them, also
+  across screens (Amethyst's `mouse-swaps-windows`). Drop it on an empty part
+  of another screen to move it there. Anything else snaps back.
+
+## Tips for the corner trick
+
+Like AeroSpace, Kachel hides the windows of other workspaces in a screen corner
+with one pixel showing. Some macOS settings make that nicer:
+
+- Mission Control shows parked windows tiny. Turn on "Group windows by
+  application": `defaults write com.apple.dock expose-group-apps -bool true && killall Dock`
+- Every monitor needs a free bottom-left or bottom-right corner, or parked
+  windows peek onto the neighbouring monitor. Arrange displays accordingly.
+- An auto-hiding Dock at the bottom covers the one-pixel slivers.
+- Turn off "Automatically rearrange Spaces based on most recent use" and use
+  one Space per display.
+
+## Known limitations
+
+- Native fullscreen and minimized windows aren't tiled. They keep their
+  workspace and come back there.
+- In Tall and Wide, stack windows share their column equally: making one
+  stack window taller with the mouse snaps back.
+- Apps with a minimum size (some Electron apps) can't shrink into a small tile.
+  Kachel asks twice, then leaves them; the log names them.
+- If Kachel crashes, it first puts parked windows back on screen. The next
+  start restores every window's workspace from the state it saves after each
+  change.
