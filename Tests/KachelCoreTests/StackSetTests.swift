@@ -162,3 +162,36 @@ final class SwapTests: XCTestCase {
         XCTAssertEqual(ss.current.windows, [1])
     }
 }
+
+final class MinimumSizeTests: XCTestCase {
+    func testDistributeEqualWithoutMinimums() {
+        XCTAssertEqual(Layout.distribute(900, [nil, nil, nil]), [300, 300, 300])
+    }
+
+    func testDistributeGivesMinimumsTheirRoom() {
+        // Chrome needs 375, the other two share the rest.
+        XCTAssertEqual(Layout.distribute(900, [nil, 375, nil]), [262.5, 375, 262.5])
+        // A minimum below the share changes nothing.
+        XCTAssertEqual(Layout.distribute(900, [nil, 200, nil]), [300, 300, 300])
+        // Growing one can push another over its share: both get theirs.
+        XCTAssertEqual(Layout.distribute(900, [400, 280, nil]), [400, 280, 220])
+    }
+
+    func testDistributeWhenItCannotFit() {
+        // Hermes 620 + Chrome 375 > 906: free part keeps 10%, the rest shrinks evenly.
+        let d = Layout.distribute(900, [620, 375, nil])
+        XCTAssertEqual(d.reduce(0, +), 900, accuracy: 0.01)
+        XCTAssertEqual(d[2], 90, accuracy: 0.01)
+        XCTAssertEqual(d[0] / d[1], 620.0 / 375.0, accuracy: 0.01)
+    }
+
+    func testTallStackUsesMinimums() {
+        let screen = CGRect(x: 0, y: 0, width: 1000, height: 906)
+        let rects = Layout.tile(.tall, count: 4, in: screen, nMaster: 1, ratio: 0.5, gap: 6,
+                                minSizes: [nil, nil, CGSize(width: 100, height: 375), nil])
+        XCTAssertEqual(rects[2].height, 375, accuracy: 1)                       // Chrome gets its minimum
+        XCTAssertEqual(rects[1].height, rects[3].height, accuracy: 1)          // the others share
+        XCTAssertEqual(rects[0].height, 894, accuracy: 1)                      // master untouched (906 minus gaps)
+        XCTAssertLessThanOrEqual(rects[3].maxY, 906)                           // still on screen
+    }
+}

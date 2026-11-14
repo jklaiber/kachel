@@ -41,7 +41,8 @@ final class WindowManager {
     /// Where render() put each tiled window, to notice apps that didn't comply.
     private var expected: [WindowID: CGRect] = [:]
     private var verifyPending = false
-    private var stubborn: Set<WindowID> = []
+    /// Minimum sizes learned from windows that refused to get smaller.
+    private var minSize: [WindowID: CGSize] = [:]
     private var savePending = false
     private let bar = Bar()
     private let menuBarItem = MenuBarItem()
@@ -645,6 +646,7 @@ final class WindowManager {
                 ss.remove(id)
                 hidden.remove(id)
                 floatRel[id] = nil
+                minSize[id] = nil
                 changed = true
                 lastWindowGone = Date()
             }
@@ -918,7 +920,8 @@ final class WindowManager {
             let scr = screens[s]
             let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
             let rects = Layout.tile(ws.layout, count: tiled.count, in: scr.visible,
-                                    nMaster: ws.nMaster, ratio: ws.ratio, gap: CGFloat(Config.current.gap))
+                                    nMaster: ws.nMaster, ratio: ws.ratio, gap: CGFloat(Config.current.gap),
+                                    minSizes: tiled.map { minSize[$0] })
             for (id, r) in zip(tiled, rects) {
                 windows[id]?.setFrame(r)
                 expected[id] = r.integral
@@ -960,17 +963,35 @@ final class WindowManager {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [unowned self] in
             self.verifyPending = false
             guard NSEvent.pressedMouseButtons & 1 == 0 else { return }     // you're dragging
+            // First pass: ask again for every window that isn't where we put it.
+            var retried: [WindowID: CGRect] = [:]
             for (id, r) in self.expected {
                 guard let w = self.windows[id], let f = w.frame else { continue }
                 let off = abs(f.minX - r.minX) > 2 || abs(f.minY - r.minY) > 2
                     || abs(f.width - r.width) > 2 || abs(f.height - r.height) > 2
-                guard off else { self.stubborn.remove(id); continue }
+                guard off else { continue }
                 w.setFrame(r)
-                if !self.stubborn.contains(id), let g = w.frame,
-                   abs(g.width - r.width) > 2 || abs(g.height - r.height) > 2 {
-                    Log.info("window \(id) (\(w.bundleID ?? "?")) keeps \(Int(g.width))×\(Int(g.height)) instead of \(Int(r.width))×\(Int(r.height)): minimum size")
-                    self.stubborn.insert(id)
+                retried[id] = r
+            }
+            guard !retried.isEmpty else { return }
+            // Second look a bit later (apps that animate need the time). Whatever
+            // is still bigger than asked is that window's minimum size: remember
+            // it so the stack makes room instead of letting windows overlap.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [unowned self] in
+                var learned = false
+                for (id, r) in retried where self.expected[id] == r {
+                    guard let w = self.windows[id], let g = w.frame,
+                          g.width > r.width + 2 || g.height > r.height + 2 else { continue }
+                    let old = self.minSize[id] ?? .zero
+                    let new = CGSize(width: g.width > r.width + 2 ? max(old.width, g.width) : old.width,
+                                     height: g.height > r.height + 2 ? max(old.height, g.height) : old.height)
+                    guard new != old else { continue }
+                    self.minSize[id] = new
+                    learned = true
+                    Log.info("window \(id) (\(w.bundleID ?? "?")) needs at least \(Int(new.width))×\(Int(new.height)), making room")
                 }
+                // Re-tile once with what we learned; the next check finds nothing new.
+                if learned { self.render() }
             }
         }
     }
