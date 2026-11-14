@@ -27,6 +27,10 @@ final class WindowManager {
     private var lastScreen: [Int: Int] = [:]
     private var refreshPending = false
     private var ignoreFocusEventsUntil = Date.distantPast
+    /// When a window last closed or an app quit. macOS then activates some
+    /// other app on its own; that must not drag us to that app's workspace.
+    private var lastWindowGone = Date.distantPast
+    private var followPending = false
     private let bar = Bar()
     private let menuBarItem = MenuBarItem()
     private var managing = false
@@ -98,6 +102,7 @@ final class WindowManager {
             if let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
                 self.dropObserver(app.processIdentifier)
             }
+            self.lastWindowGone = Date()
             self.scheduleRefresh()
         }
         ws.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [unowned self] _ in
@@ -291,6 +296,9 @@ final class WindowManager {
     }
 
     fileprivate func onAXEvent(_ notification: String) {
+        if notification == kAXUIElementDestroyedNotification {
+            lastWindowGone = Date()
+        }
         if notification == kAXFocusedWindowChangedNotification {
             syncFocusFromSystem(followHidden: true)
         }
@@ -315,6 +323,7 @@ final class WindowManager {
             hidden.remove(id)
             floatRel[id] = nil
             changed = true
+            lastWindowGone = Date()
         }
         for (id, w) in found where ss.workspaceIndex(of: id) == nil {
             if shouldFloat(w) {
@@ -348,13 +357,36 @@ final class WindowManager {
     private func syncFocusFromSystem(followHidden: Bool) {
         guard Date() > ignoreFocusEventsUntil,
               let id = focusedSystemWindow(),
-              let wsIndex = ss.workspaceIndex(of: id) else { return }
+              ss.workspaceIndex(of: id) != nil else { return }
         if ss.focus(id) {
             updateBar()
         } else if followHidden {
-            ss.greedyView(wsIndex)
-            ss.focus(id)
-            render()
+            followHiddenFocus(id)
+        }
+    }
+
+    /// Focus landed on a window of a hidden workspace. If you did that
+    /// (cmd-tab, Dock, clicking a notification) we follow it there, like
+    /// xmonad does. If macOS did it because the window you were using just
+    /// closed, we stay put. The close notification can arrive a little after
+    /// the activation, so decide after a short pause.
+    private func followHiddenFocus(_ id: WindowID) {
+        guard !followPending else { return }
+        followPending = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [unowned self] in
+            self.followPending = false
+            self.refresh()                                   // notices closed windows
+            if Date().timeIntervalSince(self.lastWindowGone) < 1.0 {
+                Log.info("not following focus to window \(id): macOS activated it after a window closed")
+                self.focusCurrent()
+                return
+            }
+            guard self.focusedSystemWindow() == id, let ws = self.ss.workspaceIndex(of: id),
+                  !self.ss.isVisible(workspace: ws) else { return }
+            Log.info("following focus to window \(id) on workspace \(self.ss.workspaces[ws].tag)")
+            self.ss.greedyView(ws)
+            self.ss.focus(id)
+            self.render()
         }
     }
 
