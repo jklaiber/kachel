@@ -106,7 +106,8 @@ final class RoundSixSettingsTests: XCTestCase {
         XCTAssertFalse(s.workspaceBackAndForth)
         XCTAssertEqual(s.workspaceScreens, [:])
         XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt], key: "tab")], .workspaceBack)
-        XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt, .shift], key: "a")], .taller)
+        XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt, .shift], key: "l")], .taller)
+        XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt, .shift], key: "h")], .shorter)
     }
 
     func testValues() throws {

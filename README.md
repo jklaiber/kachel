@@ -102,7 +102,7 @@ Option + q / Return / f / b stay free.
 | `mod-shift-,` / `mod-shift-.` | send focused window to next / previous screen | xmonad |
 | `mod-p` | **window search**: type to find any open window; ↩ go there, ⇧↩ bring it here | xmonad Prompt.Window / dmenu |
 | `mod-tab` | **back and forth** to the workspace this screen showed before | xmonad toggleWS |
-| `mod-a` / `mod-shift-a` | make the focused window shorter / taller in its column | xmonad ResizableTall |
+| `mod-shift-h` / `mod-shift-l` | make the focused window shorter / taller in its column | xmonad ResizableTall |
 | `mod-s` | **scratchpad**: show/hide a floating terminal over any workspace (see `scratchpads:`) | xmonad NamedScratchpad |
 | `mod-shift-f` | toggle fullscreen: show the workspace in Full until pressed again | xmonad ToggleLayouts |
 | `ctrl-alt-←/→/↑/↓` | focus the window in that direction, also across screens | xmonad Navigation2D, AeroSpace |

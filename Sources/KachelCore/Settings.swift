@@ -747,8 +747,8 @@ keys:
   mod-s: scratchpad term    # show/hide the scratchpad terminal
   mod-shift-f: toggle-fullscreen   # mod-f is skhd's
   mod-tab: workspace-back   # back and forth between the last two workspaces
-  mod-a: shorter            # the focused window's height in its column
-  mod-shift-a: taller
+  mod-shift-h: shorter      # the focused window's height in its column
+  mod-shift-l: taller       # (like mod-h / mod-l for the master)
   # Directional focus and swap (mod-arrows would break word jumps in text)
   ctrl-alt-left: focus left
   ctrl-alt-right: focus right
