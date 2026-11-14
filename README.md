@@ -122,6 +122,11 @@ Show Log, Re-tile and Quit.
 
 ## Configuration
 
+The complete config with every option and its explanation is in
+[`config.example.yaml`](config.example.yaml); it's also what Kachel writes on first
+launch, and `Kachel --print-default-config` prints it (handy for a `diff` after an
+upgrade).
+
 Everything lives in `~/.config/kachel/config.yaml`, written with all defaults
 and comments on first launch. Saving the file applies it immediately (Restart in
 the menu bar icon also works). If it has an error, the bar shows it and the previous settings

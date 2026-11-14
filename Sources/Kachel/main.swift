@@ -4,6 +4,12 @@ import KachelCore
 
 let app = NSApplication.shared
 
+// The complete default config with all comments (config.example.yaml in the repo).
+if CommandLine.arguments.contains("--print-default-config") {
+    print(Settings.defaultYAML)
+    exit(0)
+}
+
 // README images: `Kachel --render-screenshots assets/screenshots` (see Screenshots.swift).
 if let i = CommandLine.arguments.firstIndex(of: "--render-screenshots") {
     let dir = CommandLine.arguments.count > i + 1 ? CommandLine.arguments[i + 1] : "assets/screenshots"

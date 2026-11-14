@@ -557,7 +557,7 @@ extension Settings {
 # and the previous settings stay.
 
 # Modifier used by "mod-…" below. Combine cmd, ctrl, alt (= option), shift.
-# Option, like mod1 in your Amethyst config. On a Swiss keyboard this means
+# Option, like Amethyst's mod1. On Swiss and German keyboards this means
 # Option+3/5/6/7/8/9 no longer type # [ ] | { } (use ctrl+alt to keep them).
 mod: alt
 
@@ -699,8 +699,8 @@ rules: []
 #   spawn <shell command>
 # A key mapped to ~ is unbound. This section replaces the defaults as a whole.
 #
-# Taken over from your Amethyst config (mod1 = Option, mod2 = Option+Shift).
-# skhd already uses Option + q / return / f / b, so those stay free.
+# Amethyst-style: mod is Amethyst's mod1 (Option), mod-shift its mod2 (Option+Shift).
+# Option + q / return / f / b are left free (e.g. for skhd).
 keys:
   # Workspaces (Amethyst has no key for this; xmonad's mod-N)
   mod-1: workspace 1
@@ -742,10 +742,10 @@ keys:
   # Amethyst reevaluate-windows
   mod-z: refresh
 
-  # Not in your Amethyst config (xmonad-style extras)
+  # Not in Amethyst (xmonad-style extras)
   mod-p: window-search      # like dmenu / XMonad.Prompt.Window on mod-p
   mod-s: scratchpad term    # show/hide the scratchpad terminal
-  mod-shift-f: toggle-fullscreen   # mod-f is skhd's
+  mod-shift-f: toggle-fullscreen   # mod-f is left free
   mod-tab: workspace-back   # back and forth between the last two workspaces
   mod-shift-h: shorter      # the focused window's height in its column
   mod-shift-l: taller       # (like mod-h / mod-l for the master)

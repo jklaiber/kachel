@@ -1,0 +1,214 @@
+# Kachel configuration  (~/.config/kachel/config.yaml)
+# Saved changes apply immediately. If the file has an error, the bar shows it
+# and the previous settings stay.
+
+# Modifier used by "mod-…" below. Combine cmd, ctrl, alt (= option), shift.
+# Option, like Amethyst's mod1. On Swiss and German keyboards this means
+# Option+3/5/6/7/8/9 no longer type # [ ] | { } (use ctrl+alt to keep them).
+mod: alt
+
+# Workspace names. All monitors share these, like in xmonad.
+workspaces: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+# Layouts cycled by next-layout, in order: tall, wide, three-column, column, full.
+layouts: [tall, wide, three-column, column, full]
+
+gap: 5                    # points between windows and at screen edges
+ratio: 0.5                # master area share for new workspaces
+ratio-step: 0.05          # how much shrink/expand change it
+mouse-follows-focus: window   # pointer to the focused window's centre; screen = only between screens; off
+focus-follows-mouse: false    # true: the window under the pointer gets focus when the pointer rests
+workspace-back-and-forth: false   # true: the key of the workspace you're on goes back to the previous one
+new-windows: end              # where new windows go: end (last in the stack), below / above the
+                              # focused window, or master (xmonad's default is above)
+
+# Pin workspaces to a screen (AeroSpace's workspace-to-monitor assignment):
+# they always show there while that screen is connected. Screens: main (menu
+# bar), external, builtin, 1…n from left to right, or part of the display name.
+workspace-screens: {}
+#   "8": external
+#   "9": external
+menubar-icon: false       # Kachel icon in the top menu bar (same menu as right-clicking the bar)
+
+# Used by the `terminal` command. Examples: "open -na Ghostty",
+# "open -na Alacritty", "open -na kitty", "open -na WezTerm", "open -na iTerm"
+terminal: open -na Alacritty
+
+# Dialogs (windows without a fullscreen button, e.g. preferences, progress
+# windows) float automatically. Terminals are tiled regardless.
+float-dialogs: true
+# Also float windows smaller than this many points in both directions, like
+# Amethyst's float-small-windows (0 = off; true = 500).
+float-small-windows: 0
+
+start-at-login: false     # launch Kachel when you log in (needs Kachel.app in /Applications)
+
+# Bundle IDs whose windows always float (find one with: osascript -e 'id of app "Name"').
+floating:
+  - com.apple.systempreferences
+  - com.apple.calculator
+  - com.apple.archiveutility
+
+# The bar at the bottom of every screen. Click a workspace to show it on that
+# screen; right-click for the menu, where widgets can also be switched on and off.
+bar:
+  enabled: true
+  height: auto            # auto = same as the menu bar at the top, or a number
+  font-size: 13
+  background: transparent # transparent = like the macOS menu bar; blur = frosted glass
+  appearance: auto        # auto = white/black text depending on the wallpaper; light; dark
+  # Widgets, in order: workspaces, layout, title, cpu, memory, network, date, clock.
+  # Leave one out to hide it.
+  left: [workspaces, layout, title]
+  right: [network, cpu, memory, date, clock]
+  hide-empty-workspaces: false
+  date-format: "EEE d MMM"   # Unicode date patterns
+  clock-format: "HH:mm"
+  interval: 2               # seconds between cpu / memory / network updates
+
+# Trackpad swipes switch workspaces on the screen under the pointer. Turn
+# macOS's own swipe off first: System Settings → Trackpad → More Gestures →
+# "Swipe between full-screen applications" → Off (or the other finger count).
+gestures:
+  enabled: true
+  fingers: 3              # 3 or 4
+  skip-empty: true        # swipes skip empty workspaces and ones shown on another screen
+  direction: auto         # auto = like macOS (follows "Natural scrolling"); natural; reversed
+  swipe-left: workspace-next    # natural direction; any command, ~ for nothing
+  swipe-right: workspace-prev
+  swipe-up: ~
+  swipe-down: ~
+
+# Scratchpads, like xmonad's NamedScratchpad: one key shows the window
+# floating over whatever workspace you're on, the same key hides it again.
+# If it isn't open yet, `run` starts it.
+#   name      used by the command: scratchpad <name>
+#   app       bundle ID or app name of its window; title (optional) narrows it down
+#   size      [width, height] as shares of the screen; position: center or top
+scratchpads:
+  - name: term
+    app: org.alacritty
+    title: scratchpad
+    run: open -na Alacritty --args --title scratchpad -o window.dynamic_title=false
+    size: [0.6, 0.55]
+  # - name: notes
+  #   app: com.apple.Notes
+  #   run: open -a Notes
+  #   size: [0.45, 0.7]
+
+# A frame around the focused window, so you always see where you are.
+border:
+  enabled: true
+  width: 3
+  color: accent           # accent = your macOS accent colour, or "#RRGGBB"
+  radius: auto            # auto = follow each window's corners, or a number
+  smart: false            # true: no frame when a window is alone on its screen
+
+# Rules, like xmonad's manageHook: where an app's windows open, or whether
+# they float. mod-shift-p sets one for the focused app and writes it here.
+#   - app: com.tinyspeck.slackmacgap   # bundle ID or app name
+#     workspace: 9
+#   - app: Calculator
+#     float: true
+#   - app: com.google.Chrome
+#     title: "Meet"                    # only windows whose title contains this
+#     workspace: 5
+rules: []
+
+# Keys: <modifiers>-<key>: <command>.  Modifiers: mod, cmd, ctrl, alt, shift.
+# Key names: a–z, 0–9, return, tab, space, escape, delete, left, right, up,
+# down, f1–f12, comma, period, slash, minus, equal, semicolon, quote,
+# leftbracket, rightbracket, backslash, grave. Letters follow your keyboard
+# layout (on a Swiss keyboard "z" is the key labelled Z).
+#
+# Commands:
+#   workspace N            greedyView: show workspace N here (swaps screens if it is visible elsewhere)
+#   view N                 like xmonad's W.view: jump to the screen already showing N
+#   shift N                send the focused window to workspace N
+#   workspace-next / workspace-prev    show the next / previous workspace here
+#   shift-next / shift-prev            send the focused window to the next / previous workspace
+#   focus-screen N         shift-to-screen N
+#   focus-next-screen      focus-prev-screen
+#   shift-to-next-screen   shift-to-prev-screen
+#   focus-down  focus-up  focus-master  swap-down  swap-up  swap-master
+#   next-layout  shrink  expand  inc-master  dec-master  toggle-float
+#   workspace-back         the workspace this screen showed before (xmonad toggleWS)
+#   taller  shorter        the focused window's share of its column (xmonad ResizableTall)
+#   reset-sizes            equal sizes and the default split again
+#   focus left|right|up|down   focus the window in that direction (across screens)
+#   swap left|right|up|down    swap the focused window with the one in that direction
+#   toggle-fullscreen      show the workspace in Full until toggled back
+#   scratchpad <name>      show or hide a scratchpad (see scratchpads:)
+#   window-search          search all open windows and jump to one
+#   app-rule               choose the workspace the focused app always opens on
+#   refresh  close  terminal  reload  restart  quit
+#   spawn <shell command>
+# A key mapped to ~ is unbound. This section replaces the defaults as a whole.
+#
+# Amethyst-style: mod is Amethyst's mod1 (Option), mod-shift its mod2 (Option+Shift).
+# Option + q / return / f / b are left free (e.g. for skhd).
+keys:
+  # Workspaces (Amethyst has no key for this; xmonad's mod-N)
+  mod-1: workspace 1
+  mod-2: workspace 2
+  mod-3: workspace 3
+  mod-4: workspace 4
+  mod-5: workspace 5
+  mod-6: workspace 6
+  mod-7: workspace 7
+  mod-8: workspace 8
+  mod-9: workspace 9
+  # Amethyst throw-space-N
+  mod-shift-1: shift 1
+  mod-shift-2: shift 2
+  mod-shift-3: shift 3
+  mod-shift-4: shift 4
+  mod-shift-5: shift 5
+  mod-shift-6: shift 6
+  mod-shift-7: shift 7
+  mod-shift-8: shift 8
+  mod-shift-9: shift 9
+  # Amethyst throw-space-left / -right
+  mod-shift-left: shift-prev
+  mod-shift-right: shift-next
+
+  # Amethyst focus-cw / focus-ccw, swap-cw / swap-ccw
+  mod-j: focus-down
+  mod-k: focus-up
+  mod-shift-j: swap-down
+  mod-shift-k: swap-up
+  # Amethyst shrink-main / expand-main
+  mod-h: shrink
+  mod-l: expand
+  # Amethyst cycle-layout
+  mod-shift-space: next-layout
+  # Amethyst focus-screen-cw
+  mod-comma: focus-next-screen
+  mod-period: focus-prev-screen
+  # Amethyst reevaluate-windows
+  mod-z: refresh
+
+  # Not in Amethyst (xmonad-style extras)
+  mod-p: window-search      # like dmenu / XMonad.Prompt.Window on mod-p
+  mod-s: scratchpad term    # show/hide the scratchpad terminal
+  mod-shift-f: toggle-fullscreen   # mod-f is left free
+  mod-tab: workspace-back   # back and forth between the last two workspaces
+  mod-shift-h: shorter      # the focused window's height in its column
+  mod-shift-l: taller       # (like mod-h / mod-l for the master)
+  # Directional focus and swap (mod-arrows would break word jumps in text)
+  ctrl-alt-left: focus left
+  ctrl-alt-right: focus right
+  ctrl-alt-up: focus up
+  ctrl-alt-down: focus down
+  ctrl-alt-shift-left: swap left
+  ctrl-alt-shift-right: swap right
+  ctrl-alt-shift-up: swap up
+  ctrl-alt-shift-down: swap down
+  mod-shift-p: app-rule     # "always open this app on workspace N" (writes rules: above)
+  mod-shift-comma: shift-to-next-screen
+  mod-shift-period: shift-to-prev-screen
+  mod-m: focus-master
+  mod-shift-m: swap-master
+  mod-t: toggle-float
+  mod-shift-r: restart
+  mod-shift-q: quit
