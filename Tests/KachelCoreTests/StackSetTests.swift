@@ -177,12 +177,20 @@ final class MinimumSizeTests: XCTestCase {
         XCTAssertEqual(Layout.distribute(900, [400, 280, nil]), [400, 280, 220])
     }
 
-    func testDistributeWhenItCannotFit() {
-        // Hermes 620 + Chrome 375 > 906: free part keeps 10%, the rest shrinks evenly.
-        let d = Layout.distribute(900, [620, 375, nil])
-        XCTAssertEqual(d.reduce(0, +), 900, accuracy: 0.01)
-        XCTAssertEqual(d[2], 90, accuracy: 0.01)
-        XCTAssertEqual(d[0] / d[1], 620.0 / 375.0, accuracy: 0.01)
+    func testWhenItCannotFitWindowsOverlapEvenlyAndStayOnScreen() {
+        // Your stack: Claude 400 + VS Code 270 + Chrome 375 in 906.
+        let cells = Layout.arrange(906, [400, 270, 375])
+        XCTAssertEqual(cells.map(\.length), [400, 270, 375])          // nobody shrinks below its minimum
+        XCTAssertEqual(cells[0].offset, 0)
+        XCTAssertEqual(cells[2].offset + cells[2].length, 906, accuracy: 0.01)   // last one ends at the edge
+        let overlap01 = cells[0].offset + cells[0].length - cells[1].offset
+        let overlap12 = cells[1].offset + cells[1].length - cells[2].offset
+        XCTAssertEqual(overlap01, overlap12, accuracy: 0.01)            // evenly
+    }
+
+    func testArrangeBackToBackWhenItFits() {
+        let cells = Layout.arrange(900, [nil, 375, nil])
+        XCTAssertEqual(cells.map(\.offset), [0, 262.5, 637.5])
     }
 
     func testTallStackUsesMinimums() {

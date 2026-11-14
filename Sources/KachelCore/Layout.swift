@@ -40,22 +40,35 @@ public enum Layout {
     /// k windows side by side (mirrored) or on top of each other.
     static func stack(_ k: Int, _ r: CGRect, _ mirrored: Bool, _ mins: [CGSize?] = []) -> [CGRect] {
         let total = mirrored ? r.width : r.height
-        let lengths = distribute(total, (0..<k).map { i in
+        let start = mirrored ? r.minX : r.minY
+        return arrange(total, (0..<k).map { i in
             i < mins.count ? mins[i].map { mirrored ? $0.width : $0.height } : nil
-        })
+        }).map { cell in
+            mirrored
+                ? CGRect(x: start + cell.offset, y: r.minY, width: cell.length, height: r.height)
+                : CGRect(x: r.minX, y: start + cell.offset, width: r.width, height: cell.length)
+        }
+    }
+
+    /// Where each part goes: back to back when they fit. When the minimums
+    /// can't all fit, every window keeps its size and they overlap evenly,
+    /// so the last one still ends at the edge (nothing hangs off screen).
+    public static func arrange(_ total: CGFloat, _ mins: [CGFloat?]) -> [(offset: CGFloat, length: CGFloat)] {
+        let lengths = distribute(total, mins)
+        let k = lengths.count
+        let overflow = max(0, lengths.reduce(0, +) - total)
+        let pullBack = k > 1 ? overflow / CGFloat(k - 1) : 0
         var offset: CGFloat = 0
-        return lengths.map { len in
-            defer { offset += len }
-            return mirrored
-                ? CGRect(x: r.minX + offset, y: r.minY, width: len, height: r.height)
-                : CGRect(x: r.minX, y: r.minY + offset, width: r.width, height: len)
+        return lengths.enumerated().map { i, len in
+            defer { offset += len - pullBack }
+            return (offset: k == 1 ? 0 : offset, length: k == 1 ? min(len, total) : len)
         }
     }
 
     /// Split `total` into equal parts, except that parts with a minimum get at
     /// least that (the others share what's left). If the minimums can't all
-    /// fit, every unconstrained part keeps 10% and the minimums shrink
-    /// proportionally into the rest: the windows will overlap, but evenly.
+    /// fit, they keep their size, unconstrained parts get 10%, and the sum is
+    /// more than `total` (arrange() overlaps them).
     public static func distribute(_ total: CGFloat, _ mins: [CGFloat?]) -> [CGFloat] {
         let k = mins.count
         guard k > 0 else { return [] }
@@ -71,9 +84,7 @@ public enum Layout {
         let used = fixed.values.reduce(0, +)
         let floor = total * 0.1
         if used > total - floor * CGFloat(free.count) {
-            let room = max(0, total - floor * CGFloat(free.count))
-            let scale = used > 0 ? room / used : 0
-            return (0..<k).map { fixed[$0].map { $0 * scale } ?? floor }
+            return (0..<k).map { fixed[$0] ?? floor }
         }
         let share = free.isEmpty ? 0 : (total - used) / CGFloat(free.count)
         return (0..<k).map { fixed[$0] ?? share }
