@@ -59,5 +59,8 @@ final class HotKeys {
         actions.removeAll()
     }
 
-    fileprivate func fire(_ id: UInt32) { actions[id]?() }
+    fileprivate func fire(_ id: UInt32) {
+        Log.info("hotkey \(id) pressed")
+        actions[id]?()
+    }
 }

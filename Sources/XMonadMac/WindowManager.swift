@@ -135,7 +135,24 @@ final class WindowManager {
             ss.insert(id, into: target)
         }
         windows = found
+        Log.info("adopted \(found.count) windows on \(screens.count) screens")
         render()
+        dumpState()
+    }
+
+    /// Write the whole model to the log (also triggered externally, see main.swift).
+    func dumpState() {
+        Log.info("state: managing=\(managing) currentScreen=\(ss.currentScreen) screens→ws=\(ss.screenWorkspace)")
+        for (i, s) in screens.enumerated() { Log.info("  screen \(i): frame=\(s.frame) visible=\(s.visible)") }
+        for ws in ss.workspaces where !ws.windows.isEmpty {
+            let list = ws.windows.map { id -> String in
+                let w = windows[id]
+                let tag = (ss.floating.contains(id) ? "F" : "") + (hidden.contains(id) ? "H" : "")
+                return "\(id)\(tag.isEmpty ? "" : "[\(tag)]") \(w?.bundleID ?? "?") \"\(w?.title.prefix(30) ?? "")\" \(w?.frame.map { "\($0)" } ?? "noframe")"
+            }
+            Log.info("  ws \(ws.tag) \(ws.layout.rawValue) focused=\(ws.focused.map(String.init) ?? "-"):")
+            list.forEach { Log.info("    \($0)") }
+        }
     }
 
     func quit() {
@@ -283,6 +300,7 @@ final class WindowManager {
     // MARK: - actions (bound in Config.swift)
 
     func perform(_ cmd: Command) {
+        Log.info("command \(cmd)")
         guard managing else {
             Log.info("ignoring \(cmd): no Accessibility permission yet")
             if case .quit = cmd { quit() }

@@ -86,6 +86,9 @@ final class AXWindow {
             setPosition(r.origin)
             setSize(r.size)
         }
+        if let f = frame, abs(f.minX - r.minX) > 2 || abs(f.minY - r.minY) > 2 {
+            Log.info("window \(id) (\(bundleID ?? "?")) asked for \(r), is at \(f)")
+        }
     }
 
     func move(to p: CGPoint) {
@@ -116,7 +119,8 @@ final class AXWindow {
     private func setPosition(_ p: CGPoint) {
         var p = p
         if let v = AXValueCreate(.cgPoint, &p) {
-            AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, v)
+            let err = AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, v)
+            if err != .success { Log.info("window \(id): set position failed (AXError \(err.rawValue))") }
         }
     }
 
