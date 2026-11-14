@@ -1,5 +1,5 @@
 import AppKit
-import XMonadCore
+import KachelCore
 
 /// A second menu bar along the bottom of every screen, just above the Dock.
 /// Same height, font and translucency as the real one at the top.

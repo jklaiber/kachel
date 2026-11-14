@@ -1,5 +1,5 @@
 import XCTest
-@testable import XMonadCore
+@testable import KachelCore
 
 final class RulesTests: XCTestCase {
     func testParseAndMatch() throws {
@@ -88,7 +88,7 @@ final class TopLevelEditTests: XCTestCase {
     func testToggleMenubarIcon() throws {
         let on = Settings.setTopLevel(Settings.defaultYAML, key: "menubar-icon", value: "true")
         XCTAssertTrue(try Settings.parse(on).menubarIcon)
-        XCTAssertTrue(on.contains("menubar-icon: true") && on.contains("# XMonadMac icon in the top menu bar"))
+        XCTAssertTrue(on.contains("menubar-icon: true") && on.contains("# Kachel icon in the top menu bar"))
         let off = Settings.setTopLevel(on, key: "menubar-icon", value: "false")
         XCTAssertFalse(try Settings.parse(off).menubarIcon)
         XCTAssertEqual(try Settings.parse(off).keys.count, 37)

@@ -1,6 +1,6 @@
 import AppKit
 import ApplicationServices
-import XMonadCore
+import KachelCore
 
 // Private but stable API used by Amethyst, yabai and AeroSpace to get a
 // window's CGWindowID from its Accessibility element.

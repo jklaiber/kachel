@@ -1,5 +1,5 @@
 import Carbon.HIToolbox
-import XMonadCore
+import KachelCore
 
 /// Turns config key names into virtual key codes.
 enum KeyCodes {

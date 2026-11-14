@@ -1,6 +1,6 @@
 import AppKit
 import ApplicationServices
-import XMonadCore
+import KachelCore
 
 /// AX callback: just forwards to the manager.
 private let axCallback: AXObserverCallback = { _, _, notification, _ in
@@ -83,7 +83,7 @@ final class WindowManager {
     /// Shared by the menu bar icon and the bar's right-click menu.
     private func menuEntries() -> [(title: String, action: () -> Void)] {
         [
-            ("Restart XMonadMac", { [unowned self] in self.restart() }),
+            ("Restart Kachel", { [unowned self] in self.restart() }),
             ("Reload Config", { [unowned self] in self.reload() }),
             ("Edit Config…", { Config.openInEditor() }),
             ("Show Log", { NSWorkspace.shared.open(Log.url) }),
@@ -91,7 +91,7 @@ final class WindowManager {
             ("Re-tile", { [unowned self] in self.refreshNow() }),
             ("Open Accessibility Settings…", { WindowManager.openAccessibilitySettings() }),
             ("-", {}),
-            ("Quit XMonadMac", { [unowned self] in self.quit() }),
+            ("Quit Kachel", { [unowned self] in self.quit() }),
         ]
     }
 
@@ -327,7 +327,7 @@ final class WindowManager {
     // MARK: - state across restarts
 
     private static let stateURL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/XMonadMac/state.json")
+        .appendingPathComponent("Library/Application Support/Kachel/state.json")
 
     private func saveSnapshot() {
         do {
@@ -766,7 +766,7 @@ final class WindowManager {
     private func updateBar() {
         var warning: String?
         if !managing {
-            warning = "XMonadMac needs Accessibility permission. Right-click → Open Accessibility Settings, then switch XMonadMac on."
+            warning = "Kachel needs Accessibility permission. Right-click → Open Accessibility Settings, then switch Kachel on."
         } else if let e = Config.error {
             warning = "config: \(e)"
         } else if let p = hotkeyProblems.first {

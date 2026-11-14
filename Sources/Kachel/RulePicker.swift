@@ -1,5 +1,5 @@
 import AppKit
-import XMonadCore
+import KachelCore
 
 /// "Always open <app> on …": a small panel rising from the bar.
 /// 1–9 pick a workspace, F toggles floating, ⌫ removes the rule, esc cancels.

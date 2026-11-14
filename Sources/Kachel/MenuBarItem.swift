@@ -1,6 +1,6 @@
 import AppKit
 
-/// XMonadMac's icon in the top menu bar: restart, reload, quit and friends.
+/// Kachel's icon in the top menu bar: restart, reload, quit and friends.
 final class MenuBarItem: NSObject, NSMenuDelegate {
     private var item: NSStatusItem?
     private var actions: [() -> Void] = []
@@ -10,10 +10,10 @@ final class MenuBarItem: NSObject, NSMenuDelegate {
     func setVisible(_ visible: Bool) {
         if visible, item == nil {
             let it = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-            let img = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "XMonadMac")
+            let img = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: "Kachel")
             img?.isTemplate = true
             it.button?.image = img
-            it.button?.toolTip = "XMonadMac"
+            it.button?.toolTip = "Kachel"
             let menu = NSMenu()
             menu.delegate = self
             it.menu = menu

@@ -1,7 +1,7 @@
 import AppKit
-import XMonadCore
+import KachelCore
 
-/// Loads ~/.config/xmonadmac/config.yaml, writes the commented default on
+/// Loads ~/.config/kachel/config.yaml, writes the commented default on
 /// first launch, and notices when the file is saved.
 enum Config {
     /// The settings in effect. Starts with the built-in defaults.
@@ -12,7 +12,7 @@ enum Config {
     static let url: URL = {
         let base = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"].map(URL.init(fileURLWithPath:))
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config")
-        return base.appendingPathComponent("xmonadmac/config.yaml")
+        return base.appendingPathComponent("kachel/config.yaml")
     }()
 
     private static var lastModified: Date?
@@ -21,6 +21,7 @@ enum Config {
     @discardableResult
     static func load(force: Bool = false) -> Bool {
         let fm = FileManager.default
+        migrateFromXMonadMac()
         if !fm.fileExists(atPath: url.path) {
             do {
                 try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -96,6 +97,27 @@ enum Config {
             Log.info("config: \(key) = \(value)")
         } catch {
             Log.info("could not update config: \(error)")
+        }
+    }
+
+    /// Kachel used to be called XMonadMac: bring its config over once, so
+    /// keys, rules and bar settings survive the rename. The old file stays.
+    private static func migrateFromXMonadMac() {
+        let fm = FileManager.default
+        let old = url.deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("xmonadmac/config.yaml")
+        guard !fm.fileExists(atPath: url.path), fm.fileExists(atPath: old.path),
+              var text = try? String(contentsOf: old, encoding: .utf8) else { return }
+        text = text
+            .replacingOccurrences(of: "# XMonadMac configuration  (~/.config/xmonadmac/config.yaml)",
+                                  with: "# Kachel configuration  (~/.config/kachel/config.yaml)")
+            .replacingOccurrences(of: "# XMonadMac icon in the top menu bar", with: "# Kachel icon in the top menu bar")
+        do {
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            Log.info("moved config from \(old.path) to \(url.path) (the old file can be deleted)")
+        } catch {
+            Log.info("could not move old config: \(error)")
         }
     }
 

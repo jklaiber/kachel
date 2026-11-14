@@ -1,7 +1,7 @@
 import Foundation
 import Yams
 
-// Settings come from ~/.config/xmonadmac/config.yaml. The default file below is
+// Settings come from ~/.config/kachel/config.yaml. The default file below is
 // the single source of truth: it is written to disk on first launch and is
 // also what any missing setting falls back to.
 
@@ -334,7 +334,7 @@ public struct Settings {
 
 extension Settings {
     public static let defaultYAML = #"""
-# XMonadMac configuration  (~/.config/xmonadmac/config.yaml)
+# Kachel configuration  (~/.config/kachel/config.yaml)
 # Saved changes apply immediately. If the file has an error, the bar shows it
 # and the previous settings stay.
 
@@ -353,7 +353,7 @@ gap: 5                    # points between windows and at screen edges
 ratio: 0.5                # master area share for new workspaces
 ratio-step: 0.05          # how much shrink/expand change it
 mouse-follows-focus: true # warp the pointer when focus moves to another screen
-menubar-icon: false       # XMonadMac icon in the top menu bar (same menu as right-clicking the bar)
+menubar-icon: false       # Kachel icon in the top menu bar (same menu as right-clicking the bar)
 
 # Used by the `terminal` command. Examples: "open -na Ghostty",
 # "open -na Alacritty", "open -na kitty", "open -na WezTerm", "open -na iTerm"

@@ -1,6 +1,6 @@
 import XCTest
 import CoreGraphics
-@testable import XMonadCore
+@testable import KachelCore
 
 final class StackSetTests: XCTestCase {
     func makeTwoScreens() -> StackSet {

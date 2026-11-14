@@ -2,16 +2,16 @@
 import PackageDescription
 
 let package = Package(
-    name: "XMonadMac",
+    name: "Kachel",
     platforms: [.macOS(.v13)],
     dependencies: [
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
     ],
     targets: [
         // Pure model: StackSet, layouts, settings parsing. No AppKit, fully unit-testable.
-        .target(name: "XMonadCore", dependencies: ["Yams"]),
+        .target(name: "KachelCore", dependencies: ["Yams"]),
         // The actual window manager (Accessibility API, hotkeys, bar).
-        .executableTarget(name: "XMonadMac", dependencies: ["XMonadCore"]),
-        .testTarget(name: "XMonadCoreTests", dependencies: ["XMonadCore"]),
+        .executableTarget(name: "Kachel", dependencies: ["KachelCore"]),
+        .testTarget(name: "KachelCoreTests", dependencies: ["KachelCore"]),
     ]
 )

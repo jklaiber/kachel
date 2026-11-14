@@ -1,5 +1,5 @@
 import XCTest
-@testable import XMonadCore
+@testable import KachelCore
 
 final class WindowSearchTests: XCTestCase {
     let windows: [WindowSearch.Candidate] = [
@@ -7,7 +7,7 @@ final class WindowSearchTests: XCTestCase {
         .init(id: 2, app: "Google Chrome", title: "Julian Klaiber — Software", workspace: 1, recency: 1, isFocused: false),
         .init(id: 3, app: "Hermes", title: "Hermes", workspace: 1, recency: 3, isFocused: false),
         .init(id: 4, app: "Code", title: "home-stack — chronyd.conf", workspace: 2, recency: 2, isFocused: false),
-        .init(id: 5, app: "Google Chrome", title: "GitHub — xmonadmac", workspace: 4, recency: 4, isFocused: false),
+        .init(id: 5, app: "Google Chrome", title: "GitHub — kachel", workspace: 4, recency: 4, isFocused: false),
     ]
 
     func testEmptyQueryIsOverviewByWorkspace() {
@@ -22,7 +22,7 @@ final class WindowSearchTests: XCTestCase {
 
     func testWordStartsAcrossTitle() {
         XCTAssertEqual(WindowSearch.results("hs", in: windows).first?.id, 4)     // home-stack
-        XCTAssertEqual(WindowSearch.results("xmon", in: windows).map(\.id), [5])
+        XCTAssertEqual(WindowSearch.results("kach", in: windows).map(\.id), [5])
     }
 
     func testMultipleWordsMustAllMatch() {

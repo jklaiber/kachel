@@ -1,6 +1,6 @@
 import AppKit
 import ApplicationServices
-import XMonadCore
+import KachelCore
 
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)   // no Dock icon, no menu bar item: just our bar
@@ -16,9 +16,9 @@ for sig in [SIGINT, SIGTERM, SIGHUP] {
 }
 
 // Debug hooks for scripts:
-//   xmonadmac-ctl dump              → state into ~/Library/Logs/XMonadMac.log
-//   xmonadmac-ctl "workspace 2"     → run any config command
-DistributedNotificationCenter.default().addObserver(forName: .init("local.xmonadmac.ctl"), object: nil, queue: .main) { note in
+//   kachel-ctl dump              → state into ~/Library/Logs/Kachel.log
+//   kachel-ctl "workspace 2"     → run any config command
+DistributedNotificationCenter.default().addObserver(forName: .init("io.github.jklaiber.kachel.ctl"), object: nil, queue: .main) { note in
     let text = (note.object as? String) ?? ""
     Log.info("ctl: \(text)")
     if text == "dump" { WindowManager.shared.dumpState(); return }

@@ -1,10 +1,10 @@
 import Foundation
 
-/// Appends to ~/Library/Logs/XMonadMac.log (and the unified log), so there is
+/// Appends to ~/Library/Logs/Kachel.log (and the unified log), so there is
 /// always something to look at when "nothing works".
 enum Log {
     static let url = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Logs/XMonadMac.log")
+        .appendingPathComponent("Library/Logs/Kachel.log")
     private static let handle: FileHandle? = {
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         if !FileManager.default.fileExists(atPath: url.path) {
@@ -21,7 +21,7 @@ enum Log {
     }()
 
     static func info(_ message: String) {
-        NSLog("XMonadMac: %@", message)
+        NSLog("Kachel: %@", message)
         let line = "\(stamp.string(from: Date()))  \(message)\n"
         handle?.write(line.data(using: .utf8)!)
     }

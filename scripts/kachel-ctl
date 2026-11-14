@@ -1,6 +1,6 @@
 #!/usr/bin/env swift
-// Send a command to the running XMonadMac:  xmonadmac-ctl dump | "workspace 2" | "focus-down" …
+// Send a command to the running Kachel:  kachel-ctl dump | "workspace 2" | "focus-down" …
 import Foundation
 let text = CommandLine.arguments.dropFirst().joined(separator: " ")
-DistributedNotificationCenter.default().postNotificationName(.init("local.xmonadmac.ctl"), object: text,
+DistributedNotificationCenter.default().postNotificationName(.init("io.github.jklaiber.kachel.ctl"), object: text,
                                                              userInfo: nil, deliverImmediately: true)

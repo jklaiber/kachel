@@ -1,4 +1,9 @@
-# XMonadMac
+<p align="center"><img src="assets/icon.svg" width="128" alt="Kachel icon: a green tiled stove"></p>
+
+# Kachel
+
+*Kachel* is German for tile, as in a *Kachelofen*, the tiled stove in the icon:
+nine glazed tiles for nine workspaces.
 
 A small native macOS tiling window manager that copies xmonad's workspace model:
 9 workspaces shared by all monitors, each monitor showing one of them, and
@@ -14,21 +19,21 @@ on screen B, the two screens swap: A shows 2 and B shows 1, just like xmonad.
 
 ## How it works
 
-macOS Spaces can't be scripted reliably without disabling SIP, so XMonadMac
+macOS Spaces can't be scripted reliably without disabling SIP, so Kachel
 doesn't use them. All windows live on one Space per display. Windows of hidden
 workspaces are parked in a screen corner with one pixel showing (the same
 approach AeroSpace uses). Switching is instant and workspaces can move freely
 between monitors.
 
 ```
-Sources/XMonadCore/StackSet.swift   pure model: workspaces, screens, greedyView, shift, …
-Sources/XMonadCore/Layout.swift     Tall, Wide, Column, Full
-Sources/XMonadCore/Settings.swift   config.yaml parsing + the default config
-Sources/XMonadMac/Config.swift      loads ~/.config/xmonadmac/config.yaml, reloads on save
-Sources/XMonadMac/WindowManager.swift  Accessibility API glue, tracking, rendering
-Sources/XMonadMac/AX.swift          AXUIElement helpers, screens
-Sources/XMonadMac/HotKeys.swift     global hotkeys (Carbon RegisterEventHotKey)
-Sources/XMonadMac/Bar.swift         xmobar-like bar at the bottom of every screen
+Sources/KachelCore/StackSet.swift   pure model: workspaces, screens, greedyView, shift, …
+Sources/KachelCore/Layout.swift     Tall, Wide, Column, Full
+Sources/KachelCore/Settings.swift   config.yaml parsing + the default config
+Sources/Kachel/Config.swift      loads ~/.config/kachel/config.yaml, reloads on save
+Sources/Kachel/WindowManager.swift  Accessibility API glue, tracking, rendering
+Sources/Kachel/AX.swift          AXUIElement helpers, screens
+Sources/Kachel/HotKeys.swift     global hotkeys (Carbon RegisterEventHotKey)
+Sources/Kachel/Bar.swift         xmobar-like bar at the bottom of every screen
 ```
 
 ## Build and run
@@ -37,8 +42,8 @@ Requires macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`).
 
 ```sh
 swift test                 # model tests (greedyView, shift, layouts, …)
-./scripts/bundle.sh        # builds build/XMonadMac.app
-open build/XMonadMac.app
+./scripts/bundle.sh        # builds build/Kachel.app
+open build/Kachel.app
 ```
 
 On first launch, macOS asks for **Accessibility** permission. Grant it in
@@ -50,7 +55,7 @@ macOS asks again on the next launch. To keep the grant across rebuilds, sign
 with a real certificate: `SIGN_IDENTITY="Apple Development: …" ./scripts/bundle.sh`.
 
 **Quit Amethyst/yabai first**, since two tilers will fight each other. To start at
-login, add `XMonadMac.app` under System Settings → General → Login Items.
+login, add `Kachel.app` under System Settings → General → Login Items.
 
 ### Recommended macOS settings
 
@@ -83,7 +88,7 @@ Option + q / Return / f / b stay free.
 | `mod-shift-p` | **app rule**: always open the focused app on workspace N (1–9), F float, ⌫ remove; saved under `rules:` | xmonad manageHook |
 | `mod-m` / `mod-shift-m` | focus / swap with master | xmonad |
 | `mod-t` | toggle floating | xmonad |
-| `mod-shift-r` | restart XMonadMac (windows keep their workspaces) | |
+| `mod-shift-r` | restart Kachel (windows keep their workspaces) | |
 | `mod-shift-q` | quit (restores all parked windows first) | xmonad |
 
 Map keys to `view N` instead of `workspace N` for i3-style `W.view` (jump to the
@@ -95,7 +100,7 @@ Show Log, Re-tile and Quit.
 
 ## Configuration
 
-Everything lives in `~/.config/xmonadmac/config.yaml`, written with all defaults
+Everything lives in `~/.config/kachel/config.yaml`, written with all defaults
 and comments on first launch. Saving the file applies it immediately (Restart in
 the menu bar icon also works). If it has an error, the bar shows it and the previous settings
 stay in effect. Example:
@@ -144,7 +149,7 @@ Edit Config, Show Log, Re-tile and Quit. `bar: {enabled: false}` removes the bar
 
 Problems (missing Accessibility permission, config errors, hotkeys taken by
 another app) appear in the bar in orange. The log is at
-`~/Library/Logs/XMonadMac.log`.
+`~/Library/Logs/Kachel.log`.
 
 ## Known limitations (v0.1)
 

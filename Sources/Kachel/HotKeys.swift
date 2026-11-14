@@ -1,6 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
-import XMonadCore
+import KachelCore
 
 /// Global hotkeys via Carbon's RegisterEventHotKey. Needs no permission at
 /// all, and keys are swallowed so they never reach the focused app.
@@ -10,7 +10,7 @@ final class HotKeys {
     private var actions: [UInt32: () -> Void] = [:]
     private var refs: [EventHotKeyRef] = []
     private var nextID: UInt32 = 1
-    private let signature: OSType = 0x584D_4F4E // "XMON"
+    private let signature: OSType = 0x4B43_484C // "KCHL"
 
     private init() {
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),

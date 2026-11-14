@@ -1,5 +1,5 @@
 import AppKit
-import XMonadCore
+import KachelCore
 
 /// Spotlight-like search over all open windows, rising out of the bottom bar.
 /// Empty query: every window grouped by workspace. Typing: best matches first.
