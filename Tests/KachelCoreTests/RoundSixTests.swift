@@ -41,6 +41,16 @@ final class WeightsAndThreeColumnTests: XCTestCase {
                        Layout.tile(.tall, count: 2, in: screen, nMaster: 1, ratio: 0.5, gap: 0))
     }
 
+    func testWideWindowStaysOnScreen() {
+        // Claude needs 600 wide but the right column is only ~300: it grows
+        // towards the middle and ends at the screen edge.
+        let r = Layout.tile(.threeColumn, count: 3, in: screen, nMaster: 1, ratio: 0.5, gap: 6,
+                            minSizes: [nil, CGSize(width: 600, height: 0), nil])
+        XCTAssertEqual(r[1].width, 600)
+        XCTAssertLessThanOrEqual(r[1].maxX, 1200 - 6)
+        XCTAssertGreaterThanOrEqual(r[1].minX, 6)
+    }
+
     func testThreeColumnRatioRoundTrip() {
         let r = Layout.tile(.threeColumn, count: 4, in: screen, nMaster: 1, ratio: 0.4, gap: 6)
         for i in 0..<4 {
@@ -115,5 +125,22 @@ final class RoundSixSettingsTests: XCTestCase {
         XCTAssertEqual(try Settings.parse("mouse-follows-focus: false").mouseFollowsFocus, .off)
         XCTAssertThrowsError(try Settings.parse("workspace-screens:\n  \"12\": external"))
         XCTAssertThrowsError(try Settings.parse("mouse-follows-focus: sometimes"))
+    }
+}
+
+
+final class MasterSkipsFloatingTests: XCTestCase {
+    func testMasterIsFirstTiledWindow() {
+        var ss = StackSet(tags: ["1"], screenCount: 1)
+        ss.insert(3); ss.insert(2); ss.insert(1)             // [1,2,3]
+        ss.floating.insert(1)                                // a floating dialog in front
+        ss.focusMaster()
+        XCTAssertEqual(ss.current.focused, 2)
+        ss.focus(3)
+        ss.swapMaster()
+        XCTAssertEqual(ss.current.windows, [1, 3, 2])        // the dialog stays where it is
+        ss.focus(1)
+        ss.swapMaster()                                      // floating: no-op
+        XCTAssertEqual(ss.current.windows, [1, 3, 2])
     }
 }

@@ -42,7 +42,26 @@ public enum Layout {
                     : CGRect(x: g.rect.minX, y: start + cell.offset, width: g.rect.width, height: cell.length)
             }
         }
-        return cells.map { $0.insetBy(dx: gap / 2, dy: gap / 2).integral }
+        return cells.enumerated().map { i, c in
+            var r = c.insetBy(dx: gap / 2, dy: gap / 2)
+            // A window can't be smaller than its minimum, across the group
+            // either (e.g. too wide for a side column): it grows towards the
+            // middle and is kept inside the screen instead of hanging off it.
+            if i < minSizes.count, let m = minSizes[i] {
+                let inner = area.insetBy(dx: gap / 2, dy: gap / 2)
+                if m.width > r.width {
+                    let w = min(m.width, inner.width)
+                    r.origin.x = min(max(r.midX - w / 2, inner.minX), inner.maxX - w)
+                    r.size.width = w
+                }
+                if m.height > r.height {
+                    let h = min(m.height, inner.height)
+                    r.origin.y = min(max(r.midY - h / 2, inner.minY), inner.maxY - h)
+                    r.size.height = h
+                }
+            }
+            return r.integral
+        }
     }
 
     static func groups(_ kind: LayoutKind, _ n: Int, _ area: CGRect, _ nMaster: Int, _ ratio: Double) -> [Group] {

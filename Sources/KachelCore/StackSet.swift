@@ -216,14 +216,20 @@ public struct StackSet {
     public mutating func swapDown() { swapFocused(+1) }
     public mutating func swapUp() { swapFocused(-1) }
 
+    /// The master is the first *tiled* window; floating windows never are.
     public mutating func focusMaster() {
-        modifyCurrent { ws in ws.focused = ws.windows.first }
+        let floating = self.floating
+        modifyCurrent { ws in
+            if let m = ws.windows.first(where: { !floating.contains($0) }) { ws.focused = m }
+        }
     }
 
     public mutating func swapMaster() {
+        let floating = self.floating
         modifyCurrent { ws in
-            guard let f = ws.focused, let i = ws.windows.firstIndex(of: f), i > 0 else { return }
-            ws.windows.swapAt(0, i)
+            guard let f = ws.focused, !floating.contains(f), let i = ws.windows.firstIndex(of: f),
+                  let m = ws.windows.firstIndex(where: { !floating.contains($0) }), i != m else { return }
+            ws.windows.swapAt(m, i)
         }
     }
 
