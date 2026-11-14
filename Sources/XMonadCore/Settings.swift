@@ -37,7 +37,7 @@ public enum Command: Equatable {
     case focusNextScreen, focusPrevScreen, shiftToNextScreen, shiftToPrevScreen
     case workspaceNext, workspacePrev, shiftNext, shiftPrev
     case toggleFloat, refresh, close, terminal, reload, restart, quit
-    case windowSearch
+    case windowSearch, appRule
     case spawn(String)
 }
 
@@ -83,6 +83,7 @@ public struct Settings {
     public var floating: Set<String> = []
     public var layouts: [LayoutKind] = [.tall, .mirrorTall, .column, .full]
     public var menubarIcon = true
+    public var rules: [Rule] = []
     public var bar = BarSettings()
     public var keys: [KeyChord: Command] = [:]
 
@@ -103,7 +104,7 @@ public struct Settings {
         }
 
         let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
-                                  "terminal", "floating", "bar", "keys", "layouts", "menubar-icon"]
+                                  "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -131,6 +132,7 @@ public struct Settings {
                 return l
             }
         }
+        if let v = dict["rules"] { s.rules = try parseRules(v, workspaces: s.workspaces) }
         if let v = dict["menubar-icon"] { s.menubarIcon = try bool(v, "menubar-icon") }
         if let v = dict["bar"] {
             guard let b = v as? [String: Any] else { throw SettingsError("bar must be a mapping") }
@@ -261,6 +263,7 @@ public struct Settings {
         case "shift-prev":           return try noArg(.shiftPrev)
         case "restart":              return try noArg(.restart)
         case "window-search":        return try noArg(.windowSearch)
+        case "app-rule":             return try noArg(.appRule)
         case "toggle-float": return try noArg(.toggleFloat)
         case "refresh":      return try noArg(.refresh)
         case "close":        return try noArg(.close)
@@ -379,6 +382,17 @@ bar:
   clock-format: "HH:mm"
   interval: 2               # seconds between cpu / memory / network updates
 
+# Rules, like xmonad's manageHook: where an app's windows open, or whether
+# they float. mod-shift-p sets one for the focused app and writes it here.
+#   - app: com.tinyspeck.slackmacgap   # bundle ID or app name
+#     workspace: 9
+#   - app: Calculator
+#     float: true
+#   - app: com.google.Chrome
+#     title: "Meet"                    # only windows whose title contains this
+#     workspace: 5
+rules: []
+
 # Keys: <modifiers>-<key>: <command>.  Modifiers: mod, cmd, ctrl, alt, shift.
 # Key names: a–z, 0–9, return, tab, space, escape, delete, left, right, up,
 # down, f1–f12, comma, period, slash, minus, equal, semicolon, quote,
@@ -397,6 +411,7 @@ bar:
 #   focus-down  focus-up  focus-master  swap-down  swap-up  swap-master
 #   next-layout  shrink  expand  inc-master  dec-master  toggle-float
 #   window-search          search all open windows and jump to one
+#   app-rule               choose the workspace the focused app always opens on
 #   refresh  close  terminal  reload  restart  quit
 #   spawn <shell command>
 # A key mapped to ~ is unbound. This section replaces the defaults as a whole.
@@ -445,6 +460,7 @@ keys:
 
   # Not in your Amethyst config (xmonad-style extras)
   mod-p: window-search      # like dmenu / XMonad.Prompt.Window on mod-p
+  mod-shift-p: app-rule     # "always open this app on workspace N" (writes rules: above)
   mod-shift-comma: shift-to-next-screen
   mod-m: focus-master
   mod-shift-m: swap-master

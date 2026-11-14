@@ -34,6 +34,7 @@ final class WindowManager {
     private let bar = Bar()
     private let menuBarItem = MenuBarItem()
     private let switcher = WindowSwitcher()
+    private let rulePicker = RulePicker()
     /// Most recently focused first, for ranking search results.
     private var mru: [WindowID] = []
     private var managing = false
@@ -61,6 +62,7 @@ final class WindowManager {
         switcher.onGo = { [unowned self] id in self.goToWindow(id) }
         switcher.onBring = { [unowned self] id in self.bringWindow(id) }
         switcher.onCancel = { [unowned self] in self.focusCurrent() }
+        rulePicker.onCancel = { [unowned self] in self.focusCurrent() }
         applySettings()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [unowned self] _ in
@@ -159,6 +161,7 @@ final class WindowManager {
             if let f = w.frame, let s = screenIndex(containing: CGPoint(x: f.midX, y: f.midY)) {
                 target = ss.screenWorkspace[s]
             }
+            if let ws = ruleWorkspace(for: w) { target = ws }
             if shouldFloat(w) { ss.floating.insert(id) }
             ss.insert(id, into: target)
         }
@@ -255,6 +258,64 @@ final class WindowManager {
         let here = ss.currentWorkspaceIndex
         if ss.workspaceIndex(of: id) != here { ss.shift(id, to: here) }
         ss.focus(id)
+        render()
+    }
+
+    // MARK: - app rules (mod-shift-p)
+
+    func toggleRulePicker() {
+        if rulePicker.isOpen { rulePicker.close(cancelled: true); return }
+        syncFocusFromSystem(followHidden: false)
+        guard let fid = ss.current.focused, let w = windows[fid] else {
+            Log.info("app rule: no focused window")
+            NSSound.beep()
+            return
+        }
+        let name = appName(of: w)
+        let key = w.bundleID ?? name                       // what the rule matches on
+        let existing = Config.current.rules.first {
+            $0.title == nil && $0.matches(bundleID: w.bundleID, appName: name, title: "")
+        }
+        let cfg = Config.current
+        guard ss.currentScreen < screens.count else { return }
+        rulePicker.onChoose = { [unowned self] choice in
+            var r = existing ?? Rule(app: key)
+            switch choice {
+            case .workspace(let i): r.workspace = cfg.workspaces[i]
+            case .toggleFloat: r.float.toggle()
+            case .remove: break
+            }
+            let keep: Rule? = {
+                if case .remove = choice { return nil }
+                return (r.workspace == nil && !r.float) ? nil : r
+            }()
+            Config.setRule(app: existing?.app ?? key, rule: keep, comment: name)
+            Config.load(force: true)
+            self.applySettings(rebindKeys: false)
+            self.applyRuleNow(bundleID: w.bundleID, appName: name)
+        }
+        rulePicker.open(app: name, icon: NSRunningApplication(processIdentifier: w.pid)?.icon,
+                        tags: cfg.workspaces,
+                        current: existing?.workspace.flatMap(cfg.workspaceIndex(named:)),
+                        floats: existing?.float ?? false, hasRule: existing != nil,
+                        area: screens[ss.currentScreen].nsVisible,
+                        bottom: cfg.bar.enabled ? Bar.height(for: cfg.bar) : 0)
+    }
+
+    /// After setting a rule: move the app's open windows there now, and
+    /// float or tile them to match. You stay on your workspace.
+    private func applyRuleNow(bundleID: String?, appName name: String) {
+        var moved = 0
+        for (id, w) in windows where w.bundleID == bundleID && appName(of: w) == name {
+            let r = rule(for: w)
+            if let ws = r?.workspace.flatMap(Config.current.workspaceIndex(named:)), ss.workspaceIndex(of: id) != ws {
+                ss.shift(id, to: ws)
+                moved += 1
+            }
+            if r?.float == true { ss.floating.insert(id) }
+            else if !shouldFloat(w) { ss.floating.remove(id) }
+        }
+        Log.info("rule for \(name): moved \(moved) window(s)")
         render()
     }
 
@@ -385,7 +446,13 @@ final class WindowManager {
                 ss.floating.insert(id)
                 if let f = w.frame, isOffscreen(f) { centerOnCurrentScreen(w, f.size) }
             }
-            ss.insert(id)               // new windows land on the current workspace
+            if let ws = ruleWorkspace(for: w), ws != ss.currentWorkspaceIndex {
+                // A rule sends it elsewhere (xmonad doShift): it appears there, you stay here.
+                ss.insert(id, into: ws)
+                Log.info("rule: \(appName(of: w)) window \(id) → workspace \(ss.workspaces[ws].tag)")
+            } else {
+                ss.insert(id)           // new windows land on the current workspace
+            }
             hidden.remove(id)
             changed = true
         }
@@ -395,7 +462,20 @@ final class WindowManager {
 
     private func shouldFloat(_ w: AXWindow) -> Bool {
         if let b = w.bundleID, Config.current.floating.contains(b) { return true }
+        if rule(for: w)?.float == true { return true }
         return !w.isResizable
+    }
+
+    private func appName(of w: AXWindow) -> String {
+        NSRunningApplication(processIdentifier: w.pid)?.localizedName ?? w.bundleID ?? "?"
+    }
+
+    private func rule(for w: AXWindow) -> Rule? {
+        Config.current.rule(bundleID: w.bundleID, appName: appName(of: w), title: w.title)
+    }
+
+    private func ruleWorkspace(for w: AXWindow) -> Int? {
+        rule(for: w)?.workspace.flatMap(Config.current.workspaceIndex(named:))
     }
 
     // MARK: - focus tracking (mouse clicks, cmd-tab, …)
@@ -481,6 +561,7 @@ final class WindowManager {
         case .shiftPrev: syncFocusFromSystem(followHidden: false); shift(to: ss.neighbour(-1))
         case .restart: restart()
         case .windowSearch: toggleWindowSearch()
+        case .appRule: toggleRulePicker()
         case .shrink: adjustRatio(-step)
         case .expand: adjustRatio(+step)
         case .incMaster: incMaster(+1)

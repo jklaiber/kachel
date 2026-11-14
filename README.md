@@ -80,6 +80,7 @@ Option + q / Return / f / b stay free.
 | `mod-z` | re-scan windows and screens, then re-tile | Amethyst reevaluate-windows |
 | `mod-shift-,` | send focused window to next screen | xmonad |
 | `mod-p` | **window search**: type to find any open window; ↩ go there, ⇧↩ bring it here | xmonad Prompt.Window / dmenu |
+| `mod-shift-p` | **app rule**: always open the focused app on workspace N (1–9), F float, ⌫ remove; saved under `rules:` | xmonad manageHook |
 | `mod-m` / `mod-shift-m` | focus / swap with master | xmonad |
 | `mod-t` | toggle floating | xmonad |
 | `mod-shift-r` | restart XMonadMac (windows keep their workspaces) | |

@@ -78,6 +78,17 @@ enum Config {
         return list
     }
 
+    /// Write (or remove) the app-wide rule for `app` into the config file.
+    static func setRule(app: String, rule: Rule?, comment: String?) {
+        do {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            try Settings.setRule(text, app: app, rule: rule, comment: comment).write(to: url, atomically: true, encoding: .utf8)
+            Log.info("rule for \(app): " + (rule.map { "workspace \($0.workspace ?? "-") float \($0.float)" } ?? "removed"))
+        } catch {
+            Log.info("could not update config: \(error)")
+        }
+    }
+
     static func openInEditor() {
         NSWorkspace.shared.open(url)
     }
