@@ -25,7 +25,13 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "Kachel-$V.zip" --title "Kachel $V" --generate-notes
+        run: |
+          # Re-runs replace the zip instead of failing on the existing release.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "Kachel-$V.zip" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "Kachel-$V.zip" --title "Kachel $V" --generate-notes
+          fi
       - name: Update the Homebrew cask
         if: env.TAP_GITHUB_TOKEN != ''
         run: ./scripts/update-cask.sh "$V" "$SHA"
