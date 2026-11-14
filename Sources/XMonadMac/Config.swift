@@ -89,6 +89,16 @@ enum Config {
         }
     }
 
+    static func setTopLevel(key: String, value: String) {
+        do {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            try Settings.setTopLevel(text, key: key, value: value).write(to: url, atomically: true, encoding: .utf8)
+            Log.info("config: \(key) = \(value)")
+        } catch {
+            Log.info("could not update config: \(error)")
+        }
+    }
+
     static func openInEditor() {
         NSWorkspace.shared.open(url)
     }

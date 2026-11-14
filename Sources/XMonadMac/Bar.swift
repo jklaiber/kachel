@@ -26,6 +26,8 @@ final class Bar {
 
     var onClickWorkspace: ((_ screen: Int, _ workspace: Int) -> Void)?
     var onToggleWidget: ((BarWidget) -> Void)?
+    var onToggleMenuBarIcon: (() -> Void)?
+    var menuBarIconShown = false
     var menuActions: [(title: String, action: () -> Void)] = []
 
     let stats = Stats()
@@ -146,6 +148,12 @@ final class Bar {
             mi.target = target
             show.addItem(mi)
         }
+        show.addItem(.separator())
+        let icon = NSMenuItem(title: "Icon in Top Menu Bar", action: #selector(MenuTarget.fire(_:)), keyEquivalent: "")
+        icon.state = menuBarIconShown ? .on : .off
+        icon.tag = target.add { [weak self] in self?.onToggleMenuBarIcon?() }
+        icon.target = target
+        show.addItem(icon)
         let showItem = NSMenuItem(title: "Show in Bar", action: nil, keyEquivalent: "")
         showItem.submenu = show
         menu.addItem(showItem)

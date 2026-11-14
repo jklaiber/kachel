@@ -82,7 +82,7 @@ public struct Settings {
     public var terminal = "open -na Terminal"
     public var floating: Set<String> = []
     public var layouts: [LayoutKind] = [.tall, .mirrorTall, .column, .full]
-    public var menubarIcon = true
+    public var menubarIcon = false
     public var rules: [Rule] = []
     public var bar = BarSettings()
     public var keys: [KeyChord: Command] = [:]
@@ -353,7 +353,7 @@ gap: 5                    # points between windows and at screen edges
 ratio: 0.5                # master area share for new workspaces
 ratio-step: 0.05          # how much shrink/expand change it
 mouse-follows-focus: true # warp the pointer when focus moves to another screen
-menubar-icon: true        # XMonadMac menu (restart, reload, quit …) in the top menu bar
+menubar-icon: false       # XMonadMac icon in the top menu bar (same menu as right-clicking the bar)
 
 # Used by the `terminal` command. Examples: "open -na Ghostty",
 # "open -na Alacritty", "open -na kitty", "open -na WezTerm", "open -na iTerm"

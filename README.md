@@ -90,7 +90,7 @@ Map keys to `view N` instead of `workspace N` for i3-style `W.view` (jump to the
 other screen instead of swapping). More commands (`workspace-next`,
 `focus-screen N`, `inc-master`, `spawn …`) are listed in the config file.
 
-The menu bar icon (`menubar-icon: true`) has Restart, Reload Config, Edit Config,
+The menu bar icon (off by default; `menubar-icon: true` or right-click the bar → Show in Bar → Icon in Top Menu Bar) has Restart, Reload Config, Edit Config,
 Show Log, Re-tile and Quit.
 
 ## Configuration

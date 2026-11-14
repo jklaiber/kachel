@@ -11,7 +11,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(s.layouts, [.tall, .mirrorTall, .column, .full])
         XCTAssertEqual(s.gap, 5)
         XCTAssertEqual(s.ratioStep, 0.05)
-        XCTAssertTrue(s.menubarIcon)
+        XCTAssertFalse(s.menubarIcon)
         XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt], key: "1")], .greedyView(0))
         XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt, .shift], key: "9")], .shift(8))
         XCTAssertTrue(s.bar.enabled)

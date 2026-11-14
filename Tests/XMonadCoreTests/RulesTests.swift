@@ -83,3 +83,16 @@ final class RulesTests: XCTestCase {
         XCTAssertEqual(s.keys.count, 1)
     }
 }
+
+final class TopLevelEditTests: XCTestCase {
+    func testToggleMenubarIcon() throws {
+        let on = Settings.setTopLevel(Settings.defaultYAML, key: "menubar-icon", value: "true")
+        XCTAssertTrue(try Settings.parse(on).menubarIcon)
+        XCTAssertTrue(on.contains("menubar-icon: true") && on.contains("# XMonadMac icon in the top menu bar"))
+        let off = Settings.setTopLevel(on, key: "menubar-icon", value: "false")
+        XCTAssertFalse(try Settings.parse(off).menubarIcon)
+        XCTAssertEqual(try Settings.parse(off).keys.count, 37)
+        let added = Settings.setTopLevel("gap: 3\nkeys:\n  mod-1: workspace 1\n", key: "menubar-icon", value: "true")
+        XCTAssertTrue(try Settings.parse(added).menubarIcon)
+    }
+}

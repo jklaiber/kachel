@@ -63,6 +63,10 @@ final class WindowManager {
         switcher.onBring = { [unowned self] id in self.bringWindow(id) }
         switcher.onCancel = { [unowned self] in self.focusCurrent() }
         rulePicker.onCancel = { [unowned self] in self.focusCurrent() }
+        bar.onToggleMenuBarIcon = { [unowned self] in
+            Config.setTopLevel(key: "menubar-icon", value: Config.current.menubarIcon ? "false" : "true")
+            self.reload()
+        }
         applySettings()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [unowned self] _ in
@@ -132,6 +136,7 @@ final class WindowManager {
         ss.setTags(cfg.workspaces)
         ss.setLayoutIfUnlisted(cfg.layouts)
         menuBarItem.setVisible(cfg.menubarIcon)
+        bar.menuBarIconShown = cfg.menubarIcon
         screens = Screen.all(reserveBottom: cfg.bar.enabled ? Bar.height(for: cfg.bar) : 0)
         ss.setScreenCount(screens.count)
         bar.place(on: screens, settings: cfg.bar)
