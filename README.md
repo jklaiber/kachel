@@ -94,7 +94,7 @@ room for it. Widgets:
 
 | Widget | Shows | Click |
 |---|---|---|
-| `workspaces` | highlighted = focused, faint = shown on this screen, outlined = on another screen, dim = empty | show it on this screen |
+| `workspaces` | solid = active, outline = visible on a screen, dot = has windows, dim = empty | show it on this screen |
 | `layout` | Tall / Mirror / Full | |
 | `title` | focused window on that screen | |
 | `network` | ↓ / ↑ throughput (Wi-Fi + Ethernet) | Activity Monitor |

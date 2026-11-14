@@ -535,12 +535,10 @@ final class WindowManager {
             var c = Bar.Content()
             c.isCurrentScreen = s == ss.currentScreen
             for (i, ws) in ss.workspaces.enumerated() {
-                let state: Bar.TagState
-                if i == wsIndex { state = c.isCurrentScreen ? .focused : .shownHere }
-                else if ss.isVisible(workspace: i) { state = .shownElsewhere }
-                else if !ws.windows.isEmpty { state = .occupied }
-                else { state = .empty }
-                c.tags.append((ws.tag, state))
+                c.tags.append(Bar.Tag(name: ws.tag,
+                                      active: i == ss.currentWorkspaceIndex,
+                                      visible: ss.isVisible(workspace: i),
+                                      hasWindows: !ws.windows.isEmpty))
             }
             let ws = ss.workspaces[wsIndex]
             c.layout = ws.layout.rawValue

@@ -9,10 +9,16 @@ import XMonadCore
 /// Which widgets appear, and in what order, comes from `bar.left` / `bar.right`.
 /// Click a workspace to show it on that screen; right-click for the menu.
 final class Bar {
-    enum TagState { case focused, shownHere, shownElsewhere, occupied, empty }
+    /// The three things you want to know about a workspace, independently.
+    struct Tag {
+        var name: String
+        var active = false        // the workspace you're in (focused screen)
+        var visible = false       // shown on some screen
+        var hasWindows = false
+    }
 
     struct Content {
-        var tags: [(name: String, state: TagState)] = []
+        var tags: [Tag] = []
         var layout = ""
         var title = ""
         var isCurrentScreen = false
@@ -228,7 +234,7 @@ private final class BarPanel: NSPanel {
 private struct Segment {
     enum Action { case workspace(Int), open(String) }
     var parts: [(icon: String?, text: String)]
-    var state: Bar.TagState? = nil      // workspaces only
+    var tag: Bar.Tag? = nil             // workspaces only
     var color: NSColor = .labelColor
     var bold = false
     var flexible = false                // takes the leftover width (title, warnings)
@@ -271,10 +277,11 @@ private final class BarView: NSView {
         for w in widgets {
             switch w {
             case .workspaces:
-                for (i, t) in content.tags.enumerated() where !(s.hideEmptyWorkspaces && t.state == .empty) {
-                    out.append(Segment(parts: [(nil, t.name)], state: t.state,
-                                       color: t.state == .empty ? .tertiaryLabelColor : .labelColor,
-                                       bold: t.state == .focused, action: .workspace(i)))
+                for (i, t) in content.tags.enumerated()
+                where !(s.hideEmptyWorkspaces && !t.hasWindows && !t.visible) {
+                    out.append(Segment(parts: [(nil, t.name)], tag: t,
+                                       color: t.hasWindows || t.visible ? .labelColor : .tertiaryLabelColor,
+                                       bold: t.active, action: .workspace(i)))
                 }
             case .layout:
                 out.append(Segment(parts: [(nil, content.layout)], color: .secondaryLabelColor))
@@ -343,7 +350,9 @@ private final class BarView: NSView {
             if let n = p.icon, let img = icon(n, color: seg.color) { w += img.size.width + iconGap }
             w += (p.text as NSString).size(withAttributes: [.font: f]).width
         }
-        return ceil(w) + 2 * pad
+        let total = ceil(w) + 2 * pad
+        // Workspace pills are at least square, so 1…9 line up evenly.
+        return seg.tag != nil ? max(total, bounds.height - 6) : total
     }
 
     private func draw(_ seg: Segment, in rect: CGRect) {
@@ -352,25 +361,36 @@ private final class BarView: NSView {
         let path = NSBezierPath(roundedRect: pill, xRadius: 5, yRadius: 5)
         let hovered = seg.action != nil && hover.map(pill.contains) == true
 
-        switch seg.state {
-        case .focused?: NSColor.labelColor.withAlphaComponent(hovered ? 0.24 : 0.18).setFill(); path.fill()
-        case .shownHere?: NSColor.labelColor.withAlphaComponent(hovered ? 0.16 : 0.09).setFill(); path.fill()
-        case .shownElsewhere?:
-            if hovered { NSColor.labelColor.withAlphaComponent(0.1).setFill(); path.fill() }
-            let inset = NSBezierPath(roundedRect: pill.insetBy(dx: 0.5, dy: 0.5), xRadius: 5, yRadius: 5)
-            NSColor.labelColor.withAlphaComponent(0.3).setStroke(); inset.lineWidth = 1; inset.stroke()
-        default:
-            if hovered { NSColor.labelColor.withAlphaComponent(0.1).setFill(); path.fill() }
+        let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        var color = seg.color
+        if let t = seg.tag, t.active {
+            // Active: solid pill, text cut in the opposite color.
+            NSColor.labelColor.withAlphaComponent(hovered ? 0.8 : 0.9).setFill(); path.fill()
+            color = dark ? NSColor.black.withAlphaComponent(0.85) : .white
+        } else {
+            if hovered { NSColor.labelColor.withAlphaComponent(0.12).setFill(); path.fill() }
+            if seg.tag?.visible == true {
+                let ring = NSBezierPath(roundedRect: pill.insetBy(dx: 0.75, dy: 0.75), xRadius: 4.5, yRadius: 4.5)
+                ring.lineWidth = 1.5
+                NSColor.labelColor.withAlphaComponent(0.55).setStroke(); ring.stroke()
+            }
         }
+        if seg.tag?.hasWindows == true {
+            // One dot = has windows, like a running app in the Dock.
+            let d: CGFloat = 3.5
+            color.setFill()
+            NSBezierPath(ovalIn: NSRect(x: pill.midX - d / 2, y: pill.minY + 2.5, width: d, height: d)).fill()
+        }
+        // Workspace numbers sit a little higher to leave room for the dot.
+        let lift: CGFloat = seg.tag != nil ? 1.5 : 0
 
         let f = font(seg.bold)
         let style = NSMutableParagraphStyle()
         style.lineBreakMode = .byTruncatingTail
-        let attrs: [NSAttributedString.Key: Any] = [.font: f, .foregroundColor: seg.color, .paragraphStyle: style]
+        let attrs: [NSAttributedString.Key: Any] = [.font: f, .foregroundColor: color, .paragraphStyle: style]
         NSGraphicsContext.saveGraphicsState()
         defer { NSGraphicsContext.restoreGraphicsState() }
-        if transparent {
-            let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        if transparent, seg.tag?.active != true {
             let shadow = NSShadow()
             shadow.shadowColor = (dark ? NSColor.black : NSColor.white).withAlphaComponent(0.35)
             shadow.shadowBlurRadius = 3
@@ -378,16 +398,19 @@ private final class BarView: NSView {
             shadow.set()
         }
         var x = rect.minX + pad
+        if seg.tag != nil, let t = seg.parts.first?.text {
+            x = rect.midX - (t as NSString).size(withAttributes: attrs).width / 2
+        }
         let maxX = rect.maxX - pad
         for (i, p) in seg.parts.enumerated() {
             if i > 0 { x += partGap }
-            if let n = p.icon, let img = icon(n, color: seg.color) {
+            if let n = p.icon, let img = icon(n, color: color) {
                 img.draw(in: NSRect(x: x, y: (h - img.size.height) / 2, width: img.size.width, height: img.size.height))
                 x += img.size.width + iconGap
             }
             let size = (p.text as NSString).size(withAttributes: attrs)
             let w = max(0, min(size.width, maxX - x))
-            (p.text as NSString).draw(with: NSRect(x: x, y: (h - size.height) / 2, width: w, height: size.height),
+            (p.text as NSString).draw(with: NSRect(x: x, y: (h - size.height) / 2 + lift, width: w, height: size.height),
                                       options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: attrs)
             x += w
         }
@@ -422,7 +445,7 @@ private final class BarView: NSView {
             if let a = seg.action { hits.append((r, a)) }
             lx += w + gap
             // A little more room between widget groups than between workspaces.
-            if seg.state == nil { lx += 6 }
+            if seg.tag == nil { lx += 6 }
         }
         for (seg, r) in zip(right, rightRects) where r.minX >= lx {
             draw(seg, in: r)
