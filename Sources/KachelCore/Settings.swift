@@ -143,7 +143,6 @@ public struct Settings {
     /// Workspace name -> screen pattern (see ScreenMatcher): always shown there.
     public var workspaceScreens: [String: String] = [:]
     public var terminal = "open -na Terminal"
-    public var floating: Set<String> = []
     public var layouts: [LayoutKind] = [.tall, .mirrorTall, .threeColumn, .column, .full]
     public var menubarIcon = false
     public var rules: [Rule] = []
@@ -176,7 +175,7 @@ public struct Settings {
         }
 
         let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
-                                  "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
+                                  "terminal", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
                                   "float-dialogs", "float-small-windows", "start-at-login",
                                   "scratchpads", "border", "focus-follows-mouse",
                                   "workspace-back-and-forth", "workspace-screens", "new-windows",
@@ -227,10 +226,6 @@ public struct Settings {
             }
         }
         if let v = dict["terminal"] { s.terminal = try string(v, "terminal") }
-        if let v = dict["floating"] {
-            guard let list = v as? [Any] else { throw SettingsError("floating must be a list of bundle IDs") }
-            s.floating = Set(list.map { "\($0)" })
-        }
         if let v = dict["layouts"] {
             guard let list = v as? [Any], !list.isEmpty else { throw SettingsError("layouts must be a non-empty list") }
             s.layouts = try list.map {
@@ -613,12 +608,6 @@ float-small-windows: 0
 
 start-at-login: false     # launch Kachel when you log in (needs Kachel.app in /Applications)
 
-# Bundle IDs whose windows always float (find one with: osascript -e 'id of app "Name"').
-floating:
-  - com.apple.systempreferences
-  - com.apple.calculator
-  - com.apple.archiveutility
-
 # The bar at the bottom of every screen. Click a workspace to show it on that
 # screen; right-click for the menu, where widgets can also be switched on and off.
 bar:
@@ -676,14 +665,19 @@ border:
 
 # Rules, like xmonad's manageHook: where an app's windows open, or whether
 # they float. mod-shift-p sets one for the focused app and writes it here.
+# Find an app's bundle ID with: osascript -e 'id of app "Name"'
 #   - app: com.tinyspeck.slackmacgap   # bundle ID or app name
 #     workspace: 9
-#   - app: Calculator
-#     float: true
 #   - app: com.google.Chrome
 #     title: "Meet"                    # only windows whose title contains this
 #     workspace: 5
-rules: []
+rules:
+  - app: com.apple.systempreferences   # System Settings
+    float: true
+  - app: com.apple.calculator   # Calculator
+    float: true
+  - app: com.apple.archiveutility   # Archive Utility
+    float: true
 
 # Keys: <modifiers>-<key>: <command>.  Modifiers: mod, cmd, ctrl, alt, shift.
 # Key names: a–z, 0–9, return, tab, space, escape, delete, left, right, up,

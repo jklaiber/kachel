@@ -21,10 +21,6 @@ final class RulesTests: XCTestCase {
         XCTAssertEqual(s.workspaceIndex(named: "9"), 8)
     }
 
-    func testDefaultHasEmptyRules() throws {
-        XCTAssertEqual(try Settings.parse(Settings.defaultYAML).rules, [])
-    }
-
     func testBadRules() {
         XCTAssertThrowsError(try Settings.parse("rules:\n  - app: X\n    workspace: 12"))
         XCTAssertThrowsError(try Settings.parse("rules:\n  - workspace: 2"))
@@ -32,28 +28,40 @@ final class RulesTests: XCTestCase {
     }
 
     func testSetRuleOnDefaultConfig() throws {
+        let defaults = [Rule(app: "com.apple.systempreferences", float: true),
+                        Rule(app: "com.apple.calculator", float: true),
+                        Rule(app: "com.apple.archiveutility", float: true)]
+        XCTAssertEqual(try Settings.parse(Settings.defaultYAML).rules, defaults)
+
         var text = Settings.setRule(Settings.defaultYAML, app: "com.tinyspeck.slackmacgap",
                                     rule: Rule(app: "com.tinyspeck.slackmacgap", workspace: "9"), comment: "Slack")
         var s = try Settings.parse(text)
-        XCTAssertEqual(s.rules, [Rule(app: "com.tinyspeck.slackmacgap", workspace: "9")])
+        XCTAssertEqual(s.rules, defaults + [Rule(app: "com.tinyspeck.slackmacgap", workspace: "9")])
         XCTAssertEqual(s.keys.count, 52)                         // nothing else broke
         XCTAssertTrue(text.contains("# Slack"))
         XCTAssertTrue(text.contains("# Rules, like xmonad's manageHook"))
 
-        // Second app, then change the first: order kept, no duplicates.
-        text = Settings.setRule(text, app: "com.apple.calculator", rule: Rule(app: "com.apple.calculator", float: true))
+        // Change an existing app and the new one: no duplicates.
+        text = Settings.setRule(text, app: "com.apple.calculator", rule: Rule(app: "com.apple.calculator", workspace: "3"))
         text = Settings.setRule(text, app: "com.tinyspeck.slackmacgap",
                                 rule: Rule(app: "com.tinyspeck.slackmacgap", workspace: "2", float: true))
         s = try Settings.parse(text)
-        XCTAssertEqual(s.rules, [Rule(app: "com.apple.calculator", float: true),
+        XCTAssertEqual(s.rules, [defaults[0], defaults[2],
+                                 Rule(app: "com.apple.calculator", workspace: "3"),
                                  Rule(app: "com.tinyspeck.slackmacgap", workspace: "2", float: true)])
 
-        // Remove both again.
-        text = Settings.setRule(text, app: "com.tinyspeck.slackmacgap", rule: nil)
-        text = Settings.setRule(text, app: "com.apple.calculator", rule: nil)
+        // Remove them all.
+        for app in ["com.tinyspeck.slackmacgap", "com.apple.calculator", "com.apple.systempreferences", "com.apple.archiveutility"] {
+            text = Settings.setRule(text, app: app, rule: nil)
+        }
         s = try Settings.parse(text)
         XCTAssertEqual(s.rules, [])
         XCTAssertEqual(s.keys.count, 52)
+        XCTAssertNoThrow(try Settings.parse(text))
+    }
+
+    func testFloatingListIsGone() {
+        XCTAssertThrowsError(try Settings.parse("floating:\n  - com.apple.calculator"))
     }
 
     func testSetRuleKeepsHandWrittenTitleRules() throws {

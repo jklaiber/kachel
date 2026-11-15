@@ -11,11 +11,13 @@ final class ConfigEditTests: XCTestCase {
     }
 
     func testTopLevelBlockListReplaced() throws {
-        let t = Settings.setTopLevel(base, key: "floating", value: Settings.flowList(["com.apple.calculator", "My App"]))
+        // rules: is a block list in the default config; replacing it drops its entries.
+        let t = Settings.setTopLevel(base, key: "rules", value: "[]")
         let s = try Settings.parse(t)
-        XCTAssertEqual(s.floating, ["com.apple.calculator", "My App"])
+        XCTAssertEqual(s.rules, [])
         XCTAssertEqual(s.keys.count, try Settings.parse(base).keys.count)      // nothing else broke
-        XCTAssertTrue(t.contains("# Bundle IDs whose windows always float"))
+        XCTAssertTrue(t.contains("# Rules, like xmonad's manageHook"))
+        XCTAssertFalse(t.contains("com.apple.archiveutility"))
     }
 
     func testNested() throws {

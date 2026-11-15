@@ -979,7 +979,6 @@ final class WindowManager {
 
     private func shouldFloat(_ w: AXWindow) -> Bool {
         let cfg = Config.current
-        if let b = w.bundleID, cfg.floating.contains(b) { return true }
         if rule(for: w)?.float == true { return true }
         if !w.isResizable { return true }
         // Dialogs: no fullscreen button (AeroSpace's heuristic). Terminals often

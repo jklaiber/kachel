@@ -40,7 +40,8 @@ Rules apply when a window appears; you can still move it afterwards.
 
 These float instead of being tiled:
 
-- windows matched by a rule with `float: true`, or listed under `floating:`
+- windows matched by a rule with `float: true` (System Settings, Calculator and
+  Archive Utility by default)
 - dialogs: windows without a fullscreen button (`float-dialogs: true`)
 - windows smaller than `float-small-windows` points (off by default)
 - windows that can't be resized

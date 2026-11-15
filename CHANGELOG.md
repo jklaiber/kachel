@@ -7,6 +7,15 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- Apps that always float are now ordinary app rules with `float: true`, so the
+  settings window shows and edits them. The default config lists System
+  Settings, Calculator and Archive Utility under `rules:`.
+
+### Removed
+- The `floating:` list. Move its apps to `rules:` as `- app: <bundle ID>` with
+  `float: true`; Kachel reports `floating` as an unknown setting.
+
 ## [0.1.8] - 2026-11-15
 
 Kachel now has a documentation website, and focus comes back after unlocking

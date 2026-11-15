@@ -4,7 +4,7 @@ import Foundation
 /// value, keep every comment and everything else as written.
 extension Settings {
     /// `key: value` at the top level. A block that belonged to the old value
-    /// (`floating:` followed by `  - …` lines) is replaced too; comments stay.
+    /// (`workspaces:` followed by `  - …` lines) is replaced too; comments stay.
     /// Missing keys are added before the keys section.
     public static func setTopLevel(_ text: String, key: String, value: String) -> String {
         var lines = text.components(separatedBy: "\n")

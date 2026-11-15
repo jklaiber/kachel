@@ -41,7 +41,7 @@ Not there (yet): tabbed and BSP layouts, dynamic workspaces, `CopyWindow`.
 | `reevaluate-windows` | `mod-z` |
 | `mouse-swaps-windows`, `mouse-resizes-windows` | always on, see [Mouse and trackpad](mouse-and-trackpad.md) |
 | `float-small-windows` | `float-small-windows` |
-| `floating` | `floating:` or `rules:` with `float: true` |
+| `floating` | `rules:` with `float: true` |
 | `new-windows-to-main` | `new-windows: master` |
 | `window-margin-size` | `gap` |
 | `window-resize-step` | `ratio-step` |
