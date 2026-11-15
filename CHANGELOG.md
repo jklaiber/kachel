@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-15
+
+Apps that always float are now app rules, so the settings window shows and
+edits them.
+
 ### Changed
 - Apps that always float are now ordinary app rules with `float: true`, so the
   settings window shows and edits them. The default config lists System
@@ -180,7 +185,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/jklaiber/kachel/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/jklaiber/kachel/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/jklaiber/kachel/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/jklaiber/kachel/compare/v0.1.5...v0.1.6
