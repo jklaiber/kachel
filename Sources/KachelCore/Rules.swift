@@ -141,23 +141,7 @@ extension Settings {
         return lines.joined(separator: "\n")
     }
 
-    /// Set a top-level `key: value` line, keeping its comment; adds it before
-    /// the keys section if it isn't there.
-    public static func setTopLevel(_ text: String, key: String, value: String) -> String {
-        var lines = text.components(separatedBy: "\n")
-        if let i = lines.firstIndex(where: { $0.hasPrefix("\(key):") }) {
-            let rest = lines[i].dropFirst(key.count + 1)
-            let comment = rest.range(of: " #").map { String(rest[$0.lowerBound...]) } ?? ""
-            let pad = comment.isEmpty ? "" : String(repeating: " ", count: max(1, 24 - key.count - value.count))
-            lines[i] = "\(key): \(value)" + (comment.isEmpty ? "" : pad + comment.trimmingCharacters(in: .whitespaces))
-        } else {
-            let at = lines.firstIndex { $0.hasPrefix("# Keys:") } ?? lines.firstIndex { $0.hasPrefix("keys:") } ?? lines.count
-            lines.insert("\(key): \(value)", at: at)
-        }
-        return lines.joined(separator: "\n")
-    }
-
-    private static func yamlScalar(_ s: String) -> String {
+    public static func yamlScalar(_ s: String) -> String {
         let plain = s.allSatisfy { $0.isLetter || $0.isNumber || "._-".contains($0) }
         return plain && !s.isEmpty ? s : "\"\(s.replacingOccurrences(of: "\"", with: "\\\""))\""
     }

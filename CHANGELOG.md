@@ -7,6 +7,21 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- **Settings window** in the style of System Settings: General, Bar, Focus
+  Border, Trackpad, Shortcuts (with a key recorder) and App Rules. Changes are
+  written into `config.yaml` with its comments kept and apply at once; a change
+  that wouldn't load is rolled back.
+- **Welcome window** on first launch: Accessibility, then a check of the macOS
+  settings that matter (Spaces, Mission Control, macOS tiling, Stage Manager,
+  other window managers, trackpad swipes) with a fix for each.
+- **Shortcut overview**: hold `mod` alone (`shortcut-overview`, 0.8 s) to see
+  every shortcut grouped on glass.
+- **Liquid Glass** for window search, the app rule picker and the new windows on
+  macOS 26.
+- **Trackpad feedback** (`haptics`) when a swipe triggers or a window snaps in.
+- Commands `settings`, `welcome` and `shortcuts`.
+
 ## [0.1.5] - 2026-11-15
 
 New windows no longer take over the master spot, the stack's heights move to

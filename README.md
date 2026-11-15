@@ -130,6 +130,28 @@ other screen instead of swapping). More commands (`workspace-next`,
 The menu bar icon (off by default; `menubar-icon: true` or right-click the bar → Show in Bar → Icon in Top Menu Bar) has Restart, Reload Config, Edit Config,
 Show Log, Re-tile and Quit.
 
+## Welcome, settings and shortcuts
+
+On first launch Kachel opens a welcome window: it walks you through the
+Accessibility permission and checks the macOS settings that matter for a tiling
+window manager (one Space per display, automatic Space rearranging, Mission
+Control grouping, macOS's own tiling, Stage Manager, other window managers,
+trackpad swipes), each with a button to fix it. It's in the menu again as
+**Welcome and Setup Check…**.
+
+![Welcome window with the setup check](assets/screenshots/welcome.png)
+
+**Settings…** (in the bar's right-click menu, or the `settings` command) edits
+everything in a window like System Settings: general behaviour, the bar, the
+focus border, trackpad, shortcuts with a key recorder, and app rules. Changes go
+straight into `config.yaml`, comments included, and apply immediately.
+
+**Hold `mod` alone** for a moment to see every shortcut, grouped, on Liquid Glass
+(`shortcut-overview`; also the `shortcuts` command).
+
+On macOS 26 Kachel's panels use Liquid Glass, and a swipe or a window snapping
+into place gives a light tap on the trackpad (`haptics`).
+
 ## Configuration
 
 The complete config with every option and its explanation is in

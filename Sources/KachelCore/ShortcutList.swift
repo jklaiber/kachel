@@ -140,3 +140,26 @@ public enum ShortcutList {
         }
     }
 }
+
+
+extension Command {
+    /// How this command is written in config.yaml (parseCommand's inverse).
+    public var configText: String {
+        switch self {
+        case .greedyView(let i): return "workspace \(i + 1)"
+        case .view(let i): return "view \(i + 1)"
+        case .shift(let i): return "shift \(i + 1)"
+        case .focusScreen(let s): return "focus-screen \(s + 1)"
+        case .shiftToScreen(let s): return "shift-to-screen \(s + 1)"
+        case .focusDirection(let d): return "focus \(d.rawValue)"
+        case .swapDirection(let d): return "swap \(d.rawValue)"
+        case .scratchpad(let n): return "scratchpad \(n)"
+        case .spawn(let cmd): return "spawn \(cmd)"
+        default:
+            // The rest are single words: focusDown → focus-down.
+            return String(describing: self).reduce(into: "") { s, ch in
+                if ch.isUppercase { s += "-" + ch.lowercased() } else { s.append(ch) }
+            }
+        }
+    }
+}

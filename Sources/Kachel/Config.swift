@@ -39,10 +39,12 @@ enum Config {
             let text = try String(contentsOf: url, encoding: .utf8)
             current = try Settings.parse(text)
             error = nil
+            defer { NotificationCenter.default.post(name: didLoad, object: nil) }
             Log.info("loaded \(url.path): \(current.keys.count) keys, mod=\(KeyChord(modifiers: current.mod, key: "").description)")
         } catch {
             self.error = "\(error)"
             Log.info("config error (keeping previous settings): \(error)")
+            NotificationCenter.default.post(name: didLoad, object: nil)
         }
         return true
     }
@@ -119,6 +121,28 @@ enum Config {
         } catch {
             Log.info("could not move old config: \(error)")
         }
+    }
+
+    /// Posted after every (re)load, so the settings window can follow edits
+    /// made anywhere (the file itself, the bar's menu, the rule picker).
+    static let didLoad = Notification.Name("KachelConfigDidLoad")
+
+    /// Change config.yaml's text through `transform`, apply it, and roll back
+    /// if the result doesn't load. Returns the error, or nil.
+    @discardableResult
+    static func edit(_ transform: (String) -> String) -> String? {
+        guard let old = try? String(contentsOf: url, encoding: .utf8) else { return "could not read \(url.path)" }
+        let new = transform(old)
+        guard new != old else { return nil }
+        do { try new.write(to: url, atomically: true, encoding: .utf8) } catch { return "\(error)" }
+        WindowManager.shared.reload()
+        if let e = error {
+            Log.info("settings: change rejected, restoring the previous config: \(e)")
+            try? old.write(to: url, atomically: true, encoding: .utf8)
+            WindowManager.shared.reload()
+            return e
+        }
+        return nil
     }
 
     static func openInEditor() {

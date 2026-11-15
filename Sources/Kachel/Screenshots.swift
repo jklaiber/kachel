@@ -286,7 +286,7 @@ enum Screenshots {
         shadow.shadowBlurRadius = 24
         shadow.shadowOffset = NSSize(width: 0, height: -8)
         shadow.set()
-        let p = NSBezierPath(roundedRect: r, xRadius: 12, yRadius: 12)
+        let p = NSBezierPath(roundedRect: r, xRadius: 18, yRadius: 18)   // like the glass panels
         NSColor(srgbRed: 0.16, green: 0.16, blue: 0.18, alpha: 0.94).setFill()
         p.fill()
         NSGraphicsContext.restoreGraphicsState()

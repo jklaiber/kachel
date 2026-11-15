@@ -1,3 +1,4 @@
+import AppKit
 import Carbon.HIToolbox
 import KachelCore
 
@@ -72,5 +73,17 @@ enum KeyCodes {
         if mods.contains(.alt) { m |= optionKey }
         if mods.contains(.shift) { m |= shiftKey }
         return UInt32(m)
+    }
+
+    /// The config name of the key in a key event (for the shortcut recorder).
+    static func name(for e: NSEvent) -> String? {
+        let code = Int(e.keyCode)
+        let special = named.filter { !punctuation.keys.contains($0.key) && $0.key != "enter" && $0.key != "esc"
+            && $0.key != "backspace" }
+        if let n = special.first(where: { $0.value == code })?.key { return n }
+        guard let ch = e.charactersIgnoringModifiers?.lowercased().first else { return nil }
+        if let p = punctuation.first(where: { $0.value == ch })?.key { return p }
+        if ch.isLetter || ch.isNumber { return String(ch) }
+        return nil
     }
 }
