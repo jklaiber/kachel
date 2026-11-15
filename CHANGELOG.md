@@ -7,6 +7,12 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-15
+
+The settings window now covers everything without a detour through the file:
+commands are picked from menus, scratchpads are edited in place, taken keys are
+flagged, and changes can be undone.
+
 ### Added
 - Settings: **command picker**. Shortcuts and swipes are chosen from menus
   (grouped, with submenus for workspaces, directions, displays and scratchpads)
@@ -148,7 +154,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/jklaiber/kachel/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/jklaiber/kachel/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/jklaiber/kachel/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/jklaiber/kachel/compare/v0.1.3...v0.1.4

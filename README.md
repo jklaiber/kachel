@@ -143,8 +143,21 @@ trackpad swipes), each with a button to fix it. It's in the menu again as
 
 **Settings…** (in the bar's right-click menu, or the `settings` command) edits
 everything in a window like System Settings: general behaviour, the bar, the
-focus border, trackpad, shortcuts with a key recorder, and app rules. Changes go
-straight into `config.yaml`, comments included, and apply immediately.
+focus border, trackpad, shortcuts, app rules and scratchpads. `config.yaml`
+stays the source of truth: every change is written into it, comments included,
+and applies immediately; edits in the file show up in the window right away.
+
+- **Shortcuts**: click a shortcut and press new keys to change it. What a key or
+  swipe does is picked from menus (workspaces, windows, layout, displays,
+  tools, with submenus for workspace numbers, directions and scratchpads), or a
+  shell command.
+- **Conflicts**: before taking keys that another Kachel shortcut, macOS
+  (Keyboard Shortcuts settings) or skhd already uses, Kachel asks.
+  `Kachel --list-taken-keys` prints everything that's taken.
+- **Scratchpads**: add, rename, remove and resize them; *Take App and Title from
+  the Focused Window* fills in the details.
+- **Undo and redo** with ⌘Z / ⇧⌘Z. A change that wouldn't load is rolled back
+  and shown at the top of the window.
 
 **Hold `mod` alone** for a moment to see every shortcut, grouped, on Liquid Glass
 (`shortcut-overview`; also the `shortcuts` command).
@@ -265,6 +278,23 @@ keys:
   mod-s: scratchpad term
   mod-n: scratchpad notes
 ```
+
+A text file as quick notes, opened on `mod-n` at the top of the screen:
+
+```yaml
+  - name: notes
+    app: com.apple.TextEdit
+    title: quicknotes.txt        # only this file, not other TextEdit documents
+    run: open -a TextEdit ~/Documents/quicknotes.txt
+    size: [0.4, 0.6]
+    position: top
+```
+
+Commands started by Kachel only see the system `PATH`. For tools installed with
+Homebrew or Nix, start them through your login shell, e.g.
+`run: open -na Alacritty --args -e zsh -lc 'nvim ~/notes.md'`.
+
+Scratchpads can also be set up in **Settings… → Scratchpads**.
 
 ## Focus border
 
