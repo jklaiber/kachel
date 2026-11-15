@@ -49,6 +49,16 @@ and quit Amethyst, yabai or AeroSpace if they're running. Releases are ad-hoc
 signed, so macOS asks for Accessibility again after each upgrade. If macOS still
 refuses to open the app, install with `--no-quarantine`.
 
+## Releasing
+
+1. Move the `[Unreleased]` notes in [`CHANGELOG.md`](CHANGELOG.md) under a new
+   version heading (and add its compare link at the bottom).
+2. Tag and push: `git tag -a v0.1.6 -m "Kachel 0.1.6" && git push origin v0.1.6`
+
+The release workflow builds the universal app, publishes the GitHub release with
+that changelog section as its notes (`scripts/release-notes.sh`), and updates the
+Homebrew cask. A version without a changelog entry isn't released.
+
 ## Build and run
 
 The README images are drawn by Kachel itself with made-up windows:

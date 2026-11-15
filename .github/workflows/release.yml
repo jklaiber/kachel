@@ -13,6 +13,9 @@ jobs:
       TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - name: Release notes from CHANGELOG.md
+        # First, so a release without a changelog entry stops right here.
+        run: ./scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > notes.md
       - run: swift test
       - name: Build universal Kachel.app
         run: |
@@ -29,8 +32,9 @@ jobs:
           # Re-runs replace the zip instead of failing on the existing release.
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "Kachel-$V.zip" --clobber
+            gh release edit "$GITHUB_REF_NAME" --title "Kachel $V" --notes-file notes.md
           else
-            gh release create "$GITHUB_REF_NAME" "Kachel-$V.zip" --title "Kachel $V" --generate-notes
+            gh release create "$GITHUB_REF_NAME" "Kachel-$V.zip" --title "Kachel $V" --notes-file notes.md
           fi
       - name: Update the Homebrew cask
         if: env.TAP_GITHUB_TOKEN != ''
