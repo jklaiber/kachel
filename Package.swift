@@ -5,7 +5,7 @@ let package = Package(
     name: "Kachel",
     platforms: [.macOS(.v13)],
     dependencies: [
-        .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
+        .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2"),
     ],
     targets: [
         // Pure model: StackSet, layouts, settings parsing. No AppKit, fully unit-testable.
