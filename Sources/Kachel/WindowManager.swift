@@ -139,7 +139,7 @@ final class WindowManager {
             self.scheduleRefresh()
         }
         ws.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [unowned self] _ in
-            self.syncFocusFromSystem(followHidden: true)
+            self.systemFocusChanged()
         }
         ws.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [unowned self] _ in
             self.scheduleRefresh()
@@ -791,7 +791,7 @@ final class WindowManager {
             lastWindowGone = Date()
         }
         if notification == kAXFocusedWindowChangedNotification {
-            syncFocusFromSystem(followHidden: true)
+            systemFocusChanged()
         }
         scheduleRefresh()
     }
@@ -824,11 +824,18 @@ final class WindowManager {
                     // minimized, asleep): keep its workspace, but tile without it
                     // and don't leave focus on it.
                     if windows[id] != nil { changed = true }
-                    ss.focusOther(than: id, excluding: gone)
+                    if id == ss.current.focused, let w = ss.workspaceIndex(of: id) {
+                        refocus(afterLosing: id, in: w, gone: gone)
+                    } else {
+                        ss.focusOther(than: id, excluding: gone)
+                    }
                     continue
                 }
                 Log.info("window \(id) closed (was on workspace \(ss.workspaceIndex(of: id).map { ss.workspaces[$0].tag } ?? "?"))")
+                let wsOfClosed = ss.workspaceIndex(of: id)
+                let wasFocused = id == ss.current.focused
                 ss.remove(id)
+                if wasFocused, let w = wsOfClosed { refocus(afterLosing: id, in: w, gone: gone) }
                 hidden.remove(id)
                 floatRel[id] = nil
                 minSize[id] = nil
@@ -922,6 +929,44 @@ final class WindowManager {
 
     /// Pull the real focus into the model. If the user cmd-tabbed to a
     /// window on a hidden workspace, bring that workspace here.
+    /// The focused window went away: stay on its screen and focus the window
+    /// you used most recently on that workspace (not whatever macOS picks,
+    /// which is often on another screen).
+    private func refocus(afterLosing id: WindowID, in wsIndex: Int, gone: Set<WindowID>) {
+        if let s = ss.screen(ofWorkspace: wsIndex) { ss.focusScreen(s) }
+        let candidates = ss.workspaces[wsIndex].windows.filter {
+            $0 != id && !gone.contains($0) && windows[$0] != nil && !scratchParked.contains($0)
+        }
+        if let next = mru.first(where: candidates.contains) ?? candidates.first {
+            ss.focus(next)
+        } else {
+            ss.focusOther(than: id, excluding: gone.union([id]))
+        }
+    }
+
+    private var systemFocusPending = false
+
+    /// macOS says focus changed (a click, cmd-tab, the Dock, or macOS itself
+    /// after a window closed). Wait a moment and look at what happened first:
+    /// if a window just went away, macOS's choice is noise and we keep ours.
+    private func systemFocusChanged() {
+        guard !systemFocusPending else { return }
+        systemFocusPending = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [unowned self] in
+            self.systemFocusPending = false
+            guard self.managing, !self.asleep else { return }
+            self.refresh()
+            if Date().timeIntervalSince(self.lastWindowGone) < 1.0 {
+                if let f = self.focusedSystemWindow(), f != self.ss.current.focused {
+                    Log.info("not following focus to window \(f): macOS picked it after a window closed")
+                    self.focusCurrent()
+                }
+                return
+            }
+            self.syncFocusFromSystem(followHidden: true)
+        }
+    }
+
     private func syncFocusFromSystem(followHidden: Bool) {
         guard Date() > ignoreFocusEventsUntil,
               let id = focusedSystemWindow(),
