@@ -90,6 +90,8 @@ final class WindowManager {
             self.reload()
         }
         applySettings()
+        // First launch, or no Accessibility yet: the welcome window explains what to do.
+        if !AXIsProcessTrusted() { welcomeWindow.show() } else { welcomeWindow.showOnFirstLaunch() }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [unowned self] _ in
             self.screensChanged()

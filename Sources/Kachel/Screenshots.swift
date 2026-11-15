@@ -1,5 +1,6 @@
 import AppKit
 import KachelCore
+import SwiftUI
 
 /// `Kachel --render-screenshots <dir>`: draws the README images with Kachel's
 /// real views and made-up content (no real windows, titles or wallpaper), so
@@ -24,11 +25,27 @@ enum Screenshots {
             ("window-search-query.png", NSSize(width: 720, height: 300), { drawSearch(query: "term") }),
             ("app-rule.png", NSSize(width: 720, height: 230), drawRulePicker),
         ]
+        try MainActor.assumeIsolated { try renderWelcome(to: dir.appendingPathComponent("welcome.png")) }
         for (name, size, draw) in files {
             let data = png(size) { dark.performAsCurrentDrawingAppearance(draw) }
             try data.write(to: dir.appendingPathComponent(name))
             print("wrote \(dir.appendingPathComponent(name).path)")
         }
+    }
+
+    /// The welcome window, rendered by SwiftUI itself.
+    @MainActor static func renderWelcome(to url: URL) throws {
+        RowBackground.plain = true
+        let icon = NSImage(contentsOf: URL(fileURLWithPath: "assets/icon.svg")) ?? NSApp.applicationIconImage!
+        let view = WelcomeView(model: .demo(), close: {}, icon: icon, rendering: true)
+            .background(Color(nsColor: NSColor(srgbRed: 0.15, green: 0.15, blue: 0.17, alpha: 1)))
+            .environment(\.colorScheme, .dark)
+        let r = ImageRenderer(content: view)
+        r.scale = scale
+        guard let img = r.nsImage, let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else { return }
+        try png.write(to: url)
+        print("wrote \(url.path)")
     }
 
     // MARK: - scenes
