@@ -1,4 +1,4 @@
-<p align="center"><img src="images/icon.svg" width="128" alt="Kachel icon: a green tiled stove"></p>
+<p align="center" markdown>![Kachel icon: a green tiled stove](images/icon.svg){ width="128" }</p>
 
 # Kachel
 

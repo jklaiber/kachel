@@ -4,10 +4,8 @@
 
 `mod-p` opens a search over every open window, on every workspace and display.
 
-<p>
-<img src="images/screenshots/window-search.png" width="49%" alt="Window search listing all windows grouped by workspace">
-<img src="images/screenshots/window-search-query.png" width="49%" alt="Window search filtered by typing term">
-</p>
+![Window search listing all windows grouped by workspace](images/screenshots/window-search.png){ width="49%" }
+![Window search filtered by typing term](images/screenshots/window-search-query.png){ width="49%" }
 
 - Before you type, it lists everything by workspace, with the window you used
   before already selected: `mod-p` then ↩ jumps back.
