@@ -10,6 +10,17 @@ if CommandLine.arguments.contains("--print-default-config") {
     exit(0)
 }
 
+// Which key combinations macOS and skhd already use (the settings window warns about these).
+if CommandLine.arguments.contains("--list-taken-keys") {
+    for (title, map) in [("macOS", KeyUse.macOS()), ("skhd", KeyUse.skhd())] {
+        print("\(title):")
+        for (chord, what) in map.sorted(by: { ShortcutList.glyphs($0.key) < ShortcutList.glyphs($1.key) }) {
+            print("  \(ShortcutList.glyphs(chord).padding(toLength: 10, withPad: " ", startingAt: 0)) \(what)")
+        }
+    }
+    exit(0)
+}
+
 // README images: `Kachel --render-screenshots assets/screenshots` (see Screenshots.swift).
 if let i = CommandLine.arguments.firstIndex(of: "--render-screenshots") {
     let dir = CommandLine.arguments.count > i + 1 ? CommandLine.arguments[i + 1] : "assets/screenshots"

@@ -125,3 +125,74 @@ extension Settings {
         "[" + items.map(yamlScalar).joined(separator: ", ") + "]"
     }
 }
+
+extension Settings {
+    /// Replace the whole `scratchpads:` list (the settings window edits them as
+    /// a whole). Comments above and around the section stay; comments inside
+    /// the old entries don't.
+    public static func setScratchpads(_ text: String, _ pads: [Scratchpad]) -> String {
+        var entries: [String] = []
+        for p in pads {
+            entries.append("  - name: \(yamlScalar(p.name))")
+            entries.append("    app: \(yamlScalar(p.app))")
+            if let t = p.title, !t.isEmpty { entries.append("    title: \(yamlScalar(t))") }
+            if let r = p.run, !r.isEmpty { entries.append("    run: \(yamlScalar(r))") }
+            entries.append("    size: [\(trim(p.width)), \(trim(p.height))]")
+            if p.position != .center { entries.append("    position: \(p.position.rawValue)") }
+        }
+        var lines = text.components(separatedBy: "\n")
+        guard let head = lines.firstIndex(where: { $0.hasPrefix("scratchpads:") }) else {
+            let block = pads.isEmpty ? ["scratchpads: []"] : ["scratchpads:"] + entries
+            let at = lines.firstIndex { $0.hasPrefix("# Keys:") } ?? lines.firstIndex { $0.hasPrefix("keys:") } ?? lines.count
+            lines.insert(contentsOf: block + [""], at: at)
+            return lines.joined(separator: "\n")
+        }
+        // Drop the old entries: indented lines up to the next top-level line,
+        // keeping indented comments (e.g. commented-out examples).
+        var i = head + 1
+        while i < lines.count, lines[i].isEmpty || lines[i].hasPrefix(" ") {
+            let t = lines[i].trimmingCharacters(in: .whitespaces)
+            if !t.isEmpty, !t.hasPrefix("#") { lines.remove(at: i) } else { i += 1 }
+        }
+        lines[head] = pads.isEmpty ? "scratchpads: []" : "scratchpads:"
+        lines.insert(contentsOf: entries, at: head + 1)
+        return lines.joined(separator: "\n")
+    }
+
+    private static func trim(_ d: Double) -> String {
+        let s = String(format: "%.2f", d)
+        return s.hasSuffix("0") ? String(s.dropLast()) : s
+    }
+}
+
+/// Key combinations other tools already use, to warn before taking them.
+public enum KeyConflicts {
+    /// Bindings in an skhd config: `lalt + shift - j : …` → chord.
+    public static func skhd(_ text: String) -> [KeyChord: String] {
+        var out: [KeyChord: String] = [:]
+        for raw in text.components(separatedBy: "\n") {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty, !line.hasPrefix("#"), let colon = line.firstIndex(of: ":") else { continue }
+            let spec = line[..<colon].trimmingCharacters(in: .whitespaces)
+            let action = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+            let parts = spec.components(separatedBy: " - ")
+            guard parts.count == 2 else { continue }
+            var mods: Set<Modifier> = []
+            for m in parts[0].components(separatedBy: "+").map({ $0.trimmingCharacters(in: .whitespaces).lowercased() }) {
+                switch m {
+                case "alt", "lalt", "ralt": mods.insert(.alt)
+                case "cmd", "lcmd", "rcmd": mods.insert(.cmd)
+                case "ctrl", "lctrl", "rctrl": mods.insert(.ctrl)
+                case "shift", "lshift", "rshift": mods.insert(.shift)
+                case "hyper": mods.formUnion([.alt, .cmd, .ctrl, .shift])
+                case "meh": mods.formUnion([.alt, .ctrl, .shift])
+                default: continue
+                }
+            }
+            let key = parts[1].trimmingCharacters(in: .whitespaces).lowercased()
+            guard !mods.isEmpty, !key.isEmpty, !key.hasPrefix("0x") else { continue }
+            out[KeyChord(modifiers: mods, key: key)] = action
+        }
+        return out
+    }
+}

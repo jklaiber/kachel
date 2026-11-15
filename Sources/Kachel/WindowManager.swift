@@ -601,6 +601,13 @@ final class WindowManager {
         ss.focus(id)
     }
 
+    /// The window you last used (Kachel's own windows don't count), for the
+    /// settings window's "from the focused window" buttons.
+    func focusedWindowInfo() -> (app: String, title: String)? {
+        guard let f = ss.current.focused, let w = windows[f] else { return nil }
+        return (w.bundleID ?? appName(of: w), w.title)
+    }
+
     // MARK: - window search
 
     private func touch(_ id: WindowID) {

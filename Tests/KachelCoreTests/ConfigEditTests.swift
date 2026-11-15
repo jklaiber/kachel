@@ -72,3 +72,37 @@ final class CommandTextTests: XCTestCase {
         }
     }
 }
+
+final class ScratchpadEditAndConflictTests: XCTestCase {
+    func testSetScratchpadsRoundTrip() throws {
+        var notes = Scratchpad(name: "notes", app: "com.apple.TextEdit")
+        notes.title = "quicknotes.txt"; notes.run = "open -a TextEdit ~/Documents/quicknotes.txt"
+        notes.width = 0.4; notes.height = 0.6; notes.position = .top
+        let base = try Settings.parse(Settings.defaultYAML)
+        let t = Settings.setScratchpads(Settings.defaultYAML, base.scratchpads + [notes])
+        let s = try Settings.parse(t)
+        XCTAssertEqual(s.scratchpads.map(\.name), ["term", "notes"])
+        XCTAssertEqual(s.scratchpads[1], notes)
+        XCTAssertEqual(s.scratchpads[0].run, base.scratchpads[0].run)            // quoted run survives
+        XCTAssertEqual(s.keys.count, base.keys.count)
+        XCTAssertTrue(t.contains("# Scratchpads, like xmonad's NamedScratchpad"))
+        // Remove all: the key using `term` has to go too, so test the list alone.
+        let empty = Settings.setScratchpads("scratchpads:\n  - name: a\n    app: X\nkeys:\n  mod-1: workspace 1\n", [])
+        XCTAssertEqual(try Settings.parse(empty).scratchpads, [])
+    }
+
+    func testSkhdParsing() {
+        let rc = """
+        # comment
+        lalt - q: skhd --key "cmd - w"
+        lalt - return: open -n -a alacritty
+        lalt + cmd - f: open -n ~
+        shift + alt - 0x2C : something
+        """
+        let c = KeyConflicts.skhd(rc)
+        XCTAssertEqual(c[KeyChord(modifiers: [.alt], key: "q")], "skhd --key \"cmd - w\"")
+        XCTAssertNotNil(c[KeyChord(modifiers: [.alt], key: "return")])
+        XCTAssertNotNil(c[KeyChord(modifiers: [.alt, .cmd], key: "f")])
+        XCTAssertEqual(c.count, 3)                                               // hex keycodes skipped
+    }
+}

@@ -49,10 +49,81 @@ final class SettingsModel: ObservableObject {
         error = Config.error
     }
 
-    /// Apply a text edit; remember why it failed if it did.
+    // MARK: undo / redo (versions of config.yaml's text)
+
+    @Published var canUndo = false
+    @Published var canRedo = false
+    private var undoStack: [String] = []
+    private var redoStack: [String] = []
+
+    private func fileText() -> String? { try? String(contentsOf: Config.url, encoding: .utf8) }
+
+    /// Apply a text edit; remember why it failed if it did, and keep the
+    /// previous version for undo.
     func edit(_ transform: (String) -> String) {
+        let before = fileText()
         lastSaveError = Config.edit(transform)
+        remember(before)
         reload()
+    }
+
+    /// For changes made by other code that writes the file itself.
+    func editExternally(_ change: () -> Void) {
+        let before = fileText()
+        change()
+        remember(before)
+        reload()
+    }
+
+    private func remember(_ before: String?) {
+        guard lastSaveError == nil, let before, fileText() != before else { return }
+        undoStack.append(before)
+        if undoStack.count > 50 { undoStack.removeFirst() }
+        redoStack.removeAll()
+        canUndo = true; canRedo = false
+    }
+
+    func undo() {
+        guard let prev = undoStack.popLast(), let now = fileText() else { return }
+        redoStack.append(now)
+        restore(prev)
+    }
+
+    func redo() {
+        guard let next = redoStack.popLast(), let now = fileText() else { return }
+        undoStack.append(now)
+        restore(next)
+    }
+
+    private func restore(_ text: String) {
+        try? text.write(to: Config.url, atomically: true, encoding: .utf8)
+        WindowManager.shared.reload()
+        canUndo = !undoStack.isEmpty; canRedo = !redoStack.isEmpty
+        lastSaveError = nil
+        reload()
+    }
+
+    // MARK: binding keys, with a warning when they're taken
+
+    struct PendingKey { var title: String; var message: String; var apply: () -> Void }
+    @Published var pendingKey: PendingKey?
+
+    /// Bind `chord` to `command` (replacing the binding `replacing`, if any).
+    /// If Kachel, macOS or skhd already uses the keys, ask first.
+    func assign(_ chord: KeyChord, command: String, replacing old: KeyChord?) {
+        let apply = { [self] in
+            edit { t in
+                var t = t
+                if let old, old != chord { t = KSettings.setKey(t, chord: old, chordText: "", command: nil, mod: s.mod) }
+                return KSettings.setKey(t, chord: chord, chordText: chordText(chord, mod: s.mod), command: command, mod: s.mod)
+            }
+        }
+        if let conflict = KeyUse.conflict(for: chord, ignoring: old, keys: s.keys) {
+            pendingKey = PendingKey(title: "\(ShortcutList.glyphs(chord)) is already used",
+                                    message: conflict + "\n\nUse it for Kachel anyway?", apply: apply)
+        } else {
+            apply()
+        }
     }
 
     func top(_ key: String, _ value: String) { edit { KSettings.setTopLevel($0, key: key, value: value) } }
@@ -124,10 +195,21 @@ struct SettingsView: View {
                 .formStyle(.grouped)
             }
             .toolbar {
-                ToolbarItem {
+                ToolbarItemGroup {
+                    Button { model.undo() } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                        .disabled(!model.canUndo).keyboardShortcut("z", modifiers: .command).help("Undo the last change")
+                    Button { model.redo() } label: { Label("Redo", systemImage: "arrow.uturn.forward") }
+                        .disabled(!model.canRedo).keyboardShortcut("z", modifiers: [.command, .shift]).help("Redo")
                     Button { Config.openInEditor() } label: { Label("Open config.yaml", systemImage: "doc.text") }
                         .help("Open config.yaml in your editor")
                 }
+            }
+            .alert(model.pendingKey?.title ?? "", isPresented: Binding(get: { model.pendingKey != nil },
+                                                                     set: { if !$0 { model.pendingKey = nil } })) {
+                Button("Use Anyway") { model.pendingKey?.apply(); model.pendingKey = nil }
+                Button("Cancel", role: .cancel) { model.pendingKey = nil }
+            } message: {
+                Text(model.pendingKey?.message ?? "")
             }
             .navigationTitle((pane ?? .general).rawValue)
         }
@@ -272,7 +354,7 @@ struct BarPane: View {
             Section("Shows") {
                 ForEach(BarWidget.allCases, id: \.self) { w in
                     Toggle(w.menuTitle, isOn: m.binding({ $0.bar.shows(w) }, { on in
-                        if on != m.s.bar.shows(w) { Config.toggleWidget(w); WindowManager.shared.reload(); m.reload() }
+                        if on != m.s.bar.shows(w) { m.editExternally { Config.toggleWidget(w); WindowManager.shared.reload() } }
                     }))
                 }
                 Toggle("Hide empty workspaces", isOn: m.binding({ $0.bar.hideEmptyWorkspaces }, {
@@ -324,8 +406,6 @@ struct BorderPane: View {
 
 struct TrackpadPane: View {
     @ObservedObject var m: SettingsModel
-    @State private var swipes: [String: String] = [:]
-    static let dirs = [("swipe-left", "Swipe left"), ("swipe-right", "Swipe right"), ("swipe-up", "Swipe up"), ("swipe-down", "Swipe down")]
 
     var body: some View {
         Form {
@@ -342,80 +422,74 @@ struct TrackpadPane: View {
                 Toggle("Skip empty workspaces", isOn: m.binding({ $0.gestures.skipEmpty }, { m.nested("gestures", "skip-empty", SettingsModel.yaml($0)) }))
             }
             Section("Commands") {
-                ForEach(Self.dirs, id: \.0) { key, label in
-                    TextField(label, text: Binding(get: { swipes[key] ?? "" }, set: { swipes[key] = $0 }), prompt: Text("nothing"))
-                        .onSubmit {
-                            let v = (swipes[key] ?? "").trimmingCharacters(in: .whitespaces)
-                            m.nested("gestures", key, v.isEmpty ? "~" : v)
-                        }
-                }
-                Text("Any command, e.g. workspace-next, window-search, scratchpad term. Press Return to apply.")
-                    .font(.caption).foregroundStyle(.secondary)
+                swipeRow("Swipe left", "swipe-left", m.s.gestures.left)
+                swipeRow("Swipe right", "swipe-right", m.s.gestures.right)
+                swipeRow("Swipe up", "swipe-up", m.s.gestures.up)
+                swipeRow("Swipe down", "swipe-down", m.s.gestures.down)
             }
         }
-        .onAppear {
-            let g = m.s.gestures
-            swipes = ["swipe-left": g.left.map(commandText) ?? "", "swipe-right": g.right.map(commandText) ?? "",
-                      "swipe-up": g.up.map(commandText) ?? "", "swipe-down": g.down.map(commandText) ?? ""]
+    }
+
+    private func swipeRow(_ label: String, _ key: String, _ cmd: Command?) -> some View {
+        LabeledContent(label) {
+            CommandPicker(value: cmd, allowNone: true, settings: m.s) { m.nested("gestures", key, $0?.configText ?? "~") }
         }
     }
 }
 
 struct ShortcutsPane: View {
     @ObservedObject var m: SettingsModel
-    @State private var newCommand = ""
-    @State private var adding = false
+    @State private var newCommand: Command?
 
     var rows: [(chord: KeyChord, command: Command)] {
         m.s.keys.map { ($0.key, $0.value) }.sorted {
             let a = ShortcutList.describe($0.command), b = ShortcutList.describe($1.command)
-            return (a.group, a.label, $0.chord.description) < (b.group, b.label, $1.chord.description)
+            return (ShortcutList.order.firstIndex(of: a.group) ?? 9, a.label, $0.chord.description)
+                < (ShortcutList.order.firstIndex(of: b.group) ?? 9, b.label, $1.chord.description)
         }
     }
 
     var body: some View {
         Form {
-            Section {
-                ForEach(rows, id: \.chord) { row in
-                    HStack {
-                        KeyRecorder(chord: row.chord) { new in
-                            guard new != row.chord else { return }
-                            let cmd = commandText(row.command)
-                            m.edit { t in
-                                let removed = KSettings.setKey(t, chord: row.chord, chordText: "", command: nil, mod: m.s.mod)
-                                return KSettings.setKey(removed, chord: new, chordText: chordText(new, mod: m.s.mod), command: cmd, mod: m.s.mod)
-                            }
-                        }
-                        .frame(width: 130)
-                        Text(ShortcutList.describe(row.command).label)
-                        Spacer()
-                        Text(commandText(row.command)).font(.caption.monospaced()).foregroundStyle(.secondary)
-                        Button(role: .destructive) {
-                            m.edit { KSettings.setKey($0, chord: row.chord, chordText: "", command: nil, mod: m.s.mod) }
-                        } label: { Image(systemName: "minus.circle") }.buttonStyle(.borderless)
-                    }
-                }
-            }
             Section("Add a Shortcut") {
-                TextField("Command", text: $newCommand, prompt: Text("e.g. scratchpad term, spawn open -a Safari"))
                 HStack {
-                    Text(validation ?? "Then record the keys:").font(.caption).foregroundStyle(validation == nil ? Color.secondary : .orange)
+                    CommandPicker(value: newCommand, settings: m.s) { newCommand = $0 }
                     Spacer()
                     KeyRecorder(chord: nil) { chord in
-                        guard validation == nil, !newCommand.isEmpty else { return }
-                        m.edit { KSettings.setKey($0, chord: chord, chordText: chordText(chord, mod: m.s.mod), command: newCommand, mod: m.s.mod) }
-                        newCommand = ""
+                        guard let cmd = newCommand else { NSSound.beep(); return }
+                        m.assign(chord, command: cmd.configText, replacing: nil)
+                        newCommand = nil
                     }
                     .frame(width: 130)
                 }
+                Text("Choose what it should do, then click Record and press the keys.").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(ShortcutList.order, id: \.self) { group in
+                let inGroup = rows.filter { ShortcutList.describe($0.command).group == group }
+                if !inGroup.isEmpty {
+                    Section(group) {
+                        ForEach(inGroup, id: \.chord) { row in
+                            HStack {
+                                KeyRecorder(chord: row.chord) { new in
+                                    guard new != row.chord else { return }
+                                    m.assign(new, command: row.command.configText, replacing: row.chord)
+                                }
+                                .frame(width: 130)
+                                CommandPicker(value: row.command, settings: m.s) { new in
+                                    guard let new else { return }
+                                    m.edit { KSettings.setKey($0, chord: row.chord, chordText: chordText(row.chord, mod: m.s.mod),
+                                                              command: new.configText, mod: m.s.mod) }
+                                }
+                                Spacer()
+                                Button(role: .destructive) {
+                                    m.edit { KSettings.setKey($0, chord: row.chord, chordText: "", command: nil, mod: m.s.mod) }
+                                } label: { Image(systemName: "minus.circle") }.buttonStyle(.borderless).help("Remove this shortcut")
+                            }
+                        }
+                    }
+                }
             }
         }
-    }
-
-    private var validation: String? {
-        guard !newCommand.isEmpty else { return nil }
-        do { _ = try KSettings.parseCommand(newCommand, workspaceCount: m.s.workspaces.count, context: "command"); return nil }
-        catch { return "\(error)" }
     }
 }
 
@@ -489,25 +563,233 @@ struct ScratchpadsPane: View {
 
     var body: some View {
         Form {
+            ForEach(Array(m.s.scratchpads.enumerated()), id: \.element.name) { i, pad in
+                ScratchpadEditor(m: m, pad: pad, index: i)
+            }
             Section {
-                ForEach(m.s.scratchpads, id: \.name) { sp in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(sp.name).font(.headline)
-                            Spacer()
-                            let keys = m.s.keys.filter { $0.value == .scratchpad(sp.name) }.map { ShortcutList.glyphs($0.key) }
-                            Text(keys.joined(separator: " ")).font(.body.monospaced())
-                        }
-                        Text("\(sp.app)\(sp.title.map { ", title “\($0)”" } ?? "") · \(Int(sp.width * 100)) × \(Int(sp.height * 100)) % · \(sp.position.rawValue)")
-                            .font(.caption).foregroundStyle(.secondary)
+                Button {
+                    var pad = Scratchpad(name: uniqueName(), app: "")
+                    if let w = WindowManager.shared.focusedWindowInfo() { pad.app = w.app; pad.title = w.title.isEmpty ? nil : w.title }
+                    if pad.app.isEmpty { pad.app = "com.apple.TextEdit" }
+                    m.edit { KSettings.setScratchpads($0, m.s.scratchpads + [pad]) }
+                } label: { Label("Add a Scratchpad", systemImage: "plus") }
+                Text("A new scratchpad starts with the window you last used. Give it a key, and a run command so Kachel can start it.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func uniqueName() -> String {
+        let names = Set(m.s.scratchpads.map(\.name))
+        return (1...).lazy.map { $0 == 1 ? "pad" : "pad\($0)" }.first { !names.contains($0) }!
+    }
+}
+
+/// One scratchpad's settings. Text fields apply on Return; the rest at once.
+struct ScratchpadEditor: View {
+    @ObservedObject var m: SettingsModel
+    var pad: Scratchpad
+    var index: Int
+    @State private var name = ""
+    @State private var app = ""
+    @State private var title = ""
+    @State private var run = ""
+
+    var body: some View {
+        Section {
+            TextField("Name", text: $name).onSubmit { rename() }
+            HStack {
+                TextField("App", text: $app, prompt: Text("bundle ID or app name")).onSubmit { save { $0.app = app } }
+                Menu {
+                    ForEach(runningApps, id: \.bundleIdentifier) { a in
+                        Button(a.localizedName ?? a.bundleIdentifier ?? "?") { app = a.bundleIdentifier ?? ""; save { $0.app = app } }
                     }
+                } label: { Image(systemName: "app.badge") }.menuStyle(.borderlessButton).fixedSize().help("Choose a running app")
+            }
+            TextField("Window title contains", text: $title, prompt: Text("optional")).onSubmit {
+                save { $0.title = title.isEmpty ? nil : title }
+            }
+            TextField("Start with", text: $run, prompt: Text("shell command, e.g. open -a Notes")).onSubmit {
+                save { $0.run = run.isEmpty ? nil : run }
+            }
+            Button("Take App and Title from the Focused Window") {
+                guard let w = WindowManager.shared.focusedWindowInfo() else { NSSound.beep(); return }
+                app = w.app; title = w.title
+                save { $0.app = w.app; $0.title = w.title.isEmpty ? nil : w.title }
+            }
+            Slider(value: Binding(get: { pad.width }, set: { v in save { $0.width = (v * 20).rounded() / 20 } }), in: 0.2...1) {
+                Text("Width: \(Int(pad.width * 100)) %")
+            }
+            Slider(value: Binding(get: { pad.height }, set: { v in save { $0.height = (v * 20).rounded() / 20 } }), in: 0.2...1) {
+                Text("Height: \(Int(pad.height * 100)) %")
+            }
+            Picker("Position", selection: Binding(get: { pad.position }, set: { v in save { $0.position = v } })) {
+                Text("Centred").tag(Scratchpad.Position.center)
+                Text("At the top, like a drop-down").tag(Scratchpad.Position.top)
+            }
+            HStack {
+                Text("Shortcut")
+                Spacer()
+                KeyRecorder(chord: key) { chord in m.assign(chord, command: "scratchpad \(pad.name)", replacing: key) }
+                    .frame(width: 130)
+            }
+        } header: {
+            HStack {
+                Text(pad.name)
+                Spacer()
+                Button(role: .destructive) { delete() } label: { Label("Remove", systemImage: "trash") }
+                    .buttonStyle(.borderless).labelStyle(.iconOnly).help("Remove this scratchpad")
+            }
+        }
+        .onAppear { name = pad.name; app = pad.app; title = pad.title ?? ""; run = pad.run ?? "" }
+    }
+
+    private var key: KeyChord? { m.s.keys.first { $0.value == .scratchpad(pad.name) }?.key }
+
+    private var runningApps: [NSRunningApplication] {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != nil && $0.bundleIdentifier != Bundle.main.bundleIdentifier }
+            .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") }
+    }
+
+    private func save(_ change: (inout Scratchpad) -> Void) {
+        var list = m.s.scratchpads
+        guard list.indices.contains(index) else { return }
+        change(&list[index])
+        guard !list[index].app.isEmpty else { return }
+        m.edit { KSettings.setScratchpads($0, list) }
+    }
+
+    /// Renaming also updates the keys and swipes that call it.
+    private func rename() {
+        let new = name.trimmingCharacters(in: .whitespaces)
+        guard !new.isEmpty, !new.contains(" "), new != pad.name else { name = pad.name; return }
+        var list = m.s.scratchpads
+        list[index].name = new
+        let old = pad.name, s = m.s
+        m.edit { t in
+            var t = KSettings.setScratchpads(t, list)
+            for (chord, cmd) in s.keys where cmd == .scratchpad(old) {
+                t = KSettings.setKey(t, chord: chord, chordText: chordText(chord, mod: s.mod), command: "scratchpad \(new)", mod: s.mod)
+            }
+            for (k, c) in [("swipe-left", s.gestures.left), ("swipe-right", s.gestures.right),
+                           ("swipe-up", s.gestures.up), ("swipe-down", s.gestures.down)] where c == .scratchpad(old) {
+                t = KSettings.setNested(t, section: "gestures", key: k, value: "scratchpad \(new)")
+            }
+            return t
+        }
+    }
+
+    /// Removing also removes the keys and swipes that call it.
+    private func delete() {
+        let s = m.s, old = pad.name
+        m.edit { t in
+            var t = t
+            for (chord, cmd) in s.keys where cmd == .scratchpad(old) {
+                t = KSettings.setKey(t, chord: chord, chordText: "", command: nil, mod: s.mod)
+            }
+            for (k, c) in [("swipe-left", s.gestures.left), ("swipe-right", s.gestures.right),
+                           ("swipe-up", s.gestures.up), ("swipe-down", s.gestures.down)] where c == .scratchpad(old) {
+                t = KSettings.setNested(t, section: "gestures", key: k, value: "~")
+            }
+            return KSettings.setScratchpads(t, s.scratchpads.filter { $0.name != old })
+        }
+    }
+}
+
+// MARK: - command picker
+
+/// Choose a command from menus instead of typing it: grouped like the
+/// shortcut overview, with submenus for workspaces, directions, displays and
+/// scratchpads, and a field for shell commands.
+struct CommandPicker: View {
+    var value: Command?
+    var allowNone = false
+    var settings: KSettings
+    var onPick: (Command?) -> Void
+    @State private var askSpawn = false
+    @State private var spawnText = ""
+
+    var body: some View {
+        HStack {
+            Menu(label) {
+                Section("Workspaces") {
+                    numbered("Show workspace") { .greedyView($0) }
+                    numbered("Go to workspace (W.view)") { .view($0) }
+                    numbered("Move window to workspace") { .shift($0) }
+                    item(.workspaceBack); item(.workspaceNext); item(.workspacePrev); item(.shiftNext); item(.shiftPrev)
                 }
-            } footer: {
-                Text("Scratchpads are edited in config.yaml (see the examples there).")
+                Section("Windows") {
+                    item(.focusDown); item(.focusUp); item(.focusMaster)
+                    item(.swapDown); item(.swapUp); item(.swapMaster)
+                    directions("Focus window") { .focusDirection($0) }
+                    directions("Swap with window") { .swapDirection($0) }
+                    item(.toggleFloat); item(.close)
+                }
+                Section("Layout") {
+                    item(.nextLayout); item(.toggleFullscreen); item(.shrink); item(.expand)
+                    item(.incMaster); item(.decMaster); item(.taller); item(.shorter); item(.resetSizes)
+                }
+                Section("Displays") {
+                    Menu("Focus display") { ForEach(0..<3) { i in Button("Display \(i + 1) from the left") { onPick(.focusScreen(i)) } } }
+                    Menu("Move window to display") { ForEach(0..<3) { i in Button("Display \(i + 1) from the left") { onPick(.shiftToScreen(i)) } } }
+                    item(.focusNextScreen); item(.focusPrevScreen); item(.shiftToNextScreen); item(.shiftToPrevScreen)
+                }
+                Section("Tools") {
+                    item(.windowSearch); item(.appRule)
+                    if !settings.scratchpads.isEmpty {
+                        Menu("Scratchpad") { ForEach(settings.scratchpads, id: \.name) { p in Button(p.name) { onPick(.scratchpad(p.name)) } } }
+                    }
+                    item(.terminal)
+                    Button("Run a Shell Command…") {
+                        if case .spawn(let c) = value { spawnText = c }
+                        askSpawn = true
+                    }
+                    item(.shortcuts); item(.settings); item(.welcome)
+                    item(.refresh); item(.reload); item(.restart); item(.quit)
+                }
+                if allowNone {
+                    Divider()
+                    Button("Nothing") { onPick(nil) }
+                }
             }
-            Section {
-                Button("Edit Scratchpads in config.yaml") { Config.openInEditor() }
+            .fixedSize()
+            if askSpawn || isSpawn {
+                TextField("Shell command", text: $spawnText, prompt: Text("e.g. open -a Safari"))
+                    .onSubmit {
+                        let c = spawnText.trimmingCharacters(in: .whitespaces)
+                        if !c.isEmpty { onPick(.spawn(c)) }
+                        askSpawn = false
+                    }
+                    .frame(minWidth: 180)
             }
+        }
+        .onAppear { if case .spawn(let c) = value { spawnText = c } }
+    }
+
+    private var isSpawn: Bool { if case .spawn = value { return true } else { return false } }
+
+    private var label: String {
+        guard let value else { return allowNone ? "Nothing" : "Choose a Command" }
+        if case .spawn = value { return "Run a Shell Command" }
+        return ShortcutList.describe(value).label
+    }
+
+    private func item(_ c: Command) -> some View {
+        Button(ShortcutList.describe(c).label) { onPick(c) }
+    }
+
+    private func numbered(_ title: String, _ make: @escaping (Int) -> Command) -> some View {
+        Menu(title) {
+            ForEach(Array(settings.workspaces.enumerated()), id: \.offset) { i, tag in
+                Button("Workspace \(tag)") { onPick(make(i)) }
+            }
+        }
+    }
+
+    private func directions(_ title: String, _ make: @escaping (Direction) -> Command) -> some View {
+        Menu(title) {
+            ForEach(Direction.allCases, id: \.self) { d in Button(d.rawValue.capitalized) { onPick(make(d)) } }
         }
     }
 }

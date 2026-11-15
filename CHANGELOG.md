@@ -7,6 +7,18 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- Settings: **command picker**. Shortcuts and swipes are chosen from menus
+  (grouped, with submenus for workspaces, directions, displays and scratchpads)
+  instead of typed; shell commands get a text field.
+- Settings: **scratchpad editor**. Add, rename, remove and change scratchpads,
+  with their key; "take app and title from the focused window" fills in the
+  details. Renaming or removing also updates the keys and swipes that use it.
+- Settings: **key conflict warnings** before taking a combination that another
+  Kachel shortcut, macOS (Keyboard Shortcuts settings) or skhd already uses.
+  `Kachel --list-taken-keys` prints them.
+- Settings: **undo and redo** (⌘Z / ⇧⌘Z) for changes made in the window.
+
 ### Fixed
 - A scratchpad with a `title` could take another window of the same app when it
   started (e.g. TextEdit reopening other documents). Only the matching window counts now.

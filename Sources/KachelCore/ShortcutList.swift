@@ -10,7 +10,7 @@ public enum ShortcutList {
         public var rows: [Row]
     }
 
-    static let order = ["Workspaces", "Windows", "Layout", "Displays", "Tools"]
+    public static let order = ["Workspaces", "Windows", "Layout", "Displays", "Tools"]
 
     public static func groups(_ keys: [KeyChord: Command], workspaces: [String]) -> [Group] {
         var byGroup: [String: [(sort: String, row: Row)]] = [:]
