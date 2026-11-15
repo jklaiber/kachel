@@ -540,7 +540,12 @@ final class WindowManager {
     /// are often set a moment later, so only the app has to match.
     private func startingScratchpad(for w: AXWindow) -> Scratchpad? {
         for (name, started) in scratchPending where Date().timeIntervalSince(started) < 15 {
-            if let sp = scratchpad(named: name), matches(w, sp, checkTitle: false) { return sp }
+            guard let sp = scratchpad(named: name), matches(w, sp, checkTitle: false) else { continue }
+            // With a title, only the matching window counts: apps like TextEdit
+            // reopen other documents at the same time. A window without a
+            // title yet (set a moment later) still counts.
+            if let t = sp.title, !t.isEmpty, !w.title.isEmpty, !w.title.localizedCaseInsensitiveContains(t) { continue }
+            return sp
         }
         return nil
     }

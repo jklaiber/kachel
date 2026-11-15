@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Fixed
+- A scratchpad with a `title` could take another window of the same app when it
+  started (e.g. TextEdit reopening other documents). Only the matching window counts now.
+
 ## [0.1.6] - 2026-11-15
 
 Kachel feels more like part of macOS: a settings window, a welcome window that
