@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-11-15
+
+Kachel feels more like part of macOS: a settings window, a welcome window that
+checks your setup, a shortcut overview, Liquid Glass and trackpad feedback.
+
 ### Added
 - **Settings window** in the style of System Settings: General, Bar, Focus
   Border, Trackpad, Shortcuts (with a key recorder) and App Rules. Changes are
@@ -127,7 +132,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/jklaiber/kachel/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/jklaiber/kachel/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/jklaiber/kachel/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jklaiber/kachel/compare/v0.1.2...v0.1.3
