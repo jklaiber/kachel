@@ -36,7 +36,7 @@ enum Screenshots {
     /// The welcome window, rendered by SwiftUI itself.
     @MainActor static func renderWelcome(to url: URL) throws {
         RowBackground.plain = true
-        let icon = NSImage(contentsOf: URL(fileURLWithPath: "assets/icon.svg")) ?? NSApp.applicationIconImage!
+        let icon = NSImage(contentsOf: URL(fileURLWithPath: "docs/images/icon.svg")) ?? NSApp.applicationIconImage!
         let view = WelcomeView(model: .demo(), close: {}, icon: icon, rendering: true)
             .background(Color(nsColor: NSColor(srgbRed: 0.15, green: 0.15, blue: 0.17, alpha: 1)))
             .environment(\.colorScheme, .dark)

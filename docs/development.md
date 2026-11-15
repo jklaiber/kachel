@@ -1,0 +1,58 @@
+# Development
+
+Requires macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`).
+
+```bash
+swift test                    # the model: workspaces, layouts, config parsing and editing
+./scripts/bundle.sh           # build/Kachel.app
+open build/Kachel.app
+```
+
+Every rebuild is a new ad-hoc signature, so macOS asks for Accessibility again
+(`bundle.sh` removes the stale entry). Sign with a certificate to keep it:
+`SIGN_IDENTITY="Apple Development: …" ./scripts/bundle.sh`.
+
+## Layout of the code
+
+| Path | |
+|---|---|
+| `Sources/KachelCore/` | the pure model, fully unit-tested: `StackSet` (workspaces, displays, greedyView), `Layout`, `Settings` (parsing, the default config, careful edits of the YAML), `WindowSearch`, `Navigation`, `ShortcutList` |
+| `Sources/Kachel/WindowManager.swift` | Accessibility, window tracking, rendering, commands |
+| `Sources/Kachel/Bar.swift`, `WindowSwitcher.swift`, `RulePicker.swift`, `ShortcutOverview.swift` | the panels |
+| `Sources/Kachel/SettingsWindow.swift`, `WelcomeWindow.swift` | the SwiftUI windows |
+| `Sources/Kachel/Gestures.swift` | trackpad swipes |
+| `config.example.yaml` | the default config; a test keeps it equal to the built-in one |
+
+After changing the default config:
+
+```bash
+swift run Kachel --print-default-config > config.example.yaml
+```
+
+## Images
+
+The images in these docs are drawn by Kachel itself, with made-up windows and
+our own wallpaper: `./scripts/screenshots.sh` renders them into
+`docs/images/screenshots/`.
+
+## Documentation
+
+These pages live in `docs/` and are built with MkDocs Material; every push to
+`main` publishes them. To preview locally:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
+.venv/bin/mkdocs serve
+```
+
+`mkdocs build --strict` fails on broken links; CI runs it on every push and pull request.
+
+## Releasing
+
+1. Move the `[Unreleased]` notes in `CHANGELOG.md` under a new version heading,
+   with its compare link at the bottom.
+2. `git tag -a v0.1.8 -m "Kachel 0.1.8" && git push origin v0.1.8`
+
+The release workflow tests, builds the universal app, publishes the GitHub
+release with that changelog section as its notes, and updates the Homebrew cask
+in `jklaiber/homebrew-tap`. A version without a changelog entry isn't released.

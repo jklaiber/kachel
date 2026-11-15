@@ -1,0 +1,83 @@
+site_name: Kachel
+site_description: A tiling window manager for macOS with xmonad's workspaces.
+site_url: https://jklaiber.github.io/kachel/
+repo_url: https://github.com/jklaiber/kachel
+repo_name: jklaiber/kachel
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  logo: images/icon.svg
+  favicon: images/icon.svg
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Follow the system
+  font: false            # the system font (SF Pro on a Mac), no Google Fonts
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.instant
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.keys
+  - pymdownx.snippets:
+      base_path: !relative $config_dir
+      check_paths: true
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Coming from…: coming-from.md
+  - Using Kachel:
+      - Workspaces and displays: workspaces.md
+      - Layouts: layouts.md
+      - Keys: keys.md
+      - The bar: bar.md
+      - Window search and app rules: window-search-and-rules.md
+      - Scratchpads: scratchpads.md
+      - Mouse and trackpad: mouse-and-trackpad.md
+  - Configuration:
+      - Settings and config.yaml: settings.md
+      - Reference: configuration.md
+  - Help:
+      - Troubleshooting: troubleshooting.md
+      - Development: development.md
+      - Changelog: https://github.com/jklaiber/kachel/blob/main/CHANGELOG.md
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn

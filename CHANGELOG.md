@@ -7,6 +7,12 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- **Documentation website** at [jklaiber.github.io/kachel](https://jklaiber.github.io/kachel/):
+  getting started, a guide for people coming from xmonad, Amethyst and
+  AeroSpace, every feature, the full configuration reference and
+  troubleshooting. The README is now a short overview.
+
 ## [0.1.7] - 2026-11-15
 
 The settings window now covers everything without a detour through the file:

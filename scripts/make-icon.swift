@@ -1,10 +1,10 @@
 #!/usr/bin/env swift
-// Renders assets/icon.svg into an .iconset and builds assets/AppIcon.icns.
+// Renders docs/images/icon.svg into an .iconset and builds assets/AppIcon.icns.
 //   ./scripts/make-icon.swift
 import AppKit
 
 let root = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent().deletingLastPathComponent()
-let svg = root.appendingPathComponent("assets/icon.svg")
+let svg = root.appendingPathComponent("docs/images/icon.svg")
 guard let image = NSImage(contentsOf: svg) else { fatalError("cannot load \(svg.path)") }
 
 let set = FileManager.default.temporaryDirectory.appendingPathComponent("Kachel.iconset")
