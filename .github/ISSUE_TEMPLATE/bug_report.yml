@@ -1,0 +1,55 @@
+name: Bug report
+description: Something doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Check [Troubleshooting](https://jklaiber.github.io/kachel/troubleshooting/) first: after an upgrade, Accessibility often needs to be granted again.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open two Safari windows on workspace 1
+        2. Press ⌥⇧2
+        3. …
+  - type: input
+    id: kachel
+    attributes:
+      label: Kachel version
+      description: "`brew info --cask kachel`, or Finder → Kachel.app → Get Info."
+      placeholder: "0.1.9"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "26.1"
+    validations:
+      required: true
+  - type: input
+    id: displays
+    attributes:
+      label: Displays
+      placeholder: "MacBook display + one external"
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The lines from `~/Library/Logs/Kachel.log` around the time it happened (bar → right-click → Show Log).
+      render: text
+  - type: textarea
+    id: config
+    attributes:
+      label: Config
+      description: The relevant part of `~/.config/kachel/config.yaml`, if you changed it.
+      render: yaml

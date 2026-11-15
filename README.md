@@ -2,6 +2,11 @@
 
 # Kachel
 
+[![CI](https://github.com/jklaiber/kachel/actions/workflows/ci.yml/badge.svg)](https://github.com/jklaiber/kachel/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/jklaiber/kachel)](https://github.com/jklaiber/kachel/releases/latest)
+[![Docs](https://img.shields.io/badge/docs-jklaiber.github.io%2Fkachel-blue)](https://jklaiber.github.io/kachel/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 *Kachel* is German for tile, as in a *Kachelofen*, the tiled stove in the icon:
 nine glazed tiles for nine workspaces.
 
@@ -76,3 +81,14 @@ swift test
 
 More in [Development](https://jklaiber.github.io/kachel/development/).
 Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome; see
+[CONTRIBUTING.md](CONTRIBUTING.md). Questions go to
+[Discussions](https://github.com/jklaiber/kachel/discussions), security problems
+to [private reporting](SECURITY.md).
+
+## Licence
+
+[MIT](LICENSE) © Julian Klaiber

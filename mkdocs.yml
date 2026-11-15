@@ -4,6 +4,7 @@ site_url: https://jklaiber.github.io/kachel/
 repo_url: https://github.com/jklaiber/kachel
 repo_name: jklaiber/kachel
 edit_uri: edit/main/docs/
+copyright: Kachel is free software under the <a href="https://github.com/jklaiber/kachel/blob/main/LICENSE">MIT licence</a>.
 
 theme:
   name: material

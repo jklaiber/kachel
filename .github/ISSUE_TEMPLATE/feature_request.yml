@@ -1,0 +1,16 @@
+name: Feature request
+description: An idea for something Kachel should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: The situation or workflow, more than a specific solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could Kachel help?
+      description: If another window manager (xmonad, Amethyst, AeroSpace, …) does this, tell us how it works there.

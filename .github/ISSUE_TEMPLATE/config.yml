@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/jklaiber/kachel/discussions
+    about: Ask how something works or share an idea.
+  - name: Documentation
+    url: https://jklaiber.github.io/kachel/
+    about: Getting started, every setting, and troubleshooting.
+  - name: Security problem
+    url: https://github.com/jklaiber/kachel/security/advisories/new
+    about: Report vulnerabilities privately, not as an issue.

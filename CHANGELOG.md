@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- MIT licence, contributing guide, security policy and code of conduct; issue
+  forms for bugs and feature requests, and Discussions for questions.
+
 ## [0.1.9] - 2026-11-15
 
 Apps that always float are now app rules, so the settings window shows and
