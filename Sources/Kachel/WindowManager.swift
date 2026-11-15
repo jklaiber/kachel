@@ -34,6 +34,9 @@ final class WindowManager {
     /// Between "going to sleep" and shortly after waking: windows and screens
     /// are in flux, so don't draw conclusions from them.
     private var asleep = false
+    /// While the screen is locked, Accessibility hides every window; tracking
+    /// pauses so that doesn't look like all windows went away.
+    private var locked = false
     /// A tiled window being resized with the mouse; applied on mouse-up.
     private var mouseResized: WindowID?
     private var mouseUpTimer: Timer?
@@ -168,6 +171,24 @@ final class WindowManager {
                     self.asleep = false
                     Log.info("awake: re-checking screens and windows")
                     self.screensChanged()
+                    self.restoreFocusIfLost(reason: "wake")
+                }
+            }
+        }
+        // The lock screen takes focus and macOS doesn't always give it back.
+        let dnc = DistributedNotificationCenter.default()
+        dnc.addObserver(forName: .init("com.apple.screenIsLocked"), object: nil, queue: .main) { [unowned self] _ in
+            Log.info("screen locked: pausing window tracking")
+            self.locked = true
+        }
+        dnc.addObserver(forName: .init("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [unowned self] _ in
+            Log.info("screen unlocked")
+            self.locked = false
+            // The lock screen lets go a moment after the notification; try
+            // again a little later in case it still had focus the first time.
+            for delay in [0.5, 1.5] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [unowned self] in
+                    self.restoreFocusIfLost(reason: "unlock", force: true)
                 }
             }
         }
@@ -420,7 +441,7 @@ final class WindowManager {
     }
 
     private func focusWindowUnderPointer() {
-        guard managing, NSEvent.pressedMouseButtons == 0, !switcher.isOpen, !rulePicker.isOpen, !asleep,
+        guard managing, NSEvent.pressedMouseButtons == 0, !switcher.isOpen, !rulePicker.isOpen, !asleep, !locked,
               let primary = NSScreen.screens.first else { return }
         let m = NSEvent.mouseLocation
         let p = CGPoint(x: m.x, y: primary.frame.height - m.y)
@@ -875,7 +896,7 @@ final class WindowManager {
 
     /// Reconcile our model with the windows that actually exist.
     private func refresh() {
-        guard !asleep else { return }
+        guard !asleep, !locked else { return }
         let found = enumerateWindows()
         var changed = false
         let missing = ss.allWindows.filter { found[$0] == nil }
@@ -1022,7 +1043,7 @@ final class WindowManager {
         systemFocusPending = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [unowned self] in
             self.systemFocusPending = false
-            guard self.managing, !self.asleep else { return }
+            guard self.managing, !self.asleep, !self.locked else { return }
             self.refresh()
             if Date().timeIntervalSince(self.lastWindowGone) < 1.0 {
                 if let f = self.focusedSystemWindow(), f != self.ss.current.focused {
@@ -1033,6 +1054,38 @@ final class WindowManager {
             }
             self.syncFocusFromSystem(followHidden: true)
         }
+    }
+
+    /// After unlock or wake: give focus back to the current workspace's
+    /// window (the one you used last, else the master) instead of leaving you
+    /// to click one. After unlock macOS can still name a window as focused
+    /// while nothing is active, so `force` focuses it again regardless.
+    /// A workspace with windows always has one focused: the one you used
+    /// last, else the master.
+    private func ensureFocus() {
+        let ws = ss.current
+        if let f = ws.focused, windows[f] != nil { return }
+        let usable = ws.windows.filter { windows[$0] != nil && !scratchParked.contains($0) }
+        guard let pick = mru.first(where: usable.contains) ?? usable.first(where: { !ss.floating.contains($0) }) ?? usable.first
+        else { return }
+        Log.info("workspace \(ws.tag) had no focused window: focusing \(pick)")
+        ss.focus(pick)
+    }
+
+    private func restoreFocusIfLost(reason: String, force: Bool = false) {
+        guard managing, !asleep else { return }   // the wake handler calls again
+        refresh()
+        let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "none"
+        let sys = focusedSystemWindow()
+        if let f = sys, let ws = ss.workspaceIndex(of: f), ss.isVisible(workspace: ws) {
+            ss.focus(f)                     // you may have clicked a window already
+            if !force { updateBar(); updateBorder(); return }
+        }
+        ensureFocus()
+        guard ss.current.focused != nil else { return }
+        Log.info("\(reason): frontmost \(front), focused window \(sys.map(String.init) ?? "none"); focusing \(ss.current.focused!)")
+        focusCurrent()
+        updateBar()
     }
 
     private func syncFocusFromSystem(followHidden: Bool) {
@@ -1079,6 +1132,7 @@ final class WindowManager {
         holdTimer?.invalidate()
         if case .shortcuts = cmd {} else { overview.hide() }
         Log.info("command \(cmd)")
+        locked = false   // keys only reach us when unlocked, in case the unlock went unnoticed
         guard managing else {
             Log.info("ignoring \(cmd): no Accessibility permission yet")
             if case .quit = cmd { quit() }
@@ -1450,6 +1504,7 @@ final class WindowManager {
 
     private func focusCurrent() {
         ignoreFocusEventsUntil = Date().addingTimeInterval(0.3)
+        ensureFocus()
         let ws = ss.current
         if let f = ws.focused, let w = windows[f] {
             touch(f)

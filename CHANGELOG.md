@@ -7,11 +7,22 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-11-15
+
+Kachel now has a documentation website, and focus comes back after unlocking
+the Mac.
+
 ### Added
 - **Documentation website** at [jklaiber.github.io/kachel](https://jklaiber.github.io/kachel/):
   getting started, a guide for people coming from xmonad, Amethyst and
   AeroSpace, every feature, the full configuration reference and
   troubleshooting. The README is now a short overview.
+
+### Fixed
+- After locking and unlocking the Mac, no window had focus, and switching
+  workspaces didn't focus one either. Window tracking now pauses while the
+  screen is locked, and focus returns to the window you used last (else the
+  master).
 
 ## [0.1.7] - 2026-11-15
 
@@ -160,7 +171,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/jklaiber/kachel/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/jklaiber/kachel/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/jklaiber/kachel/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/jklaiber/kachel/compare/v0.1.4...v0.1.5
