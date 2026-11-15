@@ -12,7 +12,7 @@ jobs:
     env:
       TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Release notes from CHANGELOG.md
         # First, so a release without a changelog entry stops right here.
         run: ./scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > notes.md
