@@ -21,6 +21,8 @@ focus-follows-mouse: false    # true: the window under the pointer gets focus wh
 workspace-back-and-forth: false   # true: the key of the workspace you're on goes back to the previous one
 new-windows: end              # where new windows go: end (last in the stack), below / above the
                               # focused window, or master (xmonad's default is above)
+haptics: true                 # a light trackpad tap when a swipe triggers or a window snaps in
+shortcut-overview: 0.8        # hold mod alone this many seconds to see all shortcuts; 0 = off
 
 # Pin workspaces to a screen (AeroSpace's workspace-to-monitor assignment):
 # they always show there while that screen is connected. Screens: main (menu
@@ -141,6 +143,9 @@ rules: []
 #   scratchpad <name>      show or hide a scratchpad (see scratchpads:)
 #   window-search          search all open windows and jump to one
 #   app-rule               choose the workspace the focused app always opens on
+#   settings               open the settings window
+#   welcome                the welcome window and macOS settings check
+#   shortcuts              show all shortcuts (also: hold mod alone, see shortcut-overview)
 #   refresh  close  terminal  reload  restart  quit
 #   spawn <shell command>
 # A key mapped to ~ is unbound. This section replaces the defaults as a whole.

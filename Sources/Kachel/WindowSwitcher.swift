@@ -23,6 +23,8 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     var onCancel: (() -> Void)?
 
     fileprivate let panel = SwitcherPanel()
+    /// Where the field, list and hint live (inside the glass).
+    fileprivate var content: NSView!
     fileprivate let field = NSTextField()
     private let list = SwitcherList()
     private let hint = NSTextField(labelWithString: "↩ go there     ⇧↩ bring here     esc close")
@@ -35,16 +37,9 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         super.init()
         panel.delegate = self
 
-        let root = NSVisualEffectView()
-        root.material = .popover
-        root.blendingMode = .behindWindow
-        root.state = .active
-        root.wantsLayer = true
-        root.layer?.cornerRadius = 12
-        root.layer?.masksToBounds = true
-        root.layer?.borderWidth = 0.5
-        root.layer?.borderColor = NSColor.separatorColor.cgColor
-        panel.contentView = root
+        let (glassRoot, root) = Glass.make(cornerRadius: 18)       // Liquid Glass on macOS 26
+        content = root
+        panel.contentView = glassRoot
 
         let glass = NSImageView(image: NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)!)
         glass.symbolConfiguration = .init(pointSize: 16, weight: .regular)
@@ -139,7 +134,7 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     }
 
     private func layout() {
-        guard let root = panel.contentView else { return }
+        guard let root = content else { return }
         let fieldH: CGFloat = 50, footerH: CGFloat = 28
         let maxList = max(120, (panel.screen?.visibleFrame.height ?? 800) * 0.6)
         let listH = min(list.contentHeight, maxList)
@@ -148,6 +143,7 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         panel.setFrame(f, display: true)          // grows upward from the bar: origin stays put
 
         let w = f.width
+        root.frame = NSRect(x: 0, y: 0, width: f.width, height: f.height)
         if let glass = root.subviews.first(where: { $0.identifier?.rawValue == "glass" }) {
             glass.frame.origin.y = f.height - fieldH + (fieldH - 20) / 2
         }
@@ -387,6 +383,6 @@ extension WindowSwitcher {
         panel.setFrame(NSRect(x: 0, y: 0, width: width, height: 200), display: false)
         field.stringValue = query
         refilter()
-        return panel.contentView!
+        return content
     }
 }

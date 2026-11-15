@@ -11,6 +11,7 @@ final class RulePicker: NSObject, NSWindowDelegate {
 
     private let panel = PickerPanel()
     private let view = PickerView()
+    private var content: NSView!
     private var closing = false
 
     var isOpen: Bool { panel.isVisible }
@@ -18,18 +19,11 @@ final class RulePicker: NSObject, NSWindowDelegate {
     override init() {
         super.init()
         panel.delegate = self
-        let root = NSVisualEffectView()
-        root.material = .popover
-        root.blendingMode = .behindWindow
-        root.state = .active
-        root.wantsLayer = true
-        root.layer?.cornerRadius = 12
-        root.layer?.masksToBounds = true
-        root.layer?.borderWidth = 0.5
-        root.layer?.borderColor = NSColor.separatorColor.cgColor
+        let (glassRoot, content) = Glass.make(cornerRadius: 18)   // Liquid Glass on macOS 26
         view.autoresizingMask = [.width, .height]
-        root.addSubview(view)
-        panel.contentView = root
+        content.addSubview(view)
+        self.content = content
+        panel.contentView = glassRoot
         view.onChoose = { [weak self] c in self?.choose(c) }
         view.onCancel = { [weak self] in self?.close(cancelled: true) }
     }
@@ -46,7 +40,8 @@ final class RulePicker: NSObject, NSWindowDelegate {
         let size = view.preferredSize
         panel.setFrame(NSRect(x: area.minX + 8, y: area.minY + bottom + 6,
                               width: min(size.width, area.width - 16), height: size.height), display: true)
-        view.frame = panel.contentView!.bounds
+        content.frame = panel.contentView!.bounds
+        view.frame = content.bounds
         view.needsDisplay = true
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)

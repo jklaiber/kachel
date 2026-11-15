@@ -53,6 +53,10 @@ final class WindowManager {
     private let menuBarItem = MenuBarItem()
     private let switcher = WindowSwitcher()
     private let rulePicker = RulePicker()
+    private let overview = ShortcutOverview()
+    let settingsWindow = SettingsWindow()
+    let welcomeWindow = WelcomeWindow()
+    private var holdTimer: Timer?
     /// Most recently focused first, for ranking search results.
     private var mru: [WindowID] = []
     private var managing = false
@@ -101,6 +105,10 @@ final class WindowManager {
     /// Shared by the menu bar icon and the bar's right-click menu.
     private func menuEntries() -> [(title: String, action: () -> Void)] {
         [
+            ("Settings…", { [unowned self] in self.settingsWindow.show() }),
+            ("Keyboard Shortcuts", { [unowned self] in self.showOverview(hint: "Press any key to close") }),
+            ("Welcome and Setup Check…", { [unowned self] in self.welcomeWindow.show() }),
+            ("-", {}),
             ("Restart Kachel", { [unowned self] in self.restart() }),
             (Config.current.startAtLogin ? "Start at Login ✓" : "Start at Login", {
                 Config.setTopLevel(key: "start-at-login", value: Config.current.startAtLogin ? "false" : "true")
@@ -164,6 +172,10 @@ final class WindowManager {
 
         adoptExistingWindows()
         NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [unowned self] _ in self.pointerMoved() }
+        // Holding the modifier alone shows the shortcut overview; anything else hides it.
+        let watched: NSEvent.EventTypeMask = [.flagsChanged, .keyDown, .leftMouseDown, .rightMouseDown, .scrollWheel]
+        NSEvent.addGlobalMonitorForEvents(matching: watched) { [unowned self] e in self.modifierEvent(e) }
+        NSEvent.addLocalMonitorForEvents(matching: watched) { [unowned self] e in self.modifierEvent(e); return e }
         updateGestures()
     }
 
@@ -296,6 +308,7 @@ final class WindowManager {
                                               in: area, nMaster: ws.nMaster, gap: gap) {
             Log.info("mouse resize: workspace \(ws.tag) ratio \(String(format: "%.2f", ws.ratio)) → \(String(format: "%.2f", r))")
             ss.setRatio(r, workspace: wsIndex)
+            Haptics.tap()
         }
         if columnChanged, let w = Layout.weights(afterResizing: frame, index: i, count: tiled.count, kind: kind,
                                                  in: area, nMaster: ws.nMaster, ratio: ss.workspaces[wsIndex].ratio,
@@ -318,6 +331,7 @@ final class WindowManager {
     /// A swipe acts on the screen under the pointer, like the macOS one.
     private func swiped(_ dir: Gestures.Direction) {
         guard managing, !switcher.isOpen, !rulePicker.isOpen else { return }
+        Haptics.tap()
         let g = Config.current.gestures
         // With natural scrolling off, macOS flips its Spaces swipe; so do we.
         let natural = UserDefaults.standard.object(forKey: "com.apple.swipescrolldirection") as? Bool ?? true
@@ -377,6 +391,7 @@ final class WindowManager {
         let target = ss.workspaces[wsIndex].windows.first { t in
             t != id && !ss.floating.contains(t) && (expected[t] ?? windows[t]?.frame)?.contains(drop) == true
         }
+        if target != nil || wsIndex != from { Haptics.tap() }
         if let t = target {
             Log.info("mouse drag: swap window \(id) with \(t)")
             ss.swap(id, t)
@@ -428,6 +443,45 @@ final class WindowManager {
             updateBorder()
             return
         }
+    }
+
+    // MARK: - shortcut overview
+
+    private func modifierEvent(_ e: NSEvent) {
+        let delay = Config.current.shortcutOverview
+        if e.type == .flagsChanged {
+            let mods = e.modifierFlags.intersection([.command, .option, .control, .shift])
+            holdTimer?.invalidate()
+            if delay > 0, managing, mods == Self.flags(Config.current.mod) {
+                holdTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [unowned self] _ in
+                    let now = NSEvent.modifierFlags.intersection([.command, .option, .control, .shift])
+                    guard now == Self.flags(Config.current.mod) else { return }
+                    self.showOverview(hint: "Release \(ShortcutList.glyphs(Config.current.mod)) to close")
+                }
+            } else {
+                overview.hide()
+            }
+        } else {
+            holdTimer?.invalidate()
+            overview.hide()
+        }
+    }
+
+    private static func flags(_ mods: Set<Modifier>) -> NSEvent.ModifierFlags {
+        var f: NSEvent.ModifierFlags = []
+        if mods.contains(.cmd) { f.insert(.command) }
+        if mods.contains(.alt) { f.insert(.option) }
+        if mods.contains(.ctrl) { f.insert(.control) }
+        if mods.contains(.shift) { f.insert(.shift) }
+        return f
+    }
+
+    func showOverview(hint: String) {
+        let cfg = Config.current
+        guard ss.currentScreen < screens.count else { return }
+        overview.show(ShortcutList.groups(cfg.keys, workspaces: cfg.workspaces),
+                      modifier: ShortcutList.glyphs(cfg.mod), hint: hint, area: screens[ss.currentScreen].nsVisible)
+        Log.info("shortcut overview shown")
     }
 
     // MARK: - focus border
@@ -1008,12 +1062,16 @@ final class WindowManager {
     // MARK: - actions (bound in Config.swift)
 
     func perform(_ cmd: Command) {
+        holdTimer?.invalidate()
+        if case .shortcuts = cmd {} else { overview.hide() }
         Log.info("command \(cmd)")
         guard managing else {
             Log.info("ignoring \(cmd): no Accessibility permission yet")
             if case .quit = cmd { quit() }
             if case .reload = cmd { reload() }
             if case .restart = cmd { restart() }
+            if case .settings = cmd { settingsWindow.show() }
+            if case .welcome = cmd { welcomeWindow.show() }
             return
         }
         let step = Config.current.ratioStep
@@ -1051,6 +1109,9 @@ final class WindowManager {
         case .shiftNext: syncFocusFromSystem(followHidden: false); shift(to: ss.neighbour(+1))
         case .shiftPrev: syncFocusFromSystem(followHidden: false); shift(to: ss.neighbour(-1))
         case .restart: restart()
+        case .settings: settingsWindow.show()
+        case .welcome: welcomeWindow.show()
+        case .shortcuts: overview.isOpen ? overview.hide() : showOverview(hint: "Press any key to close")
         case .windowSearch: toggleWindowSearch()
         case .appRule: toggleRulePicker()
         case .toggleFullscreen: act { $0.toggleFullscreen() }

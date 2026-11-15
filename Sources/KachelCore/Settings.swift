@@ -39,6 +39,7 @@ public enum Command: Equatable {
     case toggleFloat, refresh, close, terminal, reload, restart, quit
     case windowSearch, appRule
     case toggleFullscreen, workspaceBack, taller, shorter, resetSizes
+    case settings, welcome, shortcuts
     case focusDirection(Direction), swapDirection(Direction)
     case scratchpad(String)
     case spawn(String)
@@ -135,6 +136,10 @@ public struct Settings {
     public var workspaceBackAndForth = false
     /// Where new windows go: end of the stack, below/above the focused one, or master.
     public var newWindows: InsertPosition = .end
+    /// A light trackpad tap when a swipe triggers or a dragged window snaps in.
+    public var haptics = true
+    /// Hold the modifier alone this long (seconds) to see all shortcuts; 0 = off.
+    public var shortcutOverview = 0.8
     /// Workspace name -> screen pattern (see ScreenMatcher): always shown there.
     public var workspaceScreens: [String: String] = [:]
     public var terminal = "open -na Terminal"
@@ -174,7 +179,8 @@ public struct Settings {
                                   "terminal", "floating", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
                                   "float-dialogs", "float-small-windows", "start-at-login",
                                   "scratchpads", "border", "focus-follows-mouse",
-                                  "workspace-back-and-forth", "workspace-screens", "new-windows"]
+                                  "workspace-back-and-forth", "workspace-screens", "new-windows",
+                                  "haptics", "shortcut-overview"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -193,6 +199,11 @@ public struct Settings {
             else { throw SettingsError("mouse-follows-focus must be window, screen or off") }
         }
         if let v = dict["focus-follows-mouse"] { s.focusFollowsMouse = try bool(v, "focus-follows-mouse") }
+        if let v = dict["haptics"] { s.haptics = try bool(v, "haptics") }
+        if let v = dict["shortcut-overview"] {
+            if let b = v as? Bool { s.shortcutOverview = b ? 0.8 : 0 }
+            else { s.shortcutOverview = max(0, try number(v, "shortcut-overview")) }
+        }
         if let v = dict["new-windows"] {
             guard let p = InsertPosition(rawValue: "\(v)") else {
                 throw SettingsError("new-windows must be end, below, above or master")
@@ -470,6 +481,9 @@ public struct Settings {
         case "taller":               return try noArg(.taller)
         case "shorter":              return try noArg(.shorter)
         case "reset-sizes":          return try noArg(.resetSizes)
+        case "settings":             return try noArg(.settings)
+        case "welcome":              return try noArg(.welcome)
+        case "shortcuts":            return try noArg(.shortcuts)
         case "scratchpad":
             guard !arg.isEmpty, !arg.contains(" ") else {
                 throw SettingsError("\(context): 'scratchpad' needs a scratchpad name")
@@ -575,6 +589,8 @@ focus-follows-mouse: false    # true: the window under the pointer gets focus wh
 workspace-back-and-forth: false   # true: the key of the workspace you're on goes back to the previous one
 new-windows: end              # where new windows go: end (last in the stack), below / above the
                               # focused window, or master (xmonad's default is above)
+haptics: true                 # a light trackpad tap when a swipe triggers or a window snaps in
+shortcut-overview: 0.8        # hold mod alone this many seconds to see all shortcuts; 0 = off
 
 # Pin workspaces to a screen (AeroSpace's workspace-to-monitor assignment):
 # they always show there while that screen is connected. Screens: main (menu
@@ -695,6 +711,9 @@ rules: []
 #   scratchpad <name>      show or hide a scratchpad (see scratchpads:)
 #   window-search          search all open windows and jump to one
 #   app-rule               choose the workspace the focused app always opens on
+#   settings               open the settings window
+#   welcome                the welcome window and macOS settings check
+#   shortcuts              show all shortcuts (also: hold mod alone, see shortcut-overview)
 #   refresh  close  terminal  reload  restart  quit
 #   spawn <shell command>
 # A key mapped to ~ is unbound. This section replaces the defaults as a whole.

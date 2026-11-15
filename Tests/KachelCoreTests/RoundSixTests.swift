@@ -194,3 +194,24 @@ final class InsertPositionTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("new-windows: middle"))
     }
 }
+
+final class ShortcutListTests: XCTestCase {
+    func testDefaultsGroupedAndFolded() throws {
+        let s = try Settings.parse(Settings.defaultYAML)
+        let g = ShortcutList.groups(s.keys, workspaces: s.workspaces)
+        XCTAssertEqual(g.map(\.title), ["Workspaces", "Windows", "Layout", "Displays", "Tools"])
+        let ws = g[0].rows
+        XCTAssertTrue(ws.contains(ShortcutList.Row(keys: "⌥1 … 9", label: "Show workspace")))
+        XCTAssertTrue(ws.contains(ShortcutList.Row(keys: "⌥⇧1 … 9", label: "Move window to workspace")))
+        XCTAssertTrue(g[1].rows.contains(ShortcutList.Row(keys: "⌃⌥←", label: "Focus window left")))
+        XCTAssertTrue(g[4].rows.contains(ShortcutList.Row(keys: "⌥P", label: "Search windows")))
+        // Every binding shows up (folded runs count once).
+        let total = g.reduce(0) { $0 + $1.rows.count }
+        XCTAssertEqual(total, s.keys.count - 16)
+    }
+
+    func testGlyphs() {
+        XCTAssertEqual(ShortcutList.glyphs(KeyChord(modifiers: [.shift, .alt, .ctrl, .cmd], key: "return")), "⌃⌥⇧⌘↩")
+        XCTAssertEqual(ShortcutList.glyphs(KeyChord(modifiers: [.alt], key: "comma")), "⌥,")
+    }
+}
