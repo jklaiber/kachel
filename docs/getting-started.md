@@ -45,6 +45,9 @@ On first launch, Kachel opens a welcome window:
     - **Automatically rearrange Spaces**: off.
     - **Mission Control: group windows by app**: on, so parked windows don't
       look tiny there.
+    - **Hide the Dock automatically** (when the Dock is at the bottom): the
+      bar gets the bottom edge to itself, and the Dock appears when you move
+      the pointer down.
     - **macOS window tiling** and **Stage Manager**: off.
     - **Trackpad swipes**: if you use Kachel's swipes, turn macOS's horizontal
       swipe between full-screen apps off.

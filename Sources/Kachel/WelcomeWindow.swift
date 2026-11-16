@@ -119,6 +119,24 @@ final class SetupModel: ObservableObject {
                 Self.run("/usr/bin/killall", ["Dock"])
             }]))
 
+        // A Dock along the bottom takes the room Kachel's bar wants, and hides
+        // the one-pixel slivers of parked windows when it hides itself.
+        CFPreferencesAppSynchronize("com.apple.dock" as CFString)
+        let dockSide = CFPreferencesCopyAppValue("orientation" as CFString, "com.apple.dock" as CFString) as? String ?? "bottom"
+        if dockSide == "bottom", Config.current.bar.enabled {
+            let autohide = Self.bool("com.apple.dock", "autohide") ?? false
+            c.append(SetupCheck(
+                id: "dock", status: autohide ? .ok : .info, title: "Hide the Dock automatically",
+                detail: autohide ? "On: the bar has the bottom of the screen to itself, and the Dock appears when you move the pointer there."
+                    : "Recommended: the Dock and Kachel's bar both sit at the bottom. Hidden, the Dock appears when you move the pointer down, and the bar sits right at the edge.",
+                actions: autohide ? [] : [.init(label: "Hide Automatically") {
+                    Self.run("/usr/bin/defaults", ["write", "com.apple.dock", "autohide", "-bool", "true"])
+                    Self.run("/usr/bin/killall", ["Dock"])
+                    // The room the Dock took is free now: place the bar and windows again.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { WindowManager.shared.reload() }
+                }]))
+        }
+
         let tiling = (Self.bool("com.apple.WindowManager", "EnableTilingByEdgeDrag") ?? true)
             || (Self.bool("com.apple.WindowManager", "EnableTopTilingByEdgeDrag") ?? true)
         c.append(SetupCheck(

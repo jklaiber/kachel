@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- Welcome and setup check: **Hide the Dock automatically**, recommended when the
+  Dock is at the bottom, so the bar gets the bottom edge to itself. One click
+  turns it on.
+
 ### Changed
 - Settings → App Rules edits every rule, including ones with a window title
   (like the Teams meeting rule): a *Window title contains* field for each rule,
