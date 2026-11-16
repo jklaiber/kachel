@@ -7,11 +7,17 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-16
+
+Teams meetings work like they do with Spaces, the settings window covers the
+bar's update interval, and Kachel is now MIT licensed.
+
 ### Added
 - **Call windows like on Spaces**: a rule with `hide: minimize` minimizes a
   window while its workspace is out of sight and restores it when you come back.
-  Teams, Zoom and Webex then show their small call window on every workspace;
-  clicking it takes you back to the meeting. Also the **Minimize** switch in
+  Microsoft Teams then shows its small call window on every workspace, as it
+  does with Spaces, and clicking it takes you back to the meeting. Zoom and
+  Webex have similar mini windows (not tested yet). Also the **Minimize** switch in
   Settings → App Rules.
 - MIT licence, contributing guide, security policy and code of conduct; issue
   forms for bugs and feature requests, and Discussions for questions.
@@ -208,7 +214,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.9...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/jklaiber/kachel/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/jklaiber/kachel/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/jklaiber/kachel/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/jklaiber/kachel/compare/v0.1.6...v0.1.7
