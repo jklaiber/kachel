@@ -521,41 +521,27 @@ struct RulesPane: View {
                 if m.s.rules.isEmpty {
                     Text("No rules yet. Add one below, or press ⌥⇧P on any window.").foregroundStyle(.secondary)
                 }
-                ForEach(Array(m.s.rules.enumerated()), id: \.offset) { _, rule in
-                    HStack {
-                        Text(appName(rule.app)).frame(width: 180, alignment: .leading)
-                        if let t = rule.title {
-                            Text("title contains “\(t)”").foregroundStyle(.secondary)
-                            Spacer()
-                            Text("edit in config.yaml").font(.caption).foregroundStyle(.secondary)
-                        } else {
-                            Picker("", selection: Binding(get: { rule.workspace ?? "" }, set: { ws in
-                                save(rule, workspace: ws.isEmpty ? nil : ws, float: rule.float)
-                            })) {
-                                Text("Any workspace").tag("")
-                                ForEach(m.s.workspaces, id: \.self) { Text("Workspace \($0)").tag($0) }
-                            }.labelsHidden().frame(width: 160)
-                            Toggle("Float", isOn: Binding(get: { rule.float }, set: { save(rule, workspace: rule.workspace, float: $0) }))
-                            Toggle("Minimize", isOn: Binding(get: { rule.hide == .minimize }, set: {
-                                var r = rule
-                                r.hide = $0 ? .minimize : .park
-                                save(r, workspace: r.workspace, float: r.float)
-                            }))
-                            .help("Minimize its windows while their workspace is out of sight, instead of moving them into a corner. Call apps like Teams, Zoom and Webex then show their small window.")
-                            Spacer()
-                            Button(role: .destructive) {
-                                m.edit { KSettings.setRule($0, app: rule.app, rule: nil) }
-                            } label: { Image(systemName: "minus.circle") }.buttonStyle(.borderless)
-                        }
-                    }
+                ForEach(Array(m.s.rules.enumerated()), id: \.offset) { i, rule in
+                    RuleRow(m: m, index: i, rule: rule)
+                        // Fresh text field state when the rule at this position changes.
+                        .id("\(i)|\(rule.app)|\(rule.title ?? "")")
                 }
+            } footer: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("**Window title contains**: only windows whose title contains this text, e.g. “Meeting with” for Teams meetings. Empty: every window of the app.")
+                    Text("**Workspace**: new windows of the app open there, and you stay where you are.")
+                    Text("**Float**: the window isn't tiled. It keeps its own size and position, above the tiled windows.")
+                    Text("**Minimize**: while its workspace is out of sight, the window is minimized instead of moved into a corner. Teams, Zoom and Webex then show their small call window, and clicking it takes you back.")
+                    Text("The first rule that matches a window counts, so put rules with a title above the app's other rules.")
+                }
+                .font(.caption).foregroundStyle(.secondary)
             }
             Section {
                 Menu("Add a Rule for…") {
                     ForEach(runningApps, id: \.bundleIdentifier) { app in
                         Button(app.localizedName ?? app.bundleIdentifier ?? "?") {
                             guard let id = app.bundleIdentifier else { return }
-                            m.edit { KSettings.setRule($0, app: id, rule: Rule(app: id, workspace: m.s.workspaces.first), comment: app.localizedName) }
+                            m.edit { KSettings.addRule($0, Rule(app: id), comment: app.localizedName) }
                         }
                     }
                 }
@@ -568,16 +554,64 @@ struct RulesPane: View {
             .filter { $0.activationPolicy == .regular && $0.bundleIdentifier != nil && $0.bundleIdentifier != Bundle.main.bundleIdentifier }
             .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") }
     }
+}
 
-    private func save(_ rule: Rule, workspace: String?, float: Bool) {
-        var r = rule
-        r.workspace = workspace
-        r.float = float
-        let keep = (r.workspace == nil && !r.float && r.hide == .park) ? nil : r
-        m.edit { KSettings.setRule($0, app: rule.app, rule: keep, comment: appName(rule.app)) }
+/// One rule: which windows (app, title) and what happens to them.
+private struct RuleRow: View {
+    @ObservedObject var m: SettingsModel
+    let index: Int
+    let rule: Rule
+    @State private var title = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(Self.appName(rule.app)).fontWeight(.medium)
+                Text(rule.app).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Button(role: .destructive) {
+                    m.edit { KSettings.setRule($0, at: index, rule: nil) }
+                } label: { Image(systemName: "minus.circle") }
+                    .buttonStyle(.borderless)
+                    .help("Remove this rule")
+            }
+            TextField("Window title contains", text: $title, prompt: Text("Any window"))
+                .onSubmit { saveTitle() }
+            HStack {
+                Picker("Workspace", selection: Binding(get: { rule.workspace ?? "" }, set: { ws in
+                    update { $0.workspace = ws.isEmpty ? nil : ws }
+                })) {
+                    Text("Any").tag("")
+                    ForEach(m.s.workspaces, id: \.self) { Text($0).tag($0) }
+                }
+                .frame(width: 170)
+                Spacer()
+                Toggle("Float", isOn: Binding(get: { rule.float }, set: { on in update { $0.float = on } }))
+                Toggle("Minimize", isOn: Binding(get: { rule.hide == .minimize }, set: { on in update { $0.hide = on ? .minimize : .park } }))
+            }
+        }
+        .padding(.vertical, 4)
+        .onAppear { title = rule.title ?? "" }
+        .onDisappear { saveTitle() }
     }
 
-    private func appName(_ id: String) -> String {
+    private func update(_ change: (inout Rule) -> Void) {
+        // Only if this position still holds the rule we show (not after a removal).
+        guard m.s.rules.indices.contains(index), m.s.rules[index] == rule else { return }
+        var r = rule
+        if title != (rule.title ?? "") { r.title = title.isEmpty ? nil : title }   // a typed, unsaved title
+        change(&r)
+        guard r != rule else { return }
+        m.edit { KSettings.setRule($0, at: index, rule: r) }
+    }
+
+    private func saveTitle() {
+        let t = title.trimmingCharacters(in: .whitespaces)
+        guard t != (rule.title ?? "") else { return }
+        update { $0.title = t.isEmpty ? nil : t }
+    }
+
+    static func appName(_ id: String) -> String {
         NSRunningApplication.runningApplications(withBundleIdentifier: id).first?.localizedName
             ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: id)?.deletingPathExtension().lastPathComponent ?? id
     }

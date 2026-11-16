@@ -28,6 +28,48 @@ final class RulesTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("rules:\n  - app: X\n    hide: away"))
     }
 
+    func testSetRuleAtIndex() throws {
+        let text = """
+        gap: 5
+        # Rules: where windows go.
+        rules:
+          - app: com.microsoft.teams2   # Microsoft Teams: the meeting window
+            title: Meeting with
+            hide: minimize
+          - app: com.microsoft.teams2
+            workspace: 3
+
+        # Keys
+        keys:
+          mod-1: workspace 1
+        """
+        let teams = Rule(app: "com.microsoft.teams2", title: "Meeting with", hide: .minimize)
+        XCTAssertEqual(try Settings.parse(text).rules, [teams, Rule(app: "com.microsoft.teams2", workspace: "3")])
+
+        // Change the titled rule: comment kept, the other rule untouched.
+        var t = Settings.setRule(text, at: 0, rule: Rule(app: "com.microsoft.teams2", title: "Meeting in", workspace: "2", float: true, hide: .minimize))
+        XCTAssertEqual(try Settings.parse(t).rules, [Rule(app: "com.microsoft.teams2", title: "Meeting in", workspace: "2", float: true, hide: .minimize),
+                                                     Rule(app: "com.microsoft.teams2", workspace: "3")])
+        XCTAssertTrue(t.contains("- app: com.microsoft.teams2   # Microsoft Teams: the meeting window"))
+        XCTAssertTrue(t.contains("# Rules: where windows go.") && t.contains("# Keys"))
+
+        // Clearing the title makes it app-wide; removing the second leaves the first.
+        t = Settings.setRule(t, at: 0, rule: Rule(app: "com.microsoft.teams2", hide: .minimize))
+        t = Settings.setRule(t, at: 1, rule: nil)
+        XCTAssertEqual(try Settings.parse(t).rules, [Rule(app: "com.microsoft.teams2", hide: .minimize)])
+        XCTAssertEqual(try Settings.parse(t).keys.count, 1)
+
+        // Adding goes to the end; an empty rules: section gets its first entry.
+        t = Settings.addRule(text, Rule(app: "us.zoom.xos", hide: .minimize), comment: "Zoom")
+        XCTAssertEqual(try Settings.parse(t).rules.last, Rule(app: "us.zoom.xos", hide: .minimize))
+        XCTAssertEqual(try Settings.parse(t).rules.count, 3)
+        let empty = Settings.addRule("rules:\n\nkeys:\n  mod-1: workspace 1", Rule(app: "Notes", float: true))
+        XCTAssertEqual(try Settings.parse(empty).rules, [Rule(app: "Notes", float: true)])
+
+        // Out of range: unchanged.
+        XCTAssertEqual(Settings.setRule(text, at: 5, rule: nil), text)
+    }
+
     func testHideMinimize() throws {
         let s = try Settings.parse("rules:\n  - app: com.microsoft.teams2\n    title: Meeting with\n    hide: minimize\n  - app: Slack\n    workspace: 2")
         XCTAssertEqual(s.rules, [Rule(app: "com.microsoft.teams2", title: "Meeting with", hide: .minimize),

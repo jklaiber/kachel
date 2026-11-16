@@ -147,13 +147,78 @@ extension Settings {
         }
 
         if let rule {
-            var entry = ["  - app: \(yamlScalar(rule.app))" + (comment.map { "   # \($0)" } ?? "")]
-            if let w = rule.workspace { entry.append("    workspace: \(yamlScalar(w))") }
-            if rule.float { entry.append("    float: true") }
-            if rule.hide != .park { entry.append("    hide: \(rule.hide.rawValue)") }
-            lines.insert(contentsOf: entry, at: sectionEnd())
+            lines.insert(contentsOf: entryLines(rule, comment: comment.map { "   # \($0)" } ?? ""), at: sectionEnd())
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// Add a rule at the end of the `rules:` list.
+    public static func addRule(_ text: String, _ rule: Rule, comment: String? = nil) -> String {
+        var lines = text.components(separatedBy: "\n")
+        if let last = ruleEntries(lines).last {
+            lines.insert(contentsOf: entryLines(rule, comment: comment.map { "   # \($0)" } ?? ""), at: last.upperBound)
+            return lines.joined(separator: "\n")
+        }
+        // No rules yet: the app-wide editor knows how to create the section.
+        return setRule(text, app: rule.app, rule: rule, comment: comment)
+    }
+
+    /// Replace (or with `rule == nil`, remove) the rule at `index` in the
+    /// `rules:` list, whatever it matches; the other rules and every comment
+    /// stay. The entry's own comment (`- app: … # Teams`) is kept unless a new
+    /// one is given.
+    public static func setRule(_ text: String, at index: Int, rule: Rule?, comment: String? = nil) -> String {
+        var lines = text.components(separatedBy: "\n")
+        let entries = ruleEntries(lines)
+        guard entries.indices.contains(index) else { return text }
+        let range = entries[index]
+        guard let rule else {
+            lines.removeSubrange(range)
+            return lines.joined(separator: "\n")
+        }
+        let first = lines[range.lowerBound]
+        var suffix = comment.map { "   # \($0)" } ?? ""
+        if comment == nil, let hash = first.range(of: " #") {
+            // Keep the comment with the spaces in front of it.
+            var start = hash.lowerBound
+            while start > first.startIndex, first[first.index(before: start)] == " " { start = first.index(before: start) }
+            suffix = String(first[start...])
+        }
+        lines.replaceSubrange(range, with: entryLines(rule, comment: suffix))
+        return lines.joined(separator: "\n")
+    }
+
+    /// The lines of one `- app: …` entry.
+    static func entryLines(_ rule: Rule, comment: String) -> [String] {
+        var entry = ["  - app: \(yamlScalar(rule.app))" + comment]
+        if let t = rule.title, !t.isEmpty { entry.append("    title: \(yamlScalar(t))") }
+        if let w = rule.workspace { entry.append("    workspace: \(yamlScalar(w))") }
+        if rule.float { entry.append("    float: true") }
+        if rule.hide != .park { entry.append("    hide: \(rule.hide.rawValue)") }
+        return entry
+    }
+
+    /// Line ranges of the entries under `rules:`, in order (the same order
+    /// `Settings.rules` has).
+    static func ruleEntries(_ lines: [String]) -> [Range<Int>] {
+        guard let h = lines.firstIndex(where: { $0.hasPrefix("rules:") }) else { return [] }
+        var end = h + 1
+        while end < lines.count {
+            let l = lines[end]
+            if l.isEmpty || l.hasPrefix(" ") || l.hasPrefix("-") || l.hasPrefix("#") { end += 1 } else { break }
+        }
+        var result: [Range<Int>] = []
+        var i = h + 1
+        while i < end {
+            guard lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("- ") else { i += 1; continue }
+            let indent = lines[i].prefix { $0 == " " }.count
+            var j = i + 1
+            while j < end, !lines[j].isEmpty, !lines[j].hasPrefix("#"),
+                  lines[j].prefix(while: { $0 == " " }).count > indent { j += 1 }
+            result.append(i..<j)
+            i = j
+        }
+        return result
     }
 
     public static func yamlScalar(_ s: String) -> String {

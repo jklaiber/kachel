@@ -19,7 +19,8 @@
 Like xmonad's `manageHook`: where an app's windows open, and whether they float.
 
 `mod-shift-p` on any window opens a picker: press **1–9** for the workspace,
-**F** to float, **⌫** to remove the rule. Or in **Settings… → App Rules**, or by hand:
+**F** to float, **⌫** to remove the rule. Or in **Settings… → App Rules**, where
+every rule can be changed, including its window title, or by hand:
 
 ```yaml
 rules:
