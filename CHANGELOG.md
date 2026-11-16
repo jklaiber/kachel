@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-11-16
+
+In the Full layout the bar shows the workspace's other windows as tabs, and every
+app rule can be edited in Settings.
+
 ### Added
 - **The windows of the workspace you're on, in the bar**: as tabs with their
   names (click one to switch to it), as dots, or as a position like `Full 2/4`.
@@ -23,6 +28,7 @@ taken from its section here.
   (like the Teams meeting rule): a *Window title contains* field for each rule,
   and an explanation of what Workspace, Float and Minimize do. Comments on rules
   in config.yaml are kept.
+- Updated Yams, the library that reads config.yaml, to 6.2.
 
 ### Fixed
 - Changing a setting in the settings window sent the window to the back: the
@@ -259,7 +265,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.11...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.12...HEAD
+[0.1.12]: https://github.com/jklaiber/kachel/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/jklaiber/kachel/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/jklaiber/kachel/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/jklaiber/kachel/compare/v0.1.8...v0.1.9
