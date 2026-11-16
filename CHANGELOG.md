@@ -7,6 +7,26 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-11-16
+
+The bar's text is readable again with a wallpaper from Downloads, and Kachel
+now shows its version.
+
+### Added
+- **Version information**: *About Kachel* in the bar's menu (the standard macOS
+  About window), the version in Settings → General, `Kachel --version`, and the
+  version at every start in the log.
+
+### Changed
+- Upgrade instructions say `brew update && brew upgrade --cask kachel`: without
+  `brew update`, Homebrew may not see a new release for up to a day.
+
+### Fixed
+- Since 0.1.10, with a wallpaper in Downloads, Desktop, Documents or iCloud
+  Drive, the bar's text followed light/dark mode and could be black on a dark
+  wallpaper. It now takes the colour macOS uses for the menu bar, which follows
+  the wallpaper, still without reading the file.
+
 ## [0.1.10] - 2026-11-16
 
 Teams meetings work like they do with Spaces, the settings window covers the
@@ -214,7 +234,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/jklaiber/kachel/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/jklaiber/kachel/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/jklaiber/kachel/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/jklaiber/kachel/compare/v0.1.7...v0.1.8

@@ -78,7 +78,7 @@ final class WindowManager {
     /// Runs at launch, before Accessibility is granted: config, bar, hotkeys.
     /// Without this nothing at all is visible while permission is missing.
     func startUI() {
-        Log.info("starting (pid \(getpid()))")
+        Log.info("starting Kachel \(AppVersion.string) (pid \(getpid()))")
         Config.load(force: true)
         bar.onClickWorkspace = { [unowned self] s, i in
             guard self.managing else { return }
@@ -126,6 +126,7 @@ final class WindowManager {
     /// Shared by the menu bar icon and the bar's right-click menu.
     private func menuEntries() -> [(title: String, action: () -> Void)] {
         [
+            ("About Kachel", { AppVersion.showAbout() }),
             ("Settings…", { [unowned self] in self.settingsWindow.show() }),
             ("Keyboard Shortcuts", { [unowned self] in self.showOverview(hint: "Press any key to close") }),
             ("Welcome and Setup Check…", { [unowned self] in self.welcomeWindow.show() }),

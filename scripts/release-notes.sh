@@ -33,7 +33,7 @@ $section
 
 \`\`\`bash
 brew install --cask jklaiber/tap/kachel     # first time
-brew upgrade --cask kachel                  # from an earlier version
+brew update && brew upgrade --cask kachel   # from an earlier version
 \`\`\`
 
 Or download \`Kachel-$V.zip\` below (universal: Apple Silicon and Intel).

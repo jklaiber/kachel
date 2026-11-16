@@ -16,4 +16,4 @@ credit you unless you'd rather not.
 ## Supported versions
 
 Only the latest release gets fixes. Upgrade with
-`brew upgrade --cask kachel`.
+`brew update && brew upgrade --cask kachel`.

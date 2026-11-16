@@ -25,7 +25,7 @@ body:
     id: kachel
     attributes:
       label: Kachel version
-      description: "`brew info --cask kachel`, or Finder → Kachel.app → Get Info."
+      description: "Bar → right-click → About Kachel, or Settings → General."
       placeholder: "0.1.9"
     validations:
       required: true

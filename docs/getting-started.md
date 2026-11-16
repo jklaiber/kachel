@@ -12,6 +12,17 @@ Or download `Kachel-<version>.zip` from the
 and Intel) and move `Kachel.app` to `/Applications`. Requires macOS 13 or newer;
 macOS 26 adds Liquid Glass.
 
+## Upgrade
+
+```bash
+brew update && brew upgrade --cask kachel
+```
+
+`brew update` first: without it, Homebrew may not know about a release from the
+last day yet and says the latest version is already installed. Which version you
+have: **About Kachel** in the bar's right-click menu, Settings → General, or
+`/Applications/Kachel.app/Contents/MacOS/Kachel --version`.
+
 !!! note "Accessibility after every update"
     Kachel isn't signed with a paid Apple Developer ID, so macOS treats each
     version as a new app and asks for Accessibility again after an upgrade.

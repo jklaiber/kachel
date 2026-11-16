@@ -113,7 +113,11 @@ final class Bar {
                 if settings.background == .blur {
                     dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
                 } else {
+                    // The wallpaper behind the bar; if we can't read it (a
+                    // protected folder), the colour macOS gives the menu bar,
+                    // which follows the wallpaper too.
                     dark = Wallpaper.isDark(behind: p.frame, on: s.ns)
+                        ?? MenuBarLook.shared.isDark { [weak self] in self?.updateAppearance() }
                         ?? (NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua)
                 }
             }
@@ -481,6 +485,31 @@ private final class BarView: NSView {
 
     override func rightMouseDown(with event: NSEvent) {
         bar.showMenu(for: event, in: self)
+    }
+}
+
+/// Whether macOS draws the top menu bar with white text, which it decides from
+/// the wallpaper. Read from an invisible, zero-width status item, so it needs
+/// no access to the wallpaper file. Only created when it's needed.
+final class MenuBarLook {
+    static let shared = MenuBarLook()
+    private var item: NSStatusItem?
+    private var watch: NSKeyValueObservation?
+    private var onChange: (() -> Void)?
+
+    func isDark(onChange: @escaping () -> Void) -> Bool? {
+        self.onChange = onChange
+        if item == nil {
+            let it = NSStatusBar.system.statusItem(withLength: 0)
+            it.button?.title = ""
+            item = it
+            // The menu bar turns light or dark when the wallpaper changes.
+            watch = it.button?.observe(\.effectiveAppearance) { [weak self] _, _ in
+                DispatchQueue.main.async { self?.onChange?() }
+            }
+        }
+        guard let look = item?.button?.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) else { return nil }
+        return look == .darkAqua
     }
 }
 

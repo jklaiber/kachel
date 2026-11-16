@@ -303,6 +303,12 @@ struct GeneralPane: View {
                 Toggle("Start at login", isOn: m.binding({ $0.startAtLogin }, { m.top("start-at-login", SettingsModel.yaml($0)) }))
                 Toggle("Icon in the menu bar", isOn: m.binding({ $0.menubarIcon }, { m.top("menubar-icon", SettingsModel.yaml($0)) }))
                 TextField("Terminal command", text: $terminalText).onSubmit { m.top("terminal", KSettings.yamlScalar(terminalText)) }
+                LabeledContent("Version") {
+                    HStack {
+                        Text(AppVersion.string).textSelection(.enabled)
+                        Button("About Kachel") { AppVersion.showAbout() }
+                    }
+                }
             }
         }
         .onAppear { workspacesText = m.s.workspaces.joined(separator: " "); terminalText = m.s.terminal }

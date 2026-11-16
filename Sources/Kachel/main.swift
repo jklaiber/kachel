@@ -4,6 +4,11 @@ import KachelCore
 
 let app = NSApplication.shared
 
+if CommandLine.arguments.contains("--version") {
+    print("Kachel \(AppVersion.string)")
+    exit(0)
+}
+
 // The complete default config with all comments (config.example.yaml in the repo).
 if CommandLine.arguments.contains("--print-default-config") {
     print(Settings.defaultYAML)
