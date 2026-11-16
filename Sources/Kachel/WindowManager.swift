@@ -94,7 +94,17 @@ final class WindowManager {
         }
         applySettings()
         // First launch, or no Accessibility yet: the welcome window explains what to do.
-        if !AXIsProcessTrusted() { welcomeWindow.show() } else { welcomeWindow.showOnFirstLaunch() }
+        // Once the app has finished launching (windows ordered front before
+        // that don't show up): the welcome window first, then macOS's own
+        // Accessibility request on top of it, which also lists Kachel there.
+        DispatchQueue.main.async { [unowned self] in
+            guard !AXIsProcessTrusted() else { self.welcomeWindow.showOnFirstLaunch(); return }
+            self.welcomeWindow.show()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                let prompt = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+                _ = AXIsProcessTrustedWithOptions([prompt: true] as CFDictionary)
+            }
+        }
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [unowned self] _ in
             self.screensChanged()

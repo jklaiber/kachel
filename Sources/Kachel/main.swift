@@ -68,8 +68,8 @@ DistributedNotificationCenter.default().addObserver(forName: .init("io.github.jk
 // even before Accessibility is granted.
 WindowManager.shared.startUI()
 
-let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-if AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary) {
+// startUI shows the welcome window and asks macOS for Accessibility.
+if AXIsProcessTrusted() {
     WindowManager.shared.startManaging()
 } else {
     Log.info("waiting for Accessibility permission (System Settings → Privacy & Security → Accessibility)")

@@ -11,6 +11,15 @@ taken from its section here.
 - MIT licence, contributing guide, security policy and code of conduct; issue
   forms for bugs and feature requests, and Discussions for questions.
 
+### Fixed
+- On a fresh install the welcome window didn't appear: it opened before the app
+  had finished launching, under macOS's Accessibility dialog. It now opens first,
+  with the macOS dialog on top.
+- With a wallpaper saved in Downloads, Desktop, Documents, iCloud Drive or on an
+  external drive, macOS asked to let Kachel access that folder (the bar reads the
+  wallpaper to choose white or black text). The bar now follows light or dark
+  mode for those instead.
+
 ## [0.1.9] - 2026-11-15
 
 Apps that always float are now app rules, so the settings window shows and

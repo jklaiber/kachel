@@ -489,8 +489,19 @@ private final class BarView: NSView {
 enum Wallpaper {
     private static var cache: [String: Bool] = [:]
 
+    /// Folders macOS guards with a privacy prompt ("Kachel would like to
+    /// access files in your Downloads folder"). A wallpaper picked from one of
+    /// them isn't worth that: the bar follows light/dark mode instead.
+    static func isProtected(_ url: URL) -> Bool {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let guarded = ["Desktop", "Documents", "Downloads", "Library/Mobile Documents"].map { home + "/" + $0 + "/" }
+            + ["/Volumes/"]
+        let path = url.standardizedFileURL.path
+        return guarded.contains { path.hasPrefix($0) }
+    }
+
     static func isDark(behind barFrame: NSRect, on screen: NSScreen) -> Bool? {
-        guard let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
+        guard let url = NSWorkspace.shared.desktopImageURL(for: screen), !isProtected(url) else { return nil }
         let f = screen.frame
         // Bar position as a fraction of the screen, measured from the top (image rows).
         let top = (f.maxY - barFrame.maxY) / f.height
