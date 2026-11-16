@@ -360,6 +360,14 @@ struct BarPane: View {
                 Toggle("Hide empty workspaces", isOn: m.binding({ $0.bar.hideEmptyWorkspaces }, {
                     m.nested("bar", "hide-empty-workspaces", SettingsModel.yaml($0))
                 }))
+                Picker("Update CPU, memory and network", selection: m.binding({ $0.bar.interval }, {
+                    m.nested("bar", "interval", SettingsModel.yaml($0))
+                })) {
+                    ForEach(intervals(including: m.s.bar.interval), id: \.self) { s in
+                        Text(s == 1 ? "Every second" : "Every \(SettingsModel.yaml(s)) seconds").tag(s)
+                    }
+                }
+                .disabled(![BarWidget.cpu, .memory, .network].contains(where: m.s.bar.shows))
             }
             Section("Date and Time") {
                 TextField("Date format", text: $date).onSubmit { m.nested("bar", "date-format", KSettings.yamlScalar(date)) }
@@ -368,6 +376,11 @@ struct BarPane: View {
             }
         }
         .onAppear { date = m.s.bar.dateFormat; clock = m.s.bar.clockFormat }
+    }
+
+    /// The usual choices, plus whatever config.yaml has if it's something else.
+    private func intervals(including current: Double) -> [Double] {
+        Set([1, 2, 5, 10, 30, current]).sorted()
     }
 }
 

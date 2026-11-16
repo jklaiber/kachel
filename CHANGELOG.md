@@ -10,6 +10,7 @@ taken from its section here.
 ### Added
 - MIT licence, contributing guide, security policy and code of conduct; issue
   forms for bugs and feature requests, and Discussions for questions.
+- Settings → Bar: how often CPU, memory and network update (`bar.interval`).
 
 ### Fixed
 - On a fresh install the welcome window didn't appear: it opened before the app
