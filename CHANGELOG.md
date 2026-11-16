@@ -13,6 +13,11 @@ taken from its section here.
   and an explanation of what Workspace, Float and Minimize do. Comments on rules
   in config.yaml are kept.
 
+### Fixed
+- Changing a setting in the settings window sent the window to the back: the
+  config reload gave focus to the current workspace's window. Kachel's own
+  windows now stay in front.
+
 ## [0.1.11] - 2026-11-16
 
 The bar's text is readable again with a wallpaper from Downloads, and Kachel

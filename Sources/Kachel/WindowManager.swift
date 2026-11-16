@@ -237,7 +237,9 @@ final class WindowManager {
         bar.place(on: screens, settings: cfg.bar)
         if managing {
             hidden.removeAll()       // geometry may have changed: re-park from scratch
-            render()
+            // While you're in one of Kachel's own windows (Settings, the welcome
+            // window, About), a reload mustn't hand focus to another app's window.
+            render(refocus: !NSApp.isActive)
         } else {
             updateBar()
         }
@@ -1360,7 +1362,7 @@ final class WindowManager {
     // MARK: - rendering
 
     /// Make the screen match the model: park hidden workspaces, tile visible ones, focus.
-    private func render() {
+    private func render(refocus: Bool = true) {
         guard !screens.isEmpty else { return }
         let visible = Set(ss.screenWorkspace)
 
@@ -1413,7 +1415,7 @@ final class WindowManager {
         let placed = Set(ss.screenWorkspace.flatMap { ss.workspaces[$0].windows }).subtracting(ss.floating)
         expected = expected.filter { placed.contains($0.key) }
 
-        focusCurrent()
+        if refocus { focusCurrent() }
         updateBar()
         scheduleVerify()
         scheduleSave()
