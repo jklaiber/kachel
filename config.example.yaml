@@ -58,6 +58,11 @@ bar:
   left: [workspaces, layout, title]
   right: [network, cpu, memory, date, clock]
   hide-empty-workspaces: false
+  # The windows of the workspace you're on: position (2/4 next to the layout),
+  # dots, tabs (their names; click one to switch to it) or off.
+  windows: tabs
+  windows-full-only: true   # only in the Full layout, where the others are hidden
+  workspace-counts: false   # a small window count next to each workspace
   date-format: "EEE d MMM"   # Unicode date patterns
   clock-format: "HH:mm"
   interval: 2               # seconds between cpu / memory / network updates

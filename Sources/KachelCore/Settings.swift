@@ -62,7 +62,17 @@ public struct BarSettings: Equatable {
     public var interval: Double = 2          // seconds between cpu/memory/network samples
     public var background: Background = .transparent
     public var appearance: Appearance = .auto
+    /// The windows of the workspace you're on, shown next to the layout and title.
+    public var windows: WindowsStyle = .tabs
+    /// Only in the Full layout, where the other windows are hidden.
+    public var windowsFullOnly = true
+    /// A small window count next to each workspace.
+    public var workspaceCounts = false
     public init() {}
+
+    public enum WindowsStyle: String, CaseIterable {
+        case off, position, dots, tabs
+    }
 
     public enum Background: String { case transparent, blur }
     /// auto = white or black text depending on the wallpaper, like the menu bar.
@@ -342,6 +352,15 @@ public struct Settings {
                 case "left": s.bar.left = try widgets(v, "bar.left")
                 case "right": s.bar.right = try widgets(v, "bar.right")
                 case "hide-empty-workspaces": s.bar.hideEmptyWorkspaces = try bool(v, "bar.hide-empty-workspaces")
+                case "windows":
+                    // YAML reads a bare `off` as false.
+                    if let b = v as? Bool, !b { s.bar.windows = .off; break }
+                    guard let style = BarSettings.WindowsStyle(rawValue: "\(v)") else {
+                        throw SettingsError("bar.windows must be off, position, dots or tabs")
+                    }
+                    s.bar.windows = style
+                case "windows-full-only": s.bar.windowsFullOnly = try bool(v, "bar.windows-full-only")
+                case "workspace-counts": s.bar.workspaceCounts = try bool(v, "bar.workspace-counts")
                 case "clock-format": s.bar.clockFormat = try string(v, "bar.clock-format")
                 case "date-format": s.bar.dateFormat = try string(v, "bar.date-format")
                 case "interval": s.bar.interval = max(0.5, try number(v, "bar.interval"))
@@ -621,6 +640,11 @@ bar:
   left: [workspaces, layout, title]
   right: [network, cpu, memory, date, clock]
   hide-empty-workspaces: false
+  # The windows of the workspace you're on: position (2/4 next to the layout),
+  # dots, tabs (their names; click one to switch to it) or off.
+  windows: tabs
+  windows-full-only: true   # only in the Full layout, where the others are hidden
+  workspace-counts: false   # a small window count next to each workspace
   date-format: "EEE d MMM"   # Unicode date patterns
   clock-format: "HH:mm"
   interval: 2               # seconds between cpu / memory / network updates

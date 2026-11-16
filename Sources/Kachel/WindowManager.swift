@@ -84,6 +84,13 @@ final class WindowManager {
             guard self.managing else { return }
             self.greedyView(i, onScreen: s)
         }
+        bar.onClickWindow = { [unowned self] _, id in
+            guard self.managing else { return }
+            Log.info("bar click: window \(id)")
+            // A tab in another display's bar: go to that display, don't pull its workspace over.
+            if let ws = self.ss.workspaceIndex(of: id), let s = self.ss.screen(ofWorkspace: ws) { self.ss.focusScreen(s) }
+            self.goToWindow(id)
+        }
         bar.onToggleWidget = { [unowned self] w in
             Config.toggleWidget(w)
             self.reload()
@@ -1552,15 +1559,26 @@ final class WindowManager {
         for (s, wsIndex) in ss.screenWorkspace.enumerated() {
             var c = Bar.Content()
             c.isCurrentScreen = s == ss.currentScreen
+            // Windows you can see on a workspace (not minimized, not a put-away scratchpad).
+            func shown(_ ws: Workspace) -> [WindowID] { ws.windows.filter { windows[$0] != nil && !scratchParked.contains($0) } }
             for (i, ws) in ss.workspaces.enumerated() {
+                let n = shown(ws).count
                 c.tags.append(Bar.Tag(name: ws.tag,
                                       active: i == ss.currentWorkspaceIndex,
                                       visible: ss.isVisible(workspace: i),
-                                      hasWindows: ws.windows.contains { windows[$0] != nil && !scratchParked.contains($0) }))
+                                      hasWindows: n > 0, count: n))
             }
             let ws = ss.workspaces[wsIndex]
             c.layout = ws.effectiveLayout.rawValue
+            c.isFullLayout = ws.effectiveLayout == .full
             if managing, let f = ws.focused, let w = windows[f] { c.title = w.title }
+            if managing {
+                c.windows = shown(ws).compactMap { id in
+                    guard let w = windows[id] else { return nil }
+                    let t = w.title.isEmpty ? appName(of: w) : w.title
+                    return Bar.Window(id: id, title: t, focused: id == ws.focused)
+                }
+            }
             contents.append(c)
         }
         bar.update(contents, warning: warning)

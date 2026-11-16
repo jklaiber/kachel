@@ -15,6 +15,14 @@ final class Bar {
         var active = false        // the workspace you're in (focused screen)
         var visible = false       // shown on some screen
         var hasWindows = false
+        var count = 0
+    }
+
+    /// A window of the workspace on this screen, for the position, dots and tabs.
+    struct Window {
+        var id: UInt32
+        var title: String
+        var focused = false
     }
 
     struct Content {
@@ -22,9 +30,12 @@ final class Bar {
         var layout = ""
         var title = ""
         var isCurrentScreen = false
+        var windows: [Window] = []
+        var isFullLayout = false
     }
 
     var onClickWorkspace: ((_ screen: Int, _ workspace: Int) -> Void)?
+    var onClickWindow: ((_ screen: Int, _ window: UInt32) -> Void)?
     var onToggleWidget: ((BarWidget) -> Void)?
     var onToggleMenuBarIcon: (() -> Void)?
     var menuBarIconShown = false
@@ -246,8 +257,10 @@ private final class BarPanel: NSPanel {
 
 /// One clickable thing in the bar.
 private struct Segment {
-    enum Action { case workspace(Int), open(String) }
+    enum Action { case workspace(Int), open(String), window(UInt32) }
     var parts: [(icon: String?, text: String)]
+    var dots: (count: Int, focused: Int)? = nil  // one dot per window
+    var tab: Bool? = nil                // a window tab; true = the focused one
     var tag: Bar.Tag? = nil             // workspaces only
     var color: NSColor = .labelColor
     var bold = false
@@ -288,6 +301,11 @@ private final class BarView: NSView {
     private func segments(_ widgets: [BarWidget]) -> [Segment] {
         let s = bar.settings
         var out: [Segment] = []
+        let wins = content.windows
+        let focusedAt = wins.firstIndex(where: \.focused)
+        // Position, dots or tabs: on, with more than one window, and in Full if asked.
+        let style: BarSettings.WindowsStyle = s.windows == .off || wins.count < 2
+            || (s.windowsFullOnly && !content.isFullLayout) ? .off : s.windows
         for w in widgets {
             switch w {
             case .workspaces:
@@ -298,11 +316,27 @@ private final class BarView: NSView {
                                        bold: t.active, action: .workspace(i)))
                 }
             case .layout:
-                out.append(Segment(parts: [(nil, content.layout)], color: .secondaryLabelColor))
+                var text = content.layout
+                // Many windows don't fit as dots: the position says it shorter.
+                if style == .position || (style == .dots && wins.count > 8) {
+                    text += " \((focusedAt ?? 0) + 1)/\(wins.count)"
+                }
+                out.append(Segment(parts: [(nil, text)], color: .secondaryLabelColor))
             case .title:
                 if let warning {
                     out.append(Segment(parts: [("exclamationmark.triangle.fill", warning)], color: .systemOrange, flexible: true))
+                } else if style == .tabs {
+                    for w in wins {
+                        out.append(Segment(parts: [(nil, w.title)], tab: w.focused,
+                                           color: w.focused ? .labelColor : .secondaryLabelColor,
+                                           bold: w.focused && content.isCurrentScreen, flexible: true,
+                                           action: .window(w.id)))
+                    }
                 } else {
+                    if style == .dots, wins.count <= 8 {
+                        out.append(Segment(parts: [], dots: (wins.count, focusedAt ?? -1),
+                                           color: content.isCurrentScreen ? .labelColor : .secondaryLabelColor))
+                    }
                     out.append(Segment(parts: [(nil, content.title)],
                                        color: content.isCurrentScreen ? .labelColor : .secondaryLabelColor,
                                        bold: content.isCurrentScreen, flexible: true))
@@ -356,7 +390,18 @@ private final class BarView: NSView {
         return NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(cfg)
     }
 
+    private var dotSize: CGFloat { max(5, CGFloat(bar.settings.fontSize) * 0.45) }
+    private var countFont: NSFont { NSFont.monospacedDigitSystemFont(ofSize: max(8, CGFloat(bar.settings.fontSize) * 0.65), weight: .medium) }
+
+    private func countText(_ seg: Segment) -> String? {
+        guard bar.settings.workspaceCounts, let t = seg.tag, t.count > 0 else { return nil }
+        return "\(t.count)"
+    }
+
     private func width(_ seg: Segment) -> CGFloat {
+        if let d = seg.dots {
+            return ceil(CGFloat(d.count) * dotSize + CGFloat(d.count - 1) * dotSize * 0.7) + 2 * pad
+        }
         let f = font(seg.bold)
         var w: CGFloat = 0
         for (i, p) in seg.parts.enumerated() {
@@ -364,6 +409,7 @@ private final class BarView: NSView {
             if let n = p.icon, let img = icon(n, color: seg.color) { w += img.size.width + iconGap }
             w += (p.text as NSString).size(withAttributes: [.font: f]).width
         }
+        if let c = countText(seg) { w += (c as NSString).size(withAttributes: [.font: countFont]).width + 1 }
         let total = ceil(w) + 2 * pad
         // Workspace pills are at least square, so 1…9 line up evenly.
         return seg.tag != nil ? max(total, bounds.height - 6) : total
@@ -381,6 +427,9 @@ private final class BarView: NSView {
             // Active: solid pill, text cut in the opposite color.
             NSColor.labelColor.withAlphaComponent(hovered ? 0.8 : 0.9).setFill(); path.fill()
             color = dark ? NSColor.black.withAlphaComponent(0.85) : .white
+        } else if seg.tab == true {
+            // The focused tab: a quiet raised pill, like a selected segment.
+            NSColor.labelColor.withAlphaComponent(hovered ? 0.22 : 0.16).setFill(); path.fill()
         } else {
             if hovered { NSColor.labelColor.withAlphaComponent(0.12).setFill(); path.fill() }
             if seg.tag?.visible == true {
@@ -389,7 +438,23 @@ private final class BarView: NSView {
                 NSColor.labelColor.withAlphaComponent(0.55).setStroke(); ring.stroke()
             }
         }
-        if seg.tag?.hasWindows == true {
+        if let d = seg.dots {
+            let size = dotSize, step = dotSize * 1.7
+            var x = rect.minX + pad
+            for i in 0..<d.count {
+                let r = NSRect(x: x, y: (h - size) / 2, width: size, height: size)
+                if i == d.focused {
+                    color.setFill(); NSBezierPath(ovalIn: r).fill()
+                } else {
+                    let o = NSBezierPath(ovalIn: r.insetBy(dx: 0.6, dy: 0.6))
+                    o.lineWidth = 1.2
+                    color.withAlphaComponent(0.7).setStroke(); o.stroke()
+                }
+                x += step
+            }
+            return
+        }
+        if seg.tag?.hasWindows == true, countText(seg) == nil {
             // One dot = has windows, like a running app in the Dock.
             let d: CGFloat = 3.5
             color.setFill()
@@ -413,7 +478,17 @@ private final class BarView: NSView {
         }
         var x = rect.minX + pad
         if seg.tag != nil, let t = seg.parts.first?.text {
-            x = rect.midX - (t as NSString).size(withAttributes: attrs).width / 2
+            let textW = (t as NSString).size(withAttributes: attrs).width
+            if let c = countText(seg) {
+                // The number and its window count, centred together; the count
+                // sits up and to the right, like a superscript.
+                let cAttrs: [NSAttributedString.Key: Any] = [.font: countFont, .foregroundColor: color.withAlphaComponent(0.75)]
+                let cSize = (c as NSString).size(withAttributes: cAttrs)
+                x = rect.midX - (textW + 1 + cSize.width) / 2
+                (c as NSString).draw(at: NSPoint(x: x + textW + 1, y: h / 2 - 1), withAttributes: cAttrs)
+            } else {
+                x = rect.midX - textW / 2
+            }
         }
         let maxX = rect.maxX - pad
         for (i, p) in seg.parts.enumerated() {
@@ -476,6 +551,8 @@ private final class BarView: NSView {
         case .workspace(let i):
             Log.info("bar click: workspace \(i + 1) on screen \(index)")
             bar.onClickWorkspace?(index, i)
+        case .window(let id):
+            bar.onClickWindow?(index, id)
         case .open(let bundleID):
             if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init())

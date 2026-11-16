@@ -375,6 +375,29 @@ struct BarPane: View {
                 }
                 .disabled(![BarWidget.cpu, .memory, .network].contains(where: m.s.bar.shows))
             }
+            Section {
+                Picker("Show", selection: m.binding({ $0.bar.windows }, { m.nested("bar", "windows", $0.rawValue) })) {
+                    Text("Off").tag(BarSettings.WindowsStyle.off)
+                    Text("Position").tag(BarSettings.WindowsStyle.position)
+                    Text("Dots").tag(BarSettings.WindowsStyle.dots)
+                    Text("Tabs").tag(BarSettings.WindowsStyle.tabs)
+                }
+                .pickerStyle(.segmented)
+                Toggle("Only in the Full layout", isOn: m.binding({ $0.bar.windowsFullOnly }, {
+                    m.nested("bar", "windows-full-only", SettingsModel.yaml($0))
+                }))
+                .disabled(m.s.bar.windows == .off)
+                Toggle("Window count on each workspace", isOn: m.binding({ $0.bar.workspaceCounts }, {
+                    m.nested("bar", "workspace-counts", SettingsModel.yaml($0))
+                }))
+                BarPreview(settings: m.s.bar)
+                    .frame(height: 34)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.06)))
+            } header: {
+                Text("Windows on This Workspace")
+            } footer: {
+                Text(windowsHelp(m.s.bar.windows)).font(.caption).foregroundStyle(.secondary)
+            }
             Section("Date and Time") {
                 TextField("Date format", text: $date).onSubmit { m.nested("bar", "date-format", KSettings.yamlScalar(date)) }
                 TextField("Clock format", text: $clock).onSubmit { m.nested("bar", "clock-format", KSettings.yamlScalar(clock)) }
@@ -382,6 +405,15 @@ struct BarPane: View {
             }
         }
         .onAppear { date = m.s.bar.dateFormat; clock = m.s.bar.clockFormat }
+    }
+
+    private func windowsHelp(_ style: BarSettings.WindowsStyle) -> String {
+        switch style {
+        case .off: return "Only the focused window's title."
+        case .position: return "Which window you're on and how many there are, next to the layout."
+        case .dots: return "One dot per window, the focused one filled."
+        case .tabs: return "Every window's name; the focused one is highlighted. Click a tab to switch to that window."
+        }
     }
 
     /// The usual choices, plus whatever config.yaml has if it's something else.
@@ -947,5 +979,45 @@ extension NSColor {
     var hexString: String {
         let c = usingColorSpace(.sRGB) ?? self
         return String(format: "#%02X%02X%02X", Int(c.redComponent * 255), Int(c.greenComponent * 255), Int(c.blueComponent * 255))
+    }
+}
+
+
+/// The bar as it would look with these settings, drawn by the bar itself with
+/// made-up windows: workspace 2 in Full, Safari focused, the second of four.
+private struct BarPreview: NSViewRepresentable {
+    let settings: BarSettings
+
+    func makeNSView(context: Context) -> PreviewHost { PreviewHost() }
+    func updateNSView(_ v: PreviewHost, context: Context) {
+        var s = settings
+        s.left = [.workspaces, .layout, .title]
+        s.right = []
+        s.hideEmptyWorkspaces = false
+        v.settings = s
+    }
+
+    final class PreviewHost: NSView {
+        var settings = BarSettings() { didSet { needsLayout = true } }
+
+        override func layout() {
+            super.layout()
+            subviews.forEach { $0.removeFromSuperview() }
+            var c = Bar.Content()
+            c.isCurrentScreen = true
+            c.isFullLayout = true
+            c.layout = "Full"
+            c.title = "Safari"
+            let counts = [3, 4, 0, 1, 0]
+            c.tags = counts.enumerated().map { i, n in
+                Bar.Tag(name: "\(i + 1)", active: i == 1, visible: i == 1, hasWindows: n > 0, count: n)
+            }
+            c.windows = ["Claude", "Safari", "Notes", "Terminal"].enumerated().map { i, t in
+                Bar.Window(id: UInt32(i + 1), title: t, focused: i == 1)
+            }
+            let v = Bar.demoView(width: bounds.width, height: bounds.height, settings: settings, content: c,
+                                 now: Date(), cpu: 0, memory: 0, down: 0, up: 0)
+            addSubview(v)
+        }
     }
 }

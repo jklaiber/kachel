@@ -8,6 +8,12 @@ taken from its section here.
 ## [Unreleased]
 
 ### Added
+- **The windows of the workspace you're on, in the bar**: as tabs with their
+  names (click one to switch to it), as dots, or as a position like `Full 2/4`.
+  By default as tabs, and only in the Full layout, where the other windows are
+  hidden (`bar.windows`, `bar.windows-full-only`).
+- **Window count on each workspace** in the bar (`bar.workspace-counts`).
+- Settings → Bar: these choices, with a live preview of the bar.
 - Welcome and setup check: **Hide the Dock automatically**, recommended when the
   Dock is at the bottom, so the bar gets the bottom edge to itself. One click
   turns it on.

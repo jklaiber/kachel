@@ -20,6 +20,23 @@ final class ConfigEditTests: XCTestCase {
         XCTAssertFalse(t.contains("com.apple.archiveutility"))
     }
 
+    func testBarWindows() throws {
+        let d = try Settings.parse(Settings.defaultYAML).bar
+        XCTAssertEqual(d.windows, .tabs)
+        XCTAssertTrue(d.windowsFullOnly)
+        XCTAssertFalse(d.workspaceCounts)
+        var t = Settings.setNested(Settings.defaultYAML, section: "bar", key: "windows", value: "dots")
+        t = Settings.setNested(t, section: "bar", key: "windows-full-only", value: "false")
+        t = Settings.setNested(t, section: "bar", key: "workspace-counts", value: "true")
+        let b = try Settings.parse(t).bar
+        XCTAssertEqual(b.windows, .dots)
+        XCTAssertFalse(b.windowsFullOnly)
+        XCTAssertTrue(b.workspaceCounts)
+        // A bare `off` is a YAML boolean.
+        XCTAssertEqual(try Settings.parse("bar:\n  windows: off").bar.windows, .off)
+        XCTAssertThrowsError(try Settings.parse("bar:\n  windows: list"))
+    }
+
     func testNested() throws {
         var t = Settings.setNested(base, section: "bar", key: "clock-format", value: "\"HH:mm:ss\"")
         t = Settings.setNested(t, section: "border", key: "color", value: "\"#5DCAA5\"")

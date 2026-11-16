@@ -17,6 +17,24 @@ windows leave room for it.
 
 Click a workspace to show it on that display.
 
+With `workspace-counts: true`, each workspace shows how many windows it has, as
+a small number next to it, instead of the dot.
+
+## Windows on this workspace
+
+In the Full layout you only see one window. The bar can show the others:
+
+| `windows:` | Shows |
+|---|---|
+| `tabs` | every window's name, the focused one highlighted; click a tab to switch to it |
+| `dots` | one dot per window, the focused one filled |
+| `position` | which window and how many, next to the layout: `Full 2/4` |
+| `off` | only the focused window's title |
+
+`windows-full-only: true` (the default) shows them only in the Full layout,
+including `toggle-fullscreen`; in the other layouts you see the windows anyway.
+**Settings → Bar** has the same choices, with a preview.
+
 ## Widgets
 
 | Widget | Shows | Click |
@@ -38,6 +56,9 @@ bar:
   left: [workspaces, layout, title]
   right: [network, cpu, memory, date, clock]
   hide-empty-workspaces: false
+  windows: tabs                # position, dots, tabs or off
+  windows-full-only: true
+  workspace-counts: false
 ```
 
 Right-click the bar for **Show in Bar** (switch widgets on and off), Settings,
