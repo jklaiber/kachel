@@ -9,16 +9,24 @@ import Foundation
 ///       float: true
 ///
 /// `app` is a bundle ID or an app name; `title` (optional) must appear in the
-/// window title. The first matching rule wins. Rules apply when a window
-/// appears, not to windows you've since moved by hand.
+/// window title. The first matching rule wins. `workspace` and `float` apply
+/// when a window appears, not to windows you've since moved by hand; `hide`
+/// applies whenever the window's workspace goes out of sight.
 public struct Rule: Equatable {
+    /// What happens to the window while its workspace isn't shown.
+    public enum Hide: String, Equatable {
+        case park          // moved into a screen corner (the default)
+        case minimize      // minimized, so call apps show their small window
+    }
+
     public var app: String
     public var title: String?
     public var workspace: String?     // workspace name (or number)
     public var float = false
+    public var hide = Hide.park
 
-    public init(app: String, title: String? = nil, workspace: String? = nil, float: Bool = false) {
-        self.app = app; self.title = title; self.workspace = workspace; self.float = float
+    public init(app: String, title: String? = nil, workspace: String? = nil, float: Bool = false, hide: Hide = .park) {
+        self.app = app; self.title = title; self.workspace = workspace; self.float = float; self.hide = hide
     }
 
     public func matches(bundleID: String?, appName: String?, title windowTitle: String) -> Bool {
@@ -49,8 +57,8 @@ extension Settings {
         return try list.enumerated().map { i, item in
             let ctx = "rules[\(i + 1)]"
             guard let d = item as? [String: Any] else { throw SettingsError("\(ctx) must be a mapping with app: …") }
-            if let bad = d.keys.first(where: { !["app", "title", "workspace", "float"].contains($0) }) {
-                throw SettingsError("\(ctx): unknown setting '\(bad)' (use app, title, workspace, float)")
+            if let bad = d.keys.first(where: { !["app", "title", "workspace", "float", "hide"].contains($0) }) {
+                throw SettingsError("\(ctx): unknown setting '\(bad)' (use app, title, workspace, float, hide)")
             }
             guard let app = d["app"].map({ "\($0)" }), !app.isEmpty else { throw SettingsError("\(ctx) needs app:") }
             var r = Rule(app: app)
@@ -65,6 +73,12 @@ extension Settings {
             if let f = d["float"] {
                 guard let b = f as? Bool else { throw SettingsError("\(ctx): float must be true or false") }
                 r.float = b
+            }
+            if let h = d["hide"], !(h is NSNull) {
+                guard let mode = Rule.Hide(rawValue: "\(h)") else {
+                    throw SettingsError("\(ctx): hide must be park or minimize")
+                }
+                r.hide = mode
             }
             return r
         }
@@ -136,6 +150,7 @@ extension Settings {
             var entry = ["  - app: \(yamlScalar(rule.app))" + (comment.map { "   # \($0)" } ?? "")]
             if let w = rule.workspace { entry.append("    workspace: \(yamlScalar(w))") }
             if rule.float { entry.append("    float: true") }
+            if rule.hide != .park { entry.append("    hide: \(rule.hide.rawValue)") }
             lines.insert(contentsOf: entry, at: sectionEnd())
         }
         return lines.joined(separator: "\n")

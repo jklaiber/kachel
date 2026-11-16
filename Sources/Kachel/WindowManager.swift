@@ -21,6 +21,12 @@ final class WindowManager {
     private var observers: [pid_t: AXObserver] = [:]
     private var screens: [Screen] = []
     private var hidden: Set<WindowID> = []
+    /// Windows we minimized because their workspace went out of sight (rules
+    /// with `hide: minimize`, e.g. a Teams meeting, so the app shows its small
+    /// window). Ones you minimized yourself aren't here and stay minimized.
+    private var minimizedByUs: [WindowID: (window: AXWindow, at: Date, wasFocused: Bool)] = [:]
+    /// Restored by us; focus them again once they're back.
+    private var refocusWhenBack: Set<WindowID> = []
     /// Floating window frames relative to their screen's visible origin, saved on hide.
     private var floatRel: [WindowID: CGRect] = [:]
     /// workspace index -> screen it was on at the last render (to detect swaps).
@@ -796,6 +802,8 @@ final class WindowManager {
 
     /// Never leave windows stranded in a corner when we exit.
     private func restoreAllWindows() {
+        for (_, m) in minimizedByUs { m.window.setMinimized(false) }
+        minimizedByUs.removeAll()
         guard let scr = screens.first else { return }
         var offset: CGFloat = 0
         for id in hidden {
@@ -974,6 +982,24 @@ final class WindowManager {
                 ss.insert(id)           // new windows land on the current workspace
             }
             hidden.remove(id)
+            changed = true
+        }
+        for (id, _) in found {
+            if refocusWhenBack.remove(id) != nil, let ws = ss.workspaceIndex(of: id), ss.isVisible(workspace: ws) {
+                ss.focus(id)
+                changed = true
+            }
+            // Restored while its workspace is out of sight, and not by us: you
+            // clicked the app's small window or the Dock. Go there, like macOS
+            // switches to the window's Space. (Shortly after we minimized it,
+            // it can still look restored: that's the animation, not you.)
+            guard let m = minimizedByUs[id], Date().timeIntervalSince(m.at) > 1.0 else { continue }
+            minimizedByUs[id] = nil
+            if let ws = ss.workspaceIndex(of: id), !ss.isVisible(workspace: ws) {
+                Log.info("window \(id) was restored from another workspace: showing workspace \(ss.workspaces[ws].tag)")
+                show(ws)
+            }
+            ss.focus(id)
             changed = true
         }
         windows = found
@@ -1341,6 +1367,16 @@ final class WindowManager {
             ws.windows.forEach(hide)
         }
 
+        // Back on a workspace whose windows we minimized: restore them. They're
+        // tiled into their old place once they reappear (see refresh).
+        for wsIndex in visible {
+            for id in ss.workspaces[wsIndex].windows {
+                guard let m = minimizedByUs.removeValue(forKey: id) else { continue }
+                if m.wasFocused { refocusWhenBack.insert(id) }
+                m.window.setMinimized(false)
+            }
+        }
+
         for (s, wsIndex) in ss.screenWorkspace.enumerated() where s < screens.count {
             let ws = ss.workspaces[wsIndex]
             let scr = screens[s]
@@ -1445,6 +1481,12 @@ final class WindowManager {
 
     private func hide(_ id: WindowID) {
         guard !hidden.contains(id), let w = windows[id], let f = w.frame else { return }
+        if rule(for: w)?.hide == .minimize, !scratchWindow.values.contains(id), let ws = ss.workspaceIndex(of: id) {
+            minimizedByUs[id] = (w, Date(), ss.workspaces[ws].focused == id)
+            Log.info("minimizing window \(id) (\(appName(of: w))): its workspace \(ss.workspaces[ws].tag) is out of sight")
+            w.setMinimized(true)
+            return
+        }
         if ss.floating.contains(id) {
             let s = screenIndex(containing: CGPoint(x: f.midX, y: f.midY)) ?? ss.currentScreen
             let o = screens[min(s, screens.count - 1)].visible.origin

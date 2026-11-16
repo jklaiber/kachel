@@ -8,6 +8,11 @@ taken from its section here.
 ## [Unreleased]
 
 ### Added
+- **Call windows like on Spaces**: a rule with `hide: minimize` minimizes a
+  window while its workspace is out of sight and restores it when you come back.
+  Teams, Zoom and Webex then show their small call window on every workspace;
+  clicking it takes you back to the meeting. Also the **Minimize** switch in
+  Settings → App Rules.
 - MIT licence, contributing guide, security policy and code of conduct; issue
   forms for bugs and feature requests, and Discussions for questions.
 - Settings → Bar: how often CPU, memory and network update (`bar.interval`).
@@ -20,6 +25,10 @@ taken from its section here.
   external drive, macOS asked to let Kachel access that folder (the bar reads the
   wallpaper to choose white or black text). The bar now follows light or dark
   mode for those instead.
+- On French and Belgian (AZERTY) keyboards, `mod-1` … `mod-9` didn't work: the
+  number row types `& é " …` there, so the shortcuts landed on the numeric
+  keypad. Digits now always mean the number row, and the shortcut recorder
+  records it as 1–9.
 
 ## [0.1.9] - 2026-11-15
 

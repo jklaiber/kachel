@@ -530,6 +530,12 @@ struct RulesPane: View {
                                 ForEach(m.s.workspaces, id: \.self) { Text("Workspace \($0)").tag($0) }
                             }.labelsHidden().frame(width: 160)
                             Toggle("Float", isOn: Binding(get: { rule.float }, set: { save(rule, workspace: rule.workspace, float: $0) }))
+                            Toggle("Minimize", isOn: Binding(get: { rule.hide == .minimize }, set: {
+                                var r = rule
+                                r.hide = $0 ? .minimize : .park
+                                save(r, workspace: r.workspace, float: r.float)
+                            }))
+                            .help("Minimize its windows while their workspace is out of sight, instead of moving them into a corner. Call apps like Teams, Zoom and Webex then show their small window.")
                             Spacer()
                             Button(role: .destructive) {
                                 m.edit { KSettings.setRule($0, app: rule.app, rule: nil) }
@@ -561,7 +567,7 @@ struct RulesPane: View {
         var r = rule
         r.workspace = workspace
         r.float = float
-        let keep = (r.workspace == nil && !r.float) ? nil : r
+        let keep = (r.workspace == nil && !r.float && r.hide == .park) ? nil : r
         m.edit { KSettings.setRule($0, app: rule.app, rule: keep, comment: appName(rule.app)) }
     }
 

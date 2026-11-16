@@ -35,6 +35,13 @@ enum KeyCodes {
         "9": kVK_ANSI_9,
     ]
 
+    /// Numeric keypad keys: never chosen for a plain key name (most Macs have none).
+    static let keypad: Set<Int> = [kVK_ANSI_KeypadDecimal, kVK_ANSI_KeypadMultiply, kVK_ANSI_KeypadPlus,
+        kVK_ANSI_KeypadClear, kVK_ANSI_KeypadDivide, kVK_ANSI_KeypadEnter, kVK_ANSI_KeypadMinus,
+        kVK_ANSI_KeypadEquals, kVK_ANSI_Keypad0, kVK_ANSI_Keypad1, kVK_ANSI_Keypad2, kVK_ANSI_Keypad3,
+        kVK_ANSI_Keypad4, kVK_ANSI_Keypad5, kVK_ANSI_Keypad6, kVK_ANSI_Keypad7, kVK_ANSI_Keypad8,
+        kVK_ANSI_Keypad9]
+
     /// Character typed by each key with no modifiers on the current layout.
     static func layoutMap() -> [Character: Int] {
         guard let src = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
@@ -43,7 +50,7 @@ enum KeyCodes {
         var map: [Character: Int] = [:]
         data.withUnsafeBytes { raw in
             guard let layout = raw.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return }
-            for code in 0..<128 {
+            for code in 0..<128 where !keypad.contains(code) {
                 var dead: UInt32 = 0
                 var chars = [UniChar](repeating: 0, count: 4)
                 var len = 0
@@ -59,6 +66,9 @@ enum KeyCodes {
     }
 
     static func code(for key: String, layout: [Character: Int]) -> Int? {
+        // Digits are the number row, whatever it types: on AZERTY it types
+        // & é " ' … and only the numeric keypad types 1–9.
+        if key.count == 1, let c = key.first, c.isASCII, c.isNumber { return ansi[c] }
         if key.count == 1, let c = key.first {
             return layout[c] ?? ansi[c]
         }
@@ -81,6 +91,8 @@ enum KeyCodes {
         let special = named.filter { !punctuation.keys.contains($0.key) && $0.key != "enter" && $0.key != "esc"
             && $0.key != "backspace" }
         if let n = special.first(where: { $0.value == code })?.key { return n }
+        // The number row records as its digit, also where it types & é " … (AZERTY).
+        if let d = ansi.first(where: { $0.key.isNumber && $0.value == code })?.key { return String(d) }
         guard let ch = e.charactersIgnoringModifiers?.lowercased().first else { return nil }
         if let p = punctuation.first(where: { $0.value == ch })?.key { return p }
         if ch.isLetter || ch.isNumber { return String(ch) }

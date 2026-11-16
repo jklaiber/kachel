@@ -34,6 +34,34 @@ rules:
 
 Rules apply when a window appears; you can still move it afterwards.
 
+### Calls: minimize instead of hiding
+
+Teams, Zoom and Webex show a small call window when the meeting window is out
+of sight, but only if it's minimized or on another Space. Kachel normally moves
+windows of hidden workspaces into a corner, which these apps don't notice.
+`hide: minimize` minimizes the window instead while its workspace is out of
+sight, and restores it, in its old place and size, when you come back:
+
+```yaml
+rules:
+  - app: com.microsoft.teams2        # Microsoft Teams
+    title: Meeting with              # the meeting window, not the chat
+    hide: minimize
+  - app: us.zoom.xos                 # Zoom (title not verified yet)
+    title: Zoom Meeting
+    hide: minimize
+  - app: Cisco-Systems.Spark         # Webex: without a title, every Webex window
+    hide: minimize
+```
+
+- The app's small window stays on screen on every workspace.
+- Clicking it (or the window in the Dock) takes you back to the meeting's workspace.
+- Windows you minimize yourself stay minimized.
+- `title` is matched each time, so a window that only becomes a meeting later is
+  covered. See a window's title with `scripts/kachel-ctl dump` (written to the log).
+
+In **Settings → App Rules** this is the **Minimize** switch.
+
 ![App rule picker: Music, always open on workspace 9](images/screenshots/app-rule.png)
 
 ## Floating windows

@@ -99,6 +99,10 @@ final class AXWindow {
         withoutEnhancedUI { setPosition(p) }
     }
 
+    func setMinimized(_ on: Bool) {
+        AXUIElementSetAttributeValue(element, kAXMinimizedAttribute as CFString, on ? kCFBooleanTrue : kCFBooleanFalse)
+    }
+
     func raise() {
         AXUIElementPerformAction(element, kAXRaiseAction as CFString)
     }

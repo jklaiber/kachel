@@ -25,6 +25,21 @@ final class RulesTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("rules:\n  - app: X\n    workspace: 12"))
         XCTAssertThrowsError(try Settings.parse("rules:\n  - workspace: 2"))
         XCTAssertThrowsError(try Settings.parse("rules:\n  - app: X\n    screen: 2"))
+        XCTAssertThrowsError(try Settings.parse("rules:\n  - app: X\n    hide: away"))
+    }
+
+    func testHideMinimize() throws {
+        let s = try Settings.parse("rules:\n  - app: com.microsoft.teams2\n    title: Meeting with\n    hide: minimize\n  - app: Slack\n    workspace: 2")
+        XCTAssertEqual(s.rules, [Rule(app: "com.microsoft.teams2", title: "Meeting with", hide: .minimize),
+                                 Rule(app: "Slack", workspace: "2")])
+        XCTAssertEqual(s.rule(bundleID: "com.microsoft.teams2", appName: "Microsoft Teams", title: "Meeting with Ada")?.hide, .minimize)
+        XCTAssertNil(s.rule(bundleID: "com.microsoft.teams2", appName: "Microsoft Teams", title: "Chat"))
+
+        // Written back by the settings window (app-wide rule), and read again.
+        let text = Settings.setRule(Settings.defaultYAML, app: "us.zoom.xos",
+                                    rule: Rule(app: "us.zoom.xos", hide: .minimize), comment: "Zoom")
+        XCTAssertTrue(text.contains("hide: minimize"))
+        XCTAssertEqual(try Settings.parse(text).rules.last, Rule(app: "us.zoom.xos", hide: .minimize))
     }
 
     func testSetRuleOnDefaultConfig() throws {

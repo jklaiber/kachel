@@ -108,6 +108,10 @@ border:
 #   - app: com.google.Chrome
 #     title: "Meet"                    # only windows whose title contains this
 #     workspace: 5
+#   - app: com.microsoft.teams2
+#     title: "Meeting with"
+#     hide: minimize                   # minimized while its workspace is out of sight,
+#                                      # so Teams shows its small call window
 rules:
   - app: com.apple.systempreferences   # System Settings
     float: true
