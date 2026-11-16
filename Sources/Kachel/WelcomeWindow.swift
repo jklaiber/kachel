@@ -28,6 +28,19 @@ final class WelcomeWindow {
         window?.makeKeyAndOrderFront(nil)
     }
 
+    var isOpen: Bool { window?.isVisible == true }
+
+    /// Back in front, e.g. after you granted Accessibility in System Settings.
+    func bringToFront() {
+        guard let window, window.isVisible else { return }
+        model.refresh()
+        // macOS may not let a background app activate itself; the window comes
+        // to the front either way.
+        window.orderFrontRegardless()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
     /// Show once, on the very first launch.
     func showOnFirstLaunch() {
         let key = "welcomeShown"

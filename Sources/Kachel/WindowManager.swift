@@ -211,6 +211,11 @@ final class WindowManager {
         }
 
         adoptExistingWindows()
+        // You just granted Accessibility in System Settings: come back to the
+        // welcome window and its next checks (after the windows above settled).
+        if welcomeWindow.isOpen {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [unowned self] in self.welcomeWindow.bringToFront() }
+        }
         NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [unowned self] _ in self.pointerMoved() }
         // Holding the modifier alone shows the shortcut overview; anything else hides it.
         let watched: NSEvent.EventTypeMask = [.flagsChanged, .keyDown, .leftMouseDown, .rightMouseDown, .scrollWheel]
@@ -942,6 +947,11 @@ final class WindowManager {
                     continue
                 }
                 Log.info("window \(id) closed (was on workspace \(ss.workspaceIndex(of: id).map { ss.workspaces[$0].tag } ?? "?"))")
+                // The welcome window's buttons open System Settings: closing it
+                // takes you back there, not to another window.
+                if windows[id]?.bundleID == "com.apple.systempreferences", welcomeWindow.isOpen {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [unowned self] in self.welcomeWindow.bringToFront() }
+                }
                 let wsOfClosed = ss.workspaceIndex(of: id)
                 let wasFocused = id == ss.current.focused
                 ss.remove(id)

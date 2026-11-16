@@ -17,6 +17,9 @@ taken from its section here.
 - Changing a setting in the settings window sent the window to the back: the
   config reload gave focus to the current workspace's window. Kachel's own
   windows now stay in front.
+- After granting Accessibility from the welcome window, it went behind other
+  windows. It now comes back to the front with the next checks, also when you
+  close System Settings.
 
 ## [0.1.11] - 2026-11-16
 
