@@ -21,6 +21,8 @@ final class WindowManager {
     private var observers: [pid_t: AXObserver] = [:]
     private var screens: [Screen] = []
     private var hidden: Set<WindowID> = []
+    /// Windows logged as left alone (they float above others on their own).
+    private var leftAlone: Set<WindowID> = []
     /// Windows we minimized because their workspace went out of sight (rules
     /// with `hide: minimize`, e.g. a Teams meeting, so the app shows its small
     /// window). Ones you minimized yourself aren't here and stay minimized.
@@ -834,6 +836,7 @@ final class WindowManager {
     private func enumerateWindows() -> [WindowID: AXWindow] {
         var result: [WindowID: AXWindow] = [:]
         let me = getpid()
+        let raised = raisedWindows()
         for app in NSWorkspace.shared.runningApplications
         where app.activationPolicy == .regular && app.processIdentifier != me {
             let pid = app.processIdentifier
@@ -849,6 +852,16 @@ final class WindowManager {
             }
             for el in elements where isManageable(el) {
                 guard let id = axWindowID(el) else { continue }
+                if let level = raised[id] {
+                    // The app keeps it above normal windows itself (Outlook's
+                    // reminder, an "always on top" window), like a panel. As in
+                    // Amethyst, it's left alone: not tiled, not cycled to, not
+                    // parked when you switch workspaces. Its app decides where it goes.
+                    if leftAlone.insert(id).inserted {
+                        Log.info("leaving window \(id) (\(app.localizedName ?? "?")) alone: it floats above other windows (level \(level))")
+                    }
+                    continue
+                }
                 if let known = windows[id] {
                     result[id] = known
                 } else {
@@ -998,6 +1011,15 @@ final class WindowManager {
                 // A rule sends it elsewhere (xmonad doShift): it appears there, you stay here.
                 ss.insert(id, into: ws)
                 Log.info("rule: \(appName(of: w)) window \(id) → workspace \(ss.workspaces[ws].tag)")
+            } else if ss.floating.contains(id), let f = w.frame,
+                      let s = screenIndex(containing: CGPoint(x: f.midX, y: f.midY)), s != ss.currentScreen,
+                      s < ss.screenWorkspace.count {
+                // A dialog the app opened on another display belongs to the
+                // workspace shown there, not to the one you're on, or ⌥J/⌥K
+                // would cycle across displays to it.
+                let ws = ss.screenWorkspace[s]
+                ss.insert(id, into: ws)
+                Log.info("new window \(id) is on display \(s + 1): joins workspace \(ss.workspaces[ws].tag)")
             } else {
                 ss.insert(id)           // new windows land on the current workspace
             }
@@ -1024,6 +1046,19 @@ final class WindowManager {
         }
         windows = found
         if changed { render() }
+    }
+
+    /// Windows that sit above the normal window level, by ID, with their level.
+    private func raisedWindows() -> [WindowID: Int] {
+        guard let list = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return [:] }
+        var out: [WindowID: Int] = [:]
+        for w in list {
+            guard let level = w[kCGWindowLayer as String] as? Int, level > 0,
+                  let id = (w[kCGWindowNumber as String] as? NSNumber)?.uint32Value else { continue }
+            out[id] = level
+        }
+        return out
     }
 
     /// Every window the window server knows, on any Space, visible or not.

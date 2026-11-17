@@ -7,6 +7,14 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Fixed
+- Windows an app keeps above other windows on its own, like Outlook's meeting
+  reminder, are left alone, as in Amethyst: not tiled, not part of ⌥J / ⌥K, and
+  not hidden when you switch workspaces. The app decides where they go.
+- A dialog an app opened on another display joined the workspace you were on,
+  so ⌥J / ⌥K jumped across displays to it. It now belongs to the workspace shown
+  on the display where it appears.
+
 ## [0.1.12] - 2026-11-16
 
 In the Full layout the bar shows the workspace's other windows as tabs, and every
