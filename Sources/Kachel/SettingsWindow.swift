@@ -415,6 +415,10 @@ struct BarPane: View {
                     }
                 }
                 .disabled(![BarWidget.cpu, .memory, .network].contains(where: m.s.bar.shows))
+                Toggle("Battery percentage next to the icon", isOn: m.binding({ $0.bar.batteryPercentage }, {
+                    m.nested("bar", "battery-percentage", SettingsModel.yaml($0))
+                }))
+                .disabled(!m.s.bar.shows(.battery))
             }
             Section {
                 Picker("Show", selection: m.binding({ $0.bar.windows }, { m.nested("bar", "windows", $0.rawValue) })) {

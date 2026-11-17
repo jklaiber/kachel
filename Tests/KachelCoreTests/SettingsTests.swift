@@ -75,7 +75,7 @@ final class BarConfigTests: XCTestCase {
         let b = try Settings.parse(Settings.defaultYAML).bar
         XCTAssertNil(b.height)
         XCTAssertEqual(b.left, [.workspaces, .layout, .title])
-        XCTAssertEqual(b.right, [.network, .cpu, .memory, .date, .clock])
+        XCTAssertEqual(b.right, [.network, .cpu, .memory, .battery, .date, .clock])
     }
 
     func testOldConfigStillLoads() throws {

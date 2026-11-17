@@ -45,6 +45,7 @@ including `toggle-fullscreen`; in the other layouts you see the windows anyway.
 | `network` | ↓ / ↑ throughput | Activity Monitor |
 | `cpu` | CPU load | Activity Monitor |
 | `memory` | memory used | Activity Monitor |
+| `battery` | battery level, like the menu bar's icon; a bolt while plugged in, red below 10 %. `battery-percentage: false` shows the icon only. Not shown on Macs without a battery | Battery settings |
 | `date`, `clock` | `date-format`, `clock-format` | Calendar |
 
 ```yaml
@@ -54,8 +55,9 @@ bar:
   background: transparent      # or blur
   appearance: auto             # white or black text depending on the wallpaper
   left: [workspaces, layout, title]
-  right: [network, cpu, memory, date, clock]
+  right: [network, cpu, memory, battery, date, clock]
   hide-empty-workspaces: false
+  battery-percentage: true     # false: battery icon only
   windows: tabs                # position, dots, tabs or off
   windows-full-only: true
   workspace-counts: false

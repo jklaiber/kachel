@@ -7,6 +7,13 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- **Battery widget** for the bar (`battery`): the battery level as an icon like
+  the menu bar's, with or without the percentage (`bar.battery-percentage`, also
+  in Settings → Bar). A bolt while plugged in, red when nearly empty; a click
+  opens Battery settings. It's in the default bar; configs with their own
+  `right:` list can add it from the bar's menu (Show in Bar → Battery).
+
 ## [0.1.14] - 2026-11-17
 
 Six more layouts, a way to pause tiling, more control over spacing, and fixes for

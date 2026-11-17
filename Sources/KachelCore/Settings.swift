@@ -48,7 +48,7 @@ public enum Command: Equatable {
 }
 
 public enum BarWidget: String, CaseIterable {
-    case workspaces, layout, title, cpu, memory, network, date, clock
+    case workspaces, layout, title, cpu, memory, network, battery, date, clock
 }
 
 public struct BarSettings: Equatable {
@@ -57,7 +57,7 @@ public struct BarSettings: Equatable {
     public var height: Double?
     public var fontSize: Double = 13
     public var left: [BarWidget] = [.workspaces, .layout, .title]
-    public var right: [BarWidget] = [.network, .cpu, .memory, .date, .clock]
+    public var right: [BarWidget] = [.network, .cpu, .memory, .battery, .date, .clock]
     public var hideEmptyWorkspaces = false
     public var clockFormat = "HH:mm"
     public var dateFormat = "EEE d MMM"
@@ -70,6 +70,8 @@ public struct BarSettings: Equatable {
     public var windowsFullOnly = true
     /// A small window count next to each workspace.
     public var workspaceCounts = false
+    /// The battery widget shows the percentage next to its icon.
+    public var batteryPercentage = true
     public init() {}
 
     public enum WindowsStyle: String, CaseIterable {
@@ -376,6 +378,7 @@ public struct Settings {
                 case "left": s.bar.left = try widgets(v, "bar.left")
                 case "right": s.bar.right = try widgets(v, "bar.right")
                 case "hide-empty-workspaces": s.bar.hideEmptyWorkspaces = try bool(v, "bar.hide-empty-workspaces")
+                case "battery-percentage": s.bar.batteryPercentage = try bool(v, "bar.battery-percentage")
                 case "windows":
                     // YAML reads a bare `off` as false.
                     if let b = v as? Bool, !b { s.bar.windows = .off; break }
@@ -676,11 +679,13 @@ bar:
   font-size: 13
   background: transparent # transparent = like the macOS menu bar; blur = frosted glass
   appearance: auto        # auto = white/black text depending on the wallpaper; light; dark
-  # Widgets, in order: workspaces, layout, title, cpu, memory, network, date, clock.
+  # Widgets, in order: workspaces, layout, title, cpu, memory, network, battery,
+  # date, clock.
   # Leave one out to hide it.
   left: [workspaces, layout, title]
-  right: [network, cpu, memory, date, clock]
+  right: [network, cpu, memory, battery, date, clock]
   hide-empty-workspaces: false
+  battery-percentage: true  # the battery's percentage next to its icon; false = icon only
   # The windows of the workspace you're on: position (2/4 next to the layout),
   # dots, tabs (their names; click one to switch to it) or off.
   windows: tabs

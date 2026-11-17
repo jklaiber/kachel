@@ -125,3 +125,14 @@ final class ScratchpadEditAndConflictTests: XCTestCase {
         XCTAssertEqual(c.count, 3)                                               // hex keycodes skipped
     }
 }
+
+final class BatteryWidgetTests: XCTestCase {
+    func testDefaultsAndParsing() throws {
+        let d = try Settings.parse(Settings.defaultYAML).bar
+        XCTAssertTrue(d.right.contains(.battery))
+        XCTAssertTrue(d.batteryPercentage)
+        let s = try Settings.parse("bar:\n  right: [battery, clock]\n  battery-percentage: false").bar
+        XCTAssertEqual(s.right, [.battery, .clock])
+        XCTAssertFalse(s.batteryPercentage)
+    }
+}

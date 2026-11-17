@@ -59,11 +59,13 @@ bar:
   font-size: 13
   background: transparent # transparent = like the macOS menu bar; blur = frosted glass
   appearance: auto        # auto = white/black text depending on the wallpaper; light; dark
-  # Widgets, in order: workspaces, layout, title, cpu, memory, network, date, clock.
+  # Widgets, in order: workspaces, layout, title, cpu, memory, network, battery,
+  # date, clock.
   # Leave one out to hide it.
   left: [workspaces, layout, title]
-  right: [network, cpu, memory, date, clock]
+  right: [network, cpu, memory, battery, date, clock]
   hide-empty-workspaces: false
+  battery-percentage: true  # the battery's percentage next to its icon; false = icon only
   # The windows of the workspace you're on: position (2/4 next to the layout),
   # dots, tabs (their names; click one to switch to it) or off.
   windows: tabs

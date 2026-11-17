@@ -42,6 +42,7 @@ final class Bar {
     var menuActions: [(title: String, action: () -> Void)] = []
 
     let stats = Stats()
+    let battery = Battery()
     /// Screenshots use a fixed time; nil = now.
     var fixedNow: Date?
     private var panels: [BarPanel] = []
@@ -52,6 +53,7 @@ final class Bar {
     private(set) var settings = BarSettings()
 
     init() {
+        battery.onChange = { [weak self] in self?.redraw() }
         // Follow wallpaper, Space and light/dark changes, like the menu bar does.
         DistributedNotificationCenter.default().addObserver(forName: .init("com.apple.desktop"), object: "BackgroundChanged",
                                                             queue: .main) { [weak self] _ in self?.updateAppearance() }
@@ -198,6 +200,7 @@ extension BarWidget {
         case .network: return "Network"
         case .date: return "Date"
         case .clock: return "Clock"
+        case .battery: return "Battery"
         }
     }
 }
@@ -257,7 +260,7 @@ private final class BarPanel: NSPanel {
 
 /// One clickable thing in the bar.
 private struct Segment {
-    enum Action { case workspace(Int), open(String), window(UInt32) }
+    enum Action { case workspace(Int), open(String), window(UInt32), url(String) }
     var parts: [(icon: String?, text: String)]
     var dots: (count: Int, focused: Int)? = nil  // one dot per window
     var tab: Bool? = nil                // a window tab; true = the focused one
@@ -351,6 +354,12 @@ private final class BarView: NSView {
                 out.append(Segment(parts: [("arrow.down", Stats.rate(bar.stats.down)),
                                            ("arrow.up", Stats.rate(bar.stats.up))],
                                    action: .open("com.apple.ActivityMonitor")))
+            case .battery:
+                // No battery (iMac, Mac mini): nothing to show.
+                guard let b = bar.battery.state else { continue }
+                out.append(Segment(parts: [(Battery.symbol(b), s.batteryPercentage ? "\(b.percent)%" : "")],
+                                   color: Battery.isLow(b) ? .systemRed : .labelColor,
+                                   action: .url(Battery.settingsURL)))
             case .date:
                 dateFmt.dateFormat = s.dateFormat
                 out.append(Segment(parts: [(nil, dateFmt.string(from: bar.fixedNow ?? Date()))], action: .open("com.apple.iCal")))
@@ -406,7 +415,7 @@ private final class BarView: NSView {
         var w: CGFloat = 0
         for (i, p) in seg.parts.enumerated() {
             if i > 0 { w += partGap }
-            if let n = p.icon, let img = icon(n, color: seg.color) { w += img.size.width + iconGap }
+            if let n = p.icon, let img = icon(n, color: seg.color) { w += img.size.width + (p.text.isEmpty ? 0 : iconGap) }
             w += (p.text as NSString).size(withAttributes: [.font: f]).width
         }
         if let c = countText(seg) { w += (c as NSString).size(withAttributes: [.font: countFont]).width + 1 }
@@ -495,7 +504,7 @@ private final class BarView: NSView {
             if i > 0 { x += partGap }
             if let n = p.icon, let img = icon(n, color: color) {
                 img.draw(in: NSRect(x: x, y: (h - img.size.height) / 2, width: img.size.width, height: img.size.height))
-                x += img.size.width + iconGap
+                x += img.size.width + (p.text.isEmpty ? 0 : iconGap)
             }
             let size = (p.text as NSString).size(withAttributes: attrs)
             let w = max(0, min(size.width, maxX - x))
@@ -553,6 +562,8 @@ private final class BarView: NSView {
             bar.onClickWorkspace?(index, i)
         case .window(let id):
             bar.onClickWindow?(index, id)
+        case .url(let s):
+            if let u = URL(string: s) { NSWorkspace.shared.open(u) }
         case .open(let bundleID):
             if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init())
@@ -653,8 +664,10 @@ extension Bar {
     /// For README screenshots (`Kachel --render-screenshots`): a bar view with
     /// made-up content, not attached to any screen.
     static func demoView(width: CGFloat, height: CGFloat, settings: BarSettings, content: Content,
-                         now: Date, cpu: Double, memory: UInt64, down: Double, up: Double) -> NSView {
+                         now: Date, cpu: Double, memory: UInt64, down: Double, up: Double,
+                         battery: Battery.State? = Battery.State(percent: 82, charging: false, onPower: false)) -> NSView {
         let bar = Bar()
+        bar.battery.setDemo(battery)
         bar.settings = settings
         bar.fixedNow = now
         bar.stats.setDemo(cpu: cpu, memory: memory, down: down, up: up)
