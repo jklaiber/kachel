@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-11-17
+
+Fixes a crash after using Settings → Bar, and widgets can be dragged into order.
+
 ### Changed
 - Settings → Bar: drag a widget by its grip to reorder it, also to the other
   side, as in other macOS lists. Right-click still offers Move Up / Down.
@@ -369,7 +373,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.15...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.16...HEAD
+[0.1.16]: https://github.com/jklaiber/kachel/compare/v0.1.15...v0.1.16
 [0.1.15]: https://github.com/jklaiber/kachel/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/jklaiber/kachel/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/jklaiber/kachel/compare/v0.1.12...v0.1.13
