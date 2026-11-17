@@ -43,6 +43,8 @@ public enum Command: Equatable {
     case focusDirection(Direction), swapDirection(Direction)
     case scratchpad(String)
     case spawn(String)
+    case setLayout(LayoutKind)          // layout <name>: straight to that layout
+    case prevLayout, toggleTiling, toggleFocusFollowsMouse, increaseWindowLimit, decreaseWindowLimit
 }
 
 public enum BarWidget: String, CaseIterable {
@@ -144,6 +146,20 @@ public struct Settings {
     public var focusFollowsMouse = false
     /// Pressing the key of the workspace you're on goes back to the previous one.
     public var workspaceBackAndForth = false
+    /// Space at the screen edges; nil = the same as `gap`.
+    public var padding: Double?
+    /// false: no edge padding on the built-in display.
+    public var builtinPadding = true
+    /// No gap and no padding when a single window is tiled on a display.
+    public var smartGaps = false
+    /// At most this many tiled windows per workspace; the others float. 0 = no limit.
+    public var windowLimit = 0
+    /// Sending a window to another workspace takes you there too.
+    public var followMovedWindows = false
+
+    /// All layouts, in the order the settings window lists them.
+    public static let layoutOrder: [LayoutKind] = [.tall, .tallRight, .mirrorTall, .widescreenTall, .threeColumn,
+                                                   .twoPane, .column, .row, .bsp, .full, .floating]
     /// Where new windows go: end of the stack, below/above the focused one, or master.
     public var newWindows: InsertPosition = .end
     /// A light trackpad tap when a swipe triggers or a dragged window snaps in.
@@ -189,7 +205,8 @@ public struct Settings {
                                   "float-dialogs", "float-small-windows", "start-at-login",
                                   "scratchpads", "border", "focus-follows-mouse",
                                   "workspace-back-and-forth", "workspace-screens", "new-windows",
-                                  "haptics", "shortcut-overview"]
+                                  "haptics", "shortcut-overview", "padding", "builtin-display-padding",
+                                  "smart-gaps", "window-limit", "follow-moved-windows"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
             throw SettingsError("unknown setting '\(bad)'")
         }
@@ -200,6 +217,13 @@ public struct Settings {
             s.workspaces = list.map { "\($0)" }
         }
         if let v = dict["gap"] { s.gap = try number(v, "gap") }
+        if let v = dict["padding"] {
+            if let t = v as? String, t == "auto" { s.padding = nil } else { s.padding = max(0, try number(v, "padding")) }
+        }
+        if let v = dict["builtin-display-padding"] { s.builtinPadding = try bool(v, "builtin-display-padding") }
+        if let v = dict["smart-gaps"] { s.smartGaps = try bool(v, "smart-gaps") }
+        if let v = dict["window-limit"] { s.windowLimit = max(0, Int(try number(v, "window-limit"))) }
+        if let v = dict["follow-moved-windows"] { s.followMovedWindows = try bool(v, "follow-moved-windows") }
         if let v = dict["ratio"] { s.ratio = min(0.9, max(0.1, try number(v, "ratio"))) }
         if let v = dict["ratio-step"] { s.ratioStep = try number(v, "ratio-step") }
         if let v = dict["mouse-follows-focus"] {
@@ -475,6 +499,17 @@ public struct Settings {
         case "swap-up":      return try noArg(.swapUp)
         case "swap-master":  return try noArg(.swapMaster)
         case "next-layout":  return try noArg(.nextLayout)
+        case "prev-layout", "previous-layout": return try noArg(.prevLayout)
+        case "layout", "select-layout":
+            guard let kind = LayoutKind(configName: arg) else {
+                let names = LayoutKind.allCases.map(\.configName).joined(separator: ", ")
+                throw SettingsError("\(context): 'layout' needs one of \(names)")
+            }
+            return .setLayout(kind)
+        case "toggle-tiling":              return try noArg(.toggleTiling)
+        case "toggle-focus-follows-mouse": return try noArg(.toggleFocusFollowsMouse)
+        case "increase-window-limit":      return try noArg(.increaseWindowLimit)
+        case "decrease-window-limit":      return try noArg(.decreaseWindowLimit)
         case "shrink":       return try noArg(.shrink)
         case "expand":       return try noArg(.expand)
         case "inc-master":   return try noArg(.incMaster)
@@ -592,15 +627,21 @@ mod: alt
 # Workspace names. All monitors share these, like in xmonad.
 workspaces: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-# Layouts cycled by next-layout, in order: tall, wide, three-column, column, full.
+# Layouts cycled by next-layout, in order. All of them: tall, tall-right, wide,
+# widescreen-tall, three-column, two-pane, column, rows, bsp, full, floating.
 layouts: [tall, wide, three-column, column, full]
 
-gap: 5                    # points between windows and at screen edges
+gap: 5                    # points between windows
+padding: auto             # points at the screen edges; auto = the same as gap
+builtin-display-padding: true   # false: no edge padding on the MacBook's own display
+smart-gaps: false         # true: no gap or padding when a window is alone on its display
+window-limit: 0           # at most this many tiled windows per workspace, others float; 0 = no limit
 ratio: 0.5                # master area share for new workspaces
 ratio-step: 0.05          # how much shrink/expand change it
 mouse-follows-focus: window   # pointer to the focused window's centre; screen = only between screens; off
 focus-follows-mouse: false    # true: the window under the pointer gets focus when the pointer rests
 workspace-back-and-forth: false   # true: the key of the workspace you're on goes back to the previous one
+follow-moved-windows: false   # true: sending a window to another workspace takes you there too
 new-windows: end              # where new windows go: end (last in the stack), below / above the
                               # focused window, or master (xmonad's default is above)
 haptics: true                 # a light trackpad tap when a swipe triggers or a window snaps in
@@ -725,7 +766,11 @@ rules:
 #   focus-next-screen      focus-prev-screen
 #   shift-to-next-screen   shift-to-prev-screen
 #   focus-down  focus-up  focus-master  swap-down  swap-up  swap-master
-#   next-layout  shrink  expand  inc-master  dec-master  toggle-float
+#   next-layout  prev-layout  shrink  expand  inc-master  dec-master  toggle-float
+#   layout <name>          straight to a layout, e.g. layout full (names under layouts:)
+#   toggle-tiling          pause tiling (windows stay put) and resume it
+#   increase-window-limit  decrease-window-limit   change window-limit
+#   toggle-focus-follows-mouse
 #   workspace-back         the workspace this screen showed before (xmonad toggleWS)
 #   taller  shorter        the focused window's share of its column (xmonad ResizableTall)
 #   reset-sizes            equal sizes and the default split again

@@ -16,6 +16,12 @@ public enum LayoutKind: String, CaseIterable, Codable {
     case column = "Column"      // all windows side by side, equal width
     case threeColumn = "ThreeCol"   // master in the middle, stacks left and right (xmonad ThreeColMid)
     case full = "Full"
+    case tallRight = "Tall Right"   // master right, stack left
+    case twoPane = "Two Pane"       // master and one pane; the others wait behind that pane
+    case row = "Rows"               // all windows on top of each other, full width
+    case widescreenTall = "Widescreen"  // masters side by side, stack on the right
+    case bsp = "BSP"                // each window splits the previous one in half
+    case floating = "Floating"      // nothing is tiled on this workspace
 
     /// Name in config.yaml.
     public var configName: String {
@@ -25,6 +31,12 @@ public enum LayoutKind: String, CaseIterable, Codable {
         case .column: return "column"
         case .threeColumn: return "three-column"
         case .full: return "full"
+        case .tallRight: return "tall-right"
+        case .twoPane: return "two-pane"
+        case .row: return "rows"
+        case .widescreenTall: return "widescreen-tall"
+        case .bsp: return "bsp"
+        case .floating: return "floating"
         }
     }
 
@@ -35,6 +47,12 @@ public enum LayoutKind: String, CaseIterable, Codable {
         case "column", "columns": self = .column
         case "three-column", "threecol", "3column", "three-columns": self = .threeColumn
         case "full", "fullscreen": self = .full
+        case "tall-right", "tallright": self = .tallRight
+        case "two-pane", "twopane": self = .twoPane
+        case "rows", "row": self = .row
+        case "widescreen-tall", "widescreen": self = .widescreenTall
+        case "bsp", "binary-space-partitioning": self = .bsp
+        case "floating", "float": self = .floating
         default: return nil
         }
     }
@@ -261,6 +279,24 @@ public struct StackSet {
             ws.fullscreen = false
             let i = order.firstIndex(of: ws.layout) ?? -1
             ws.layout = order[(i + 1) % order.count]
+        }
+    }
+
+    /// Cycle backwards through `order`.
+    public mutating func prevLayout(in order: [LayoutKind] = LayoutKind.allCases) {
+        guard !order.isEmpty else { return }
+        modifyCurrent { ws in
+            ws.fullscreen = false
+            let i = order.firstIndex(of: ws.layout) ?? 0
+            ws.layout = order[(i - 1 + order.count) % order.count]
+        }
+    }
+
+    /// Switch the current workspace straight to a layout.
+    public mutating func setLayout(_ kind: LayoutKind) {
+        modifyCurrent { ws in
+            ws.fullscreen = false
+            ws.layout = kind
         }
     }
 

@@ -21,6 +21,8 @@ final class WindowManager {
     private var observers: [pid_t: AXObserver] = [:]
     private var screens: [Screen] = []
     private var hidden: Set<WindowID> = []
+    /// toggle-tiling: windows stay where they are (workspaces still switch).
+    private var tilingPaused = false
     /// Windows logged as left alone (they float above others on their own).
     private var leftAlone: Set<WindowID> = []
     /// Windows we minimized because their workspace went out of sight (rules
@@ -348,13 +350,14 @@ final class WindowManager {
     /// re-tile so the other windows make room. Anything that isn't a split
     /// (Full, Column, floating) just snaps back.
     private func applyMouseResize(_ id: WindowID) {
-        guard let wsIndex = ss.workspaceIndex(of: id), !ss.floating.contains(id),
+        guard let wsIndex = ss.workspaceIndex(of: id), !floatsNow(id),
               let s = ss.screen(ofWorkspace: wsIndex), s < screens.count,
               let frame = windows[id]?.frame else { return }
         let ws = ss.workspaces[wsIndex]
-        let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
+        let tiled = tiledWindows(ws)
         guard let i = tiled.firstIndex(of: id) else { render(); return }
-        let kind = ws.effectiveLayout, gap = CGFloat(Config.current.gap), area = screens[s].visible
+        let kind = ws.effectiveLayout
+        let (area, gap) = tileArea(s, count: tiled.count)
         let before = expected[id] ?? frame
         let dw = abs(frame.width - before.width), dh = abs(frame.height - before.height)
         // Which way the split runs vs. which way windows share a column.
@@ -438,14 +441,14 @@ final class WindowManager {
     /// an empty part of another screen, it moves to that screen's workspace.
     /// Anything else snaps back.
     private func applyMouseMove(_ id: WindowID) {
-        guard let from = ss.workspaceIndex(of: id), !ss.floating.contains(id),
+        guard let from = ss.workspaceIndex(of: id), !floatsNow(id),
               let primary = NSScreen.screens.first else { return }
         let m = NSEvent.mouseLocation
         let drop = CGPoint(x: m.x, y: primary.frame.height - m.y)
         guard let s = screenIndex(containing: drop) else { render(); return }
         let wsIndex = ss.screenWorkspace[s]
         let target = ss.workspaces[wsIndex].windows.first { t in
-            t != id && !ss.floating.contains(t) && (expected[t] ?? windows[t]?.frame)?.contains(drop) == true
+            t != id && !floatsNow(t) && (expected[t] ?? windows[t]?.frame)?.contains(drop) == true
         }
         if target != nil || wsIndex != from { Haptics.tap() }
         if let t = target {
@@ -1258,6 +1261,24 @@ final class WindowManager {
         case .swapUp: swapUp()
         case .swapMaster: swapMaster()
         case .nextLayout: act { $0.nextLayout(in: Config.current.layouts) }
+        case .prevLayout: act { $0.prevLayout(in: Config.current.layouts) }
+        case .setLayout(let k): act { $0.setLayout(k) }
+        case .toggleTiling:
+            tilingPaused.toggle()
+            Log.info(tilingPaused ? "tiling paused: windows stay where they are" : "tiling resumed")
+            render()
+        case .toggleFocusFollowsMouse:
+            Config.setTopLevel(key: "focus-follows-mouse", value: Config.current.focusFollowsMouse ? "false" : "true")
+            reload()
+        case .increaseWindowLimit, .decreaseWindowLimit:
+            // From "no limit", fewer starts at one less than what's tiled now.
+            let now = Config.current.windowLimit
+            let tiledNow = ss.current.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }.count
+            let new = cmd == .increaseWindowLimit
+                ? (now == 0 ? 0 : now + 1)
+                : max(1, (now == 0 ? tiledNow : now) - 1)
+            Config.setTopLevel(key: "window-limit", value: String(new))
+            reload()
         case .focusNextScreen: focusScreen(ss.neighbourScreen(+1))
         case .focusPrevScreen: focusScreen(ss.neighbourScreen(-1))
         case .shiftToNextScreen: shiftToScreen(ss.neighbourScreen(+1))
@@ -1326,6 +1347,10 @@ final class WindowManager {
         syncFocusFromSystem(followHidden: false)
         guard let f = ss.current.focused else { return }
         ss.shift(f, to: i)
+        if Config.current.followMovedWindows, i != ss.currentWorkspaceIndex {
+            show(i)                     // go with it
+            ss.focus(f)
+        }
         render()
     }
 
@@ -1414,6 +1439,34 @@ final class WindowManager {
     // MARK: - rendering
 
     /// Make the screen match the model: park hidden workspaces, tile visible ones, focus.
+    /// The windows a workspace tiles: all its tiled windows, except when its
+    /// layout is Floating or tiling is paused (none), or beyond the window limit.
+    private func tiledWindows(_ ws: Workspace) -> [WindowID] {
+        if tilingPaused || ws.effectiveLayout == .floating { return [] }
+        let all = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
+        let limit = Config.current.windowLimit
+        return limit > 0 ? Array(all.prefix(limit)) : all
+    }
+
+    /// Floating right now: floating windows, and tiled ones the layout leaves alone.
+    private func floatsNow(_ id: WindowID) -> Bool {
+        if ss.floating.contains(id) { return true }
+        guard let i = ss.workspaceIndex(of: id) else { return false }
+        return !tiledWindows(ss.workspaces[i]).contains(id)
+    }
+
+    /// Where display `s` tiles `count` windows, and the gap between them:
+    /// edge padding (none on the built-in display if so set), none at all
+    /// for a single window with smart gaps.
+    private func tileArea(_ s: Int, count: Int) -> (rect: CGRect, gap: CGFloat) {
+        let cfg = Config.current, scr = screens[s]
+        var gap = CGFloat(cfg.gap), pad = CGFloat(cfg.padding ?? cfg.gap)
+        if !cfg.builtinPadding, scr.builtin { pad = 0 }
+        if cfg.smartGaps, count == 1 { gap = 0; pad = 0 }
+        // Layout.tile leaves `gap` at the edges; move them to `pad`.
+        return (scr.visible.insetBy(dx: pad - gap, dy: pad - gap), gap)
+    }
+
     private func render(refocus: Bool = true) {
         guard !screens.isEmpty else { return }
         let visible = Set(ss.screenWorkspace)
@@ -1432,12 +1485,15 @@ final class WindowManager {
             }
         }
 
+        var placed: Set<WindowID> = []
         for (s, wsIndex) in ss.screenWorkspace.enumerated() where s < screens.count {
             let ws = ss.workspaces[wsIndex]
             let scr = screens[s]
-            let tiled = ws.windows.filter { !ss.floating.contains($0) && windows[$0] != nil }
-            let rects = Layout.tile(ws.effectiveLayout, count: tiled.count, in: scr.visible,
-                                    nMaster: ws.nMaster, ratio: ws.ratio, gap: CGFloat(Config.current.gap),
+            let tiled = tiledWindows(ws)
+            let (area, gap) = tileArea(s, count: tiled.count)
+            placed.formUnion(tiled)
+            let rects = Layout.tile(ws.effectiveLayout, count: tiled.count, in: area,
+                                    nMaster: ws.nMaster, ratio: ws.ratio, gap: gap,
                                     minSizes: tiled.map { minSize[$0] },
                                     weights: tiled.map { ws.weights[$0] ?? 1 })
             for (id, r) in zip(tiled, rects) {
@@ -1446,7 +1502,7 @@ final class WindowManager {
                 hidden.remove(id)
             }
             let from = lastScreen[wsIndex]
-            for id in ws.windows where ss.floating.contains(id) {
+            for id in ws.windows where windows[id] != nil && !tiled.contains(id) {
                 if scratchParked.contains(id) { hide(id); continue }
                 if hidden.contains(id) {
                     showFloating(id, on: scr)
@@ -1464,7 +1520,6 @@ final class WindowManager {
         lastScreen = [:]
         for (s, wsIndex) in ss.screenWorkspace.enumerated() { lastScreen[wsIndex] = s }
         // Only tiled, visible windows have a place to be checked against.
-        let placed = Set(ss.screenWorkspace.flatMap { ss.workspaces[$0].windows }).subtracting(ss.floating)
         expected = expected.filter { placed.contains($0.key) }
 
         if refocus { focusCurrent() }
@@ -1542,7 +1597,7 @@ final class WindowManager {
             w.setMinimized(true)
             return
         }
-        if ss.floating.contains(id) {
+        if floatsNow(id) {
             let s = screenIndex(containing: CGPoint(x: f.midX, y: f.midY)) ?? ss.currentScreen
             let o = screens[min(s, screens.count - 1)].visible.origin
             floatRel[id] = f.offsetBy(dx: -o.x, dy: -o.y)
@@ -1604,7 +1659,7 @@ final class WindowManager {
                                       hasWindows: n > 0, count: n))
             }
             let ws = ss.workspaces[wsIndex]
-            c.layout = ws.effectiveLayout.rawValue
+            c.layout = tilingPaused ? "Paused" : ws.effectiveLayout.rawValue
             c.isFullLayout = ws.effectiveLayout == .full
             if managing, let f = ws.focused, let w = windows[f] { c.title = w.title }
             if managing {

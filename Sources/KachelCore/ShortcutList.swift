@@ -101,6 +101,12 @@ public enum ShortcutList {
         case .settings: return ("Settings", "Tools")
         case .welcome: return ("Welcome and setup check", "Tools")
         case .shortcuts: return ("Show shortcuts", "Tools")
+        case .setLayout(let k): return ("Layout: \(k.rawValue)", "Layout")
+        case .prevLayout: return ("Previous layout", "Layout")
+        case .toggleTiling: return ("Pause / resume tiling", "Layout")
+        case .increaseWindowLimit: return ("More tiled windows", "Layout")
+        case .decreaseWindowLimit: return ("Fewer tiled windows", "Layout")
+        case .toggleFocusFollowsMouse: return ("Focus follows pointer on / off", "Tools")
         }
     }
 
@@ -155,6 +161,7 @@ extension Command {
         case .swapDirection(let d): return "swap \(d.rawValue)"
         case .scratchpad(let n): return "scratchpad \(n)"
         case .spawn(let cmd): return "spawn \(cmd)"
+        case .setLayout(let k): return "layout \(k.configName)"
         default:
             // The rest are single words: focusDown → focus-down.
             return String(describing: self).reduce(into: "") { s, ch in

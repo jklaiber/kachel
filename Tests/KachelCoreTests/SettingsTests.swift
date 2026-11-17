@@ -149,7 +149,7 @@ final class AmethystKeysTests: XCTestCase {
 
     func testLayoutsSetting() throws {
         XCTAssertEqual(try Settings.parse("layouts: [full, fullscreen, mirror]").layouts, [.full, .full, .mirrorTall])
-        XCTAssertThrowsError(try Settings.parse("layouts: [bsp]"))
+        XCTAssertThrowsError(try Settings.parse("layouts: [spiral]"))
     }
 }
 

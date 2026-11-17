@@ -21,10 +21,13 @@ public enum Layout {
     public static func tile(_ kind: LayoutKind, count n: Int, in rect: CGRect,
                             nMaster: Int, ratio: Double, gap: CGFloat,
                             minSizes: [CGSize?] = [], weights: [Double] = []) -> [CGRect] {
-        guard n > 0 else { return [] }
+        guard n > 0, kind != .floating else { return [] }      // floating: nothing is placed
         let area = rect.insetBy(dx: gap / 2, dy: gap / 2)
         if kind == .full {
             return Array(repeating: area.insetBy(dx: gap / 2, dy: gap / 2).integral, count: n)
+        }
+        if kind == .twoPane || kind == .bsp {
+            return cells(kind, n, area, ratio).map { $0.insetBy(dx: gap / 2, dy: gap / 2).integral }
         }
         var cells = [CGRect](repeating: .zero, count: n)
         for g in groups(kind, n, area, nMaster, ratio) {
@@ -64,11 +67,53 @@ public enum Layout {
         }
     }
 
+    /// Layouts whose windows don't share groups: one cell per window.
+    static func cells(_ kind: LayoutKind, _ n: Int, _ area: CGRect, _ ratio: Double) -> [CGRect] {
+        switch kind {
+        case .twoPane:
+            // Master on the left; every other window in the right pane, on top of
+            // each other (the focused one comes to the front).
+            guard n > 1 else { return [area] }
+            let (master, pane) = area.divided(atDistance: area.width * CGFloat(ratio), from: .minXEdge)
+            return [master] + Array(repeating: pane, count: n - 1)
+        case .bsp:
+            // Each window takes half of what's left, alternating side by side
+            // and top to bottom; the first split follows the master ratio.
+            var rest = area
+            var out: [CGRect] = []
+            for i in 0..<n {
+                if i == n - 1 { out.append(rest); break }
+                let sideways = i % 2 == 0
+                let share = i == 0 ? CGFloat(ratio) : 0.5
+                let (a, b) = rest.divided(atDistance: (sideways ? rest.width : rest.height) * share,
+                                          from: sideways ? .minXEdge : .minYEdge)
+                out.append(a)
+                rest = b
+            }
+            return out
+        default:
+            return []
+        }
+    }
+
     static func groups(_ kind: LayoutKind, _ n: Int, _ area: CGRect, _ nMaster: Int, _ ratio: Double) -> [Group] {
         let nm = max(0, nMaster)
         switch kind {
-        case .full:
+        case .full, .twoPane, .bsp, .floating:
             return []
+        case .row:
+            return [Group(range: 0..<n, rect: area, sideways: false)]
+        case .tallRight:
+            if nm == 0 || n <= nm { return [Group(range: 0..<n, rect: area, sideways: false)] }
+            let (master, rest) = area.divided(atDistance: area.width * CGFloat(ratio), from: .maxXEdge)
+            return [Group(range: 0..<nm, rect: master, sideways: false),
+                    Group(range: nm..<n, rect: rest, sideways: false)]
+        case .widescreenTall:
+            // The masters side by side on the left, the stack in a column on the right.
+            if nm == 0 || n <= nm { return [Group(range: 0..<n, rect: area, sideways: true)] }
+            let (master, rest) = area.divided(atDistance: area.width * CGFloat(ratio), from: .minXEdge)
+            return [Group(range: 0..<nm, rect: master, sideways: true),
+                    Group(range: nm..<n, rect: rest, sideways: false)]
         case .column:
             return [Group(range: 0..<n, rect: area, sideways: true)]
         case .tall, .mirrorTall:
@@ -151,8 +196,23 @@ public enum Layout {
         let area = rect.insetBy(dx: gap / 2, dy: gap / 2)
         let clamp = { (r: CGFloat) -> Double in min(0.9, max(0.1, Double(r))) }
         switch kind {
-        case .full, .column:
+        case .full, .column, .row, .bsp, .floating:
             return nil
+        case .tallRight:
+            guard nMaster > 0, n > nMaster, area.width > 0 else { return nil }
+            // The master is on the right: its near (left) edge is the split.
+            let edge = index < nMaster ? frame.minX - gap / 2 : frame.maxX + gap / 2
+            return clamp((area.maxX - edge) / area.width)
+        case .twoPane:
+            guard n > 1, area.width > 0 else { return nil }
+            let edge = index == 0 ? frame.maxX + gap / 2 : frame.minX - gap / 2
+            return clamp((edge - area.minX) / area.width)
+        case .widescreenTall:
+            guard nMaster > 0, n > nMaster, area.width > 0 else { return nil }
+            let edge = index < nMaster ? frame.maxX + gap / 2 : frame.minX - gap / 2
+            // Only the last master's right edge (or a stack window's left edge) is the split.
+            if index < nMaster - 1 { return nil }
+            return clamp((edge - area.minX) / area.width)
         case .tall, .mirrorTall:
             guard nMaster > 0, n > nMaster else { return nil }
             let sideways = kind == .mirrorTall

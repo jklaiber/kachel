@@ -74,7 +74,11 @@ In a terminal:
 | `focus-screen N`, `shift-to-screen N` | focus display N / send the window there |
 | `focus-next-screen`, `focus-prev-screen` | focus the next / previous display |
 | `shift-to-next-screen`, `shift-to-prev-screen` | send the window to the next / previous display |
-| `next-layout`, `toggle-fullscreen` | layouts |
+| `next-layout`, `prev-layout`, `toggle-fullscreen` | layouts |
+| `layout NAME` | straight to a layout, e.g. `layout full` |
+| `toggle-tiling` | pause tiling and resume it |
+| `increase-window-limit`, `decrease-window-limit` | change `window-limit` |
+| `toggle-focus-follows-mouse` | focus follows the pointer, on and off |
 | `shrink`, `expand`, `inc-master`, `dec-master` | the master area |
 | `taller`, `shorter`, `reset-sizes` | window sizes |
 | `toggle-float`, `close` | the focused window |

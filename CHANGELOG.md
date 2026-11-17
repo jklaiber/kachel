@@ -7,6 +7,22 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- **Six more layouts**: `tall-right`, `two-pane`, `rows`,
+  `widescreen-tall`, `bsp` and `floating` (nothing tiled on that workspace).
+- Commands **`layout NAME`** (straight to a layout), **`prev-layout`**,
+  **`toggle-tiling`** (pause and resume tiling; the bar shows *Paused*),
+  **`toggle-focus-follows-mouse`**, and **`increase-` / `decrease-window-limit`**.
+- **`follow-moved-windows`**: sending a window to another workspace takes you
+  there too. Off by default.
+- **`smart-gaps`**: no gap or padding when a window is alone on its display.
+- **`padding`**: space at the screen edges separate from `gap`, and
+  `builtin-display-padding: false` for none on the MacBook's own display.
+- **`window-limit`**: at most this many tiled windows per workspace; the others
+  float.
+- All of these in the settings window: General (Workspaces, Tiling, Layouts) and
+  the command menus in Shortcuts and Trackpad.
+
 ### Changed
 - Settings → App Rules: Float and Minimize are checkboxes next to their names.
   As switches side by side, it wasn't clear which switch belonged to which.

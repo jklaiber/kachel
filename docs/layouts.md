@@ -1,22 +1,43 @@
 # Layouts
 
 `mod-shift-space` cycles through the layouts listed in `layouts:`; each
-workspace remembers its own.
+workspace remembers its own. `prev-layout` goes the other way, and
+`layout NAME` (e.g. `layout full`) switches straight to one; bind them in
+`keys:` or in **Settings → Shortcuts**.
 
 | Layout | What it does |
 |---|---|
 | `tall` | master on the left, the others stacked on the right (xmonad's Tall) |
+| `tall-right` | the same with the master on the right |
 | `wide` | master on top, the others side by side below (Mirror Tall) |
+| `widescreen-tall` | the masters side by side on the left, the stack on the right; for wide displays with `inc-master` |
 | `three-column` | master in the middle, stacks on both sides (ThreeColMid); good for wide displays |
+| `two-pane` | master and one pane; the other windows wait behind that pane, the focused one in front |
 | `column` | all windows side by side |
+| `rows` | all windows on top of each other, full width |
+| `bsp` | each window takes half of what's left, alternating side by side and on top of each other |
 | `full` | one window at a time, the focused one |
+| `floating` | nothing is tiled: windows stay where you put them, on this workspace |
 
 ```yaml
 layouts: [tall, wide, three-column, column, full]
-gap: 5            # between windows and at the edges
-ratio: 0.5        # master size on new workspaces
-ratio-step: 0.05  # what mod-h / mod-l change
+gap: 5                     # between windows
+padding: auto              # at the screen edges; auto = the same as gap
+builtin-display-padding: true   # false: none on the MacBook's own display
+smart-gaps: false          # true: no gap or padding for a window alone on its display
+window-limit: 0            # at most this many tiled windows; the others float. 0 = no limit
+ratio: 0.5                 # master size on new workspaces
+ratio-step: 0.05           # what mod-h / mod-l change
 ```
+
+`increase-window-limit` / `decrease-window-limit` change the limit with a key.
+
+## Pausing tiling
+
+`toggle-tiling` pauses tiling: windows stay where they are and you can move them
+freely, for a presentation or screen sharing. Workspaces still switch, and the
+bar shows *Paused*. The same command resumes it, and every workspace is tiled
+again.
 
 ## Sizes
 

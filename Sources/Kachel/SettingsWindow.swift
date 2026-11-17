@@ -249,6 +249,8 @@ struct GeneralPane: View {
                         if !names.isEmpty, names != m.s.workspaces { m.top("workspaces", KSettings.flowList(names)) }
                     }
                 Text("Separated by spaces.").font(.caption).foregroundStyle(.secondary)
+                Toggle("Go along when you move a window to another workspace",
+                       isOn: m.binding({ $0.followMovedWindows }, { m.top("follow-moved-windows", SettingsModel.yaml($0)) }))
                 Toggle("The key of the current workspace goes back to the previous one",
                        isOn: m.binding({ $0.workspaceBackAndForth }, { m.top("workspace-back-and-forth", SettingsModel.yaml($0)) }))
                 DisclosureGroup("Pin workspaces to displays", isExpanded: $pinsOpen) {
@@ -283,15 +285,33 @@ struct GeneralPane: View {
                 Stepper(value: m.binding({ $0.gap }, { m.top("gap", SettingsModel.yaml($0)) }), in: 0...40) {
                     Text("Gap between windows: \(Int(m.s.gap)) pt")
                 }
+                Toggle("Same space at the screen edges", isOn: m.binding({ $0.padding == nil }, {
+                    m.top("padding", $0 ? "auto" : SettingsModel.yaml(m.s.gap))
+                }))
+                if let p = m.s.padding {
+                    Stepper(value: m.binding({ _ in p }, { m.top("padding", SettingsModel.yaml($0)) }), in: 0...80) {
+                        Text("Space at the screen edges: \(Int(p)) pt")
+                    }
+                }
+                Toggle("Space at the edges on the built-in display", isOn: m.binding({ $0.builtinPadding }, {
+                    m.top("builtin-display-padding", SettingsModel.yaml($0))
+                }))
+                Toggle("No gaps when a window is alone on its display", isOn: m.binding({ $0.smartGaps }, {
+                    m.top("smart-gaps", SettingsModel.yaml($0))
+                }))
                 Slider(value: m.binding({ $0.ratio }, { m.top("ratio", SettingsModel.yaml(($0 * 100).rounded() / 100)) }), in: 0.2...0.8) {
                     Text("Master size for new workspaces: \(Int(m.s.ratio * 100)) %")
                 }
+                Stepper(value: m.binding({ $0.windowLimit }, { m.top("window-limit", String($0)) }), in: 0...20) {
+                    Text(m.s.windowLimit == 0 ? "Tiled windows per workspace: no limit"
+                         : "Tile at most \(m.s.windowLimit) windows per workspace; others float")
+                }
             }
             Section {
-                ForEach([LayoutKind.tall, .mirrorTall, .threeColumn, .column, .full], id: \.self) { kind in
+                ForEach(KSettings.layoutOrder, id: \.self) { kind in
                     Toggle(kind.rawValue, isOn: m.binding({ $0.layouts.contains(kind) }, { on in
                         var l = m.s.layouts.filter { $0 != kind }
-                        if on { l = [LayoutKind.tall, .mirrorTall, .threeColumn, .column, .full].filter { l.contains($0) || $0 == kind } }
+                        if on { l = KSettings.layoutOrder.filter { l.contains($0) || $0 == kind } }
                         if !l.isEmpty { m.top("layouts", KSettings.flowList(l.map(\.configName))) }
                     }))
                     .disabled(m.s.layouts == [kind])   // at least one stays
@@ -866,8 +886,13 @@ struct CommandPicker: View {
                     item(.toggleFloat); item(.close)
                 }
                 Section("Layout") {
-                    item(.nextLayout); item(.toggleFullscreen); item(.shrink); item(.expand)
+                    item(.nextLayout); item(.prevLayout)
+                    Menu("Switch to layout") {
+                        ForEach(KSettings.layoutOrder, id: \.self) { k in Button(k.rawValue) { onPick(.setLayout(k)) } }
+                    }
+                    item(.toggleFullscreen); item(.shrink); item(.expand)
                     item(.incMaster); item(.decMaster); item(.taller); item(.shorter); item(.resetSizes)
+                    item(.increaseWindowLimit); item(.decreaseWindowLimit); item(.toggleTiling)
                 }
                 Section("Displays") {
                     Menu("Focus display") { ForEach(0..<3) { i in Button("Display \(i + 1) from the left") { onPick(.focusScreen(i)) } } }
@@ -884,6 +909,7 @@ struct CommandPicker: View {
                         if case .spawn(let c) = value { spawnText = c }
                         askSpawn = true
                     }
+                    item(.toggleFocusFollowsMouse)
                     item(.shortcuts); item(.settings); item(.welcome)
                     item(.refresh); item(.reload); item(.restart); item(.quit)
                 }

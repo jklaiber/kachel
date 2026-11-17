@@ -34,7 +34,13 @@ Not there (yet): tabbed and BSP layouts, dynamic workspaces, `CopyWindow`.
 | `focus-cw` / `focus-ccw` | `mod-j` / `mod-k` |
 | `swap-cw` / `swap-ccw` | `mod-shift-j` / `mod-shift-k` |
 | `shrink-main` / `expand-main` | `mod-h` / `mod-l` |
-| `cycle-layout` | `mod-shift-space` |
+| `cycle-layout` / `cycle-layout-backward` | `mod-shift-space` / `prev-layout` |
+| `select-<layout>-layout` | `layout <name>` |
+| layouts `tall-right`, `two-pane`, `row`, `widescreen-tall`, `bsp`, `floating` | the same, `row` is `rows` ([Layouts](layouts.md)) |
+| `toggle-tiling` | `toggle-tiling` |
+| `toggle-focus-follows-mouse` | `toggle-focus-follows-mouse` |
+| `window-max-count`, `increase-` / `decrease-window-max-count` | `window-limit`, `increase-` / `decrease-window-limit` |
+| `follow-space-thrown-windows` | `follow-moved-windows` (off by default, on in Amethyst) |
 | `throw-space-N` | `mod-shift-N` |
 | `throw-space-left` / `-right` | `mod-shift-←` / `→` |
 | `focus-screen-cw` | `mod-,` |
@@ -44,6 +50,8 @@ Not there (yet): tabbed and BSP layouts, dynamic workspaces, `CopyWindow`.
 | `floating` | `rules:` with `float: true` |
 | `new-windows-to-main` | `new-windows: master` |
 | `window-margin-size` | `gap` |
+| `smart-window-margins` | `smart-gaps` |
+| `screen-padding-*`, `disable-padding-on-builtin-display` | `padding`, `builtin-display-padding: false` |
 | `window-resize-step` | `ratio-step` |
 | `mouse-follows-focus`, `focus-follows-mouse` | same names |
 
