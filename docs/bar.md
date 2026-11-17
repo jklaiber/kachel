@@ -17,12 +17,13 @@ windows leave room for it.
 
 Click a workspace to show it on that display.
 
-With `workspace-counts: true`, each workspace shows how many windows it has, as
+With `workspaces: {window-counts: true}`, each workspace shows how many windows it has, as
 a small number next to it, instead of the dot.
 
 ## Windows on this workspace
 
-In the Full layout you only see one window. The bar can show the others:
+In the Full layout you only see one window. The `title` widget can show the
+others, set under `title:`:
 
 | `windows:` | Shows |
 |---|---|
@@ -31,9 +32,9 @@ In the Full layout you only see one window. The bar can show the others:
 | `position` | which window and how many, next to the layout: `Full 2/4` |
 | `off` | only the focused window's title |
 
-`windows-full-only: true` (the default) shows them only in the Full layout,
+`only-in-full: true` (the default) shows them only in the Full layout,
 including `toggle-fullscreen`; in the other layouts you see the windows anyway.
-**Settings → Bar** has the same choices, with a preview.
+**Settings → Bar → Window title** has the same choices, with a preview.
 
 ## Widgets
 
@@ -45,23 +46,40 @@ including `toggle-fullscreen`; in the other layouts you see the windows anyway.
 | `network` | ↓ / ↑ throughput | Activity Monitor |
 | `cpu` | CPU load | Activity Monitor |
 | `memory` | memory used | Activity Monitor |
-| `battery` | battery level, like the menu bar's icon; a bolt while plugged in, red below 10 %. `battery-percentage: false` shows the icon only. Not shown on Macs without a battery | Battery settings |
-| `date`, `clock` | `date-format`, `clock-format` | Calendar |
+| `battery` | battery level, like the menu bar's icon; a bolt while plugged in, red below 10 %. `battery: {percentage: false}` shows the icon only. Not shown on Macs without a battery | Battery settings |
+| `date`, `clock` | in the format of `date: {format: …}`, `clock: {format: …}` | Calendar |
 
 ```yaml
 bar:
+  # The bar as a whole
   enabled: true
   height: auto                 # same as the menu bar, or a number
   background: transparent      # or blur
   appearance: auto             # white or black text depending on the wallpaper
+
+  # Which widgets, in order
   left: [workspaces, layout, title]
   right: [network, cpu, memory, battery, date, clock]
-  hide-empty-workspaces: false
-  battery-percentage: true     # false: battery icon only
-  windows: tabs                # position, dots, tabs or off
-  windows-full-only: true
-  workspace-counts: false
+
+  # Each widget's own options (leave a block out for its defaults)
+  workspaces:
+    hide-empty: false
+    window-counts: false
+  title:
+    windows: tabs              # position, dots, tabs or off
+    only-in-full: true
+  stats:
+    interval: 2                # seconds between cpu / memory / network updates
+  battery:
+    percentage: true           # false: icon only
+  date:
+    format: "EEE d MMM"
+  clock:
+    format: "HH:mm"
 ```
+
+**Settings → Bar** shows the same: the appearance, then each side's widgets in
+order with their options beneath them. Right-click a widget to move it.
 
 Right-click the bar for **Show in Bar** (switch widgets on and off), Settings,
 the shortcut overview, the welcome window, Reload Config, Edit Config, Show

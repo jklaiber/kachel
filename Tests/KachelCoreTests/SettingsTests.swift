@@ -78,10 +78,10 @@ final class BarConfigTests: XCTestCase {
         XCTAssertEqual(b.right, [.network, .cpu, .memory, .battery, .date, .clock])
     }
 
-    func testOldConfigStillLoads() throws {
-        let b = try Settings.parse("bar:\n  height: 24\n  show-title: false\n  clock-format: \"HH:mm\"\n").bar
+    func testHeightAndClockBlock() throws {
+        let b = try Settings.parse("bar:\n  height: 24\n  clock:\n    format: \"HH:mm\"\n").bar
         XCTAssertEqual(b.height, 24)
-        XCTAssertFalse(b.shows(.title))
+        XCTAssertEqual(b.clockFormat, "HH:mm")
     }
 
     func testBackgroundAndAppearance() throws {
@@ -104,7 +104,7 @@ final class BarConfigTests: XCTestCase {
         XCTAssertEqual(s.bar.right, [.cpu, .clock])
         XCTAssertEqual(s.bar.left, [.workspaces, .layout, .title])
         XCTAssertEqual(s.keys.count, 52)
-        XCTAssertTrue(text.contains("# Widgets, in order"))
+        XCTAssertTrue(text.contains("# Which widgets, in order"))
     }
 
     func testSetBarListBlockStyleAndMissing() throws {

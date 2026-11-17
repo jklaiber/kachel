@@ -57,6 +57,37 @@ extension Settings {
         return lines.joined(separator: "\n")
     }
 
+    /// `key: value` in a block inside a section, e.g. `bar:` → `battery:` →
+    /// `percentage: true`. The block (and the section) is added if missing;
+    /// comments and everything else stay.
+    public static func setNested(_ text: String, section: String, block: String, key: String, value: String) -> String {
+        var lines = text.components(separatedBy: "\n")
+        guard let head = lines.firstIndex(where: { $0.hasPrefix("\(section):") }) else {
+            return text + (text.hasSuffix("\n") ? "" : "\n") + "\n\(section):\n  \(block):\n    \(key): \(value)\n"
+        }
+        // The section's lines: blank, indented or comments.
+        var end = head + 1
+        while end < lines.count, lines[end].isEmpty || lines[end].hasPrefix(" ") || lines[end].hasPrefix("#") { end += 1 }
+        // Not into the comments or blank lines that introduce the next section.
+        while end > head + 1, lines[end - 1].trimmingCharacters(in: .whitespaces).isEmpty || lines[end - 1].hasPrefix("#") { end -= 1 }
+        let indent = { (l: String) in l.prefix { $0 == " " }.count }
+        if let b = (head + 1..<end).first(where: { indent(lines[$0]) == 2 && lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("\(block):") }) {
+            var i = b + 1
+            while i < end, lines[i].trimmingCharacters(in: .whitespaces).isEmpty || indent(lines[i]) > 2
+                    || lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("#") && indent(lines[i]) > 2 {
+                if indent(lines[i]) == 4, lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("\(key):") {
+                    lines[i] = replacingValue(lines[i], key: key, indent: "    ", value: value)
+                    return lines.joined(separator: "\n")
+                }
+                i += 1
+            }
+            lines.insert("    \(key): \(value)", at: b + 1)
+            return lines.joined(separator: "\n")
+        }
+        lines.insert(contentsOf: ["  \(block):", "    \(key): \(value)"], at: end)
+        return lines.joined(separator: "\n")
+    }
+
     /// Bind (or with `command == nil`, unbind) a key in `keys:`. The existing
     /// line is found by meaning, so `mod-j` and `alt-j` are the same key.
     public static func setKey(_ text: String, chord: KeyChord, chordText: String, command: String?, mod: Set<Modifier>) -> String {

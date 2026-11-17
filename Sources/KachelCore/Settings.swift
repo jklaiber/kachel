@@ -377,20 +377,40 @@ public struct Settings {
                 case "font-size": s.bar.fontSize = try number(v, "bar.font-size")
                 case "left": s.bar.left = try widgets(v, "bar.left")
                 case "right": s.bar.right = try widgets(v, "bar.right")
-                case "hide-empty-workspaces": s.bar.hideEmptyWorkspaces = try bool(v, "bar.hide-empty-workspaces")
-                case "battery-percentage": s.bar.batteryPercentage = try bool(v, "bar.battery-percentage")
-                case "windows":
-                    // YAML reads a bare `off` as false.
-                    if let b = v as? Bool, !b { s.bar.windows = .off; break }
-                    guard let style = BarSettings.WindowsStyle(rawValue: "\(v)") else {
-                        throw SettingsError("bar.windows must be off, position, dots or tabs")
+                // Each widget's own options, in a block named after it.
+                case "workspaces":
+                    for (k2, v2) in try block(v, "bar.workspaces", keys: ["hide-empty", "window-counts"]) {
+                        if k2 == "hide-empty" { s.bar.hideEmptyWorkspaces = try bool(v2, "bar.workspaces.hide-empty") }
+                        if k2 == "window-counts" { s.bar.workspaceCounts = try bool(v2, "bar.workspaces.window-counts") }
                     }
-                    s.bar.windows = style
-                case "windows-full-only": s.bar.windowsFullOnly = try bool(v, "bar.windows-full-only")
-                case "workspace-counts": s.bar.workspaceCounts = try bool(v, "bar.workspace-counts")
-                case "clock-format": s.bar.clockFormat = try string(v, "bar.clock-format")
-                case "date-format": s.bar.dateFormat = try string(v, "bar.date-format")
-                case "interval": s.bar.interval = max(0.5, try number(v, "bar.interval"))
+                case "title":
+                    for (k2, v2) in try block(v, "bar.title", keys: ["windows", "only-in-full"]) {
+                        if k2 == "windows" {
+                            // YAML reads a bare `off` as false.
+                            if let b = v2 as? Bool, !b { s.bar.windows = .off; continue }
+                            guard let style = BarSettings.WindowsStyle(rawValue: "\(v2)") else {
+                                throw SettingsError("bar.title.windows must be off, position, dots or tabs")
+                            }
+                            s.bar.windows = style
+                        }
+                        if k2 == "only-in-full" { s.bar.windowsFullOnly = try bool(v2, "bar.title.only-in-full") }
+                    }
+                case "stats":
+                    for (_, v2) in try block(v, "bar.stats", keys: ["interval"]) {
+                        s.bar.interval = max(0.5, try number(v2, "bar.stats.interval"))
+                    }
+                case "battery":
+                    for (_, v2) in try block(v, "bar.battery", keys: ["percentage"]) {
+                        s.bar.batteryPercentage = try bool(v2, "bar.battery.percentage")
+                    }
+                case "date":
+                    for (_, v2) in try block(v, "bar.date", keys: ["format"]) {
+                        s.bar.dateFormat = try string(v2, "bar.date.format")
+                    }
+                case "clock":
+                    for (_, v2) in try block(v, "bar.clock", keys: ["format"]) {
+                        s.bar.clockFormat = try string(v2, "bar.clock.format")
+                    }
                 case "background":
                     guard let b = BarSettings.Background(rawValue: "\(v)") else {
                         throw SettingsError("bar.background must be transparent or blur")
@@ -401,9 +421,6 @@ public struct Settings {
                         throw SettingsError("bar.appearance must be auto, light or dark")
                     }
                     s.bar.appearance = a
-                // from the first config version
-                case "show-title":
-                    if try !bool(v, "bar.show-title") { s.bar.left.removeAll { $0 == .title } }
                 default: throw SettingsError("unknown setting 'bar.\(k)'")
                 }
             }
@@ -610,6 +627,17 @@ public struct Settings {
         if let i = v as? Int { return Double(i) }
         throw SettingsError("\(k) must be a number")
     }
+    /// A widget's block under `bar:`, e.g. `battery: {percentage: true}`; an
+    /// empty block is fine, unknown keys aren't.
+    private static func block(_ v: Any, _ k: String, keys: Set<String>) throws -> [String: Any] {
+        if v is NSNull { return [:] }
+        guard let d = v as? [String: Any] else { throw SettingsError("\(k) must be a mapping") }
+        if let bad = d.keys.first(where: { !keys.contains($0) }) {
+            throw SettingsError("unknown setting '\(k).\(bad)' (use \(keys.sorted().joined(separator: ", ")))")
+        }
+        return d
+    }
+
     private static func bool(_ v: Any, _ k: String) throws -> Bool {
         guard let b = v as? Bool else { throw SettingsError("\(k) must be true or false") }
         return b
@@ -674,26 +702,34 @@ start-at-login: false     # launch Kachel when you log in (needs Kachel.app in /
 # The bar at the bottom of every screen. Click a workspace to show it on that
 # screen; right-click for the menu, where widgets can also be switched on and off.
 bar:
+  # The bar as a whole
   enabled: true
   height: auto            # auto = same as the menu bar at the top, or a number
   font-size: 13
   background: transparent # transparent = like the macOS menu bar; blur = frosted glass
   appearance: auto        # auto = white/black text depending on the wallpaper; light; dark
-  # Widgets, in order: workspaces, layout, title, cpu, memory, network, battery,
-  # date, clock.
-  # Leave one out to hide it.
+
+  # Which widgets, in order, on the left and the right. Leave one out to hide it.
+  # Widgets: workspaces, layout, title, cpu, memory, network, battery, date, clock.
   left: [workspaces, layout, title]
   right: [network, cpu, memory, battery, date, clock]
-  hide-empty-workspaces: false
-  battery-percentage: true  # the battery's percentage next to its icon; false = icon only
-  # The windows of the workspace you're on: position (2/4 next to the layout),
-  # dots, tabs (their names; click one to switch to it) or off.
-  windows: tabs
-  windows-full-only: true   # only in the Full layout, where the others are hidden
-  workspace-counts: false   # a small window count next to each workspace
-  date-format: "EEE d MMM"   # Unicode date patterns
-  clock-format: "HH:mm"
-  interval: 2               # seconds between cpu / memory / network updates
+
+  # Each widget's own options
+  workspaces:
+    hide-empty: false     # hide workspaces without windows
+    window-counts: false  # a small window count next to each workspace
+  title:
+    windows: tabs         # the other windows of this workspace: position (2/4 next
+                          # to the layout), dots, tabs (click one to switch) or off
+    only-in-full: true    # only in the Full layout, where the others are hidden
+  stats:
+    interval: 2           # seconds between cpu / memory / network updates
+  battery:
+    percentage: true      # the percentage next to the icon; false = icon only
+  date:
+    format: "EEE d MMM"   # Unicode date patterns
+  clock:
+    format: "HH:mm"
 
 # Trackpad swipes switch workspaces on the screen under the pointer. Turn
 # macOS's own swipe off first: System Settings → Trackpad → More Gestures →

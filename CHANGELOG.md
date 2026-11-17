@@ -7,6 +7,16 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- **Bar settings are grouped per widget**, in Settings → Bar and in config.yaml.
+  The window lists each side's widgets in order, each with its options beneath
+  it; right-click a widget to move it up, down or to the other side. In
+  config.yaml, each widget's options sit in a block named after it
+  (`workspaces:`, `title:`, `stats:`, `battery:`, `date:`, `clock:`). The old
+  flat keys (`battery-percentage`, `date-format`, `clock-format`, `windows`,
+  `windows-full-only`, `workspace-counts`, `hide-empty-workspaces`, `interval`)
+  are no longer read: move them into the blocks, as in the default config.
+
 ### Fixed
 - When an app moved or resized a tiled window by itself after it was tiled (e.g.
   iTerm sizing a tmux window to its session), the window stayed out of place

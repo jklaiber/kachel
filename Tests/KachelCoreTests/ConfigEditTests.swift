@@ -25,24 +25,24 @@ final class ConfigEditTests: XCTestCase {
         XCTAssertEqual(d.windows, .tabs)
         XCTAssertTrue(d.windowsFullOnly)
         XCTAssertFalse(d.workspaceCounts)
-        var t = Settings.setNested(Settings.defaultYAML, section: "bar", key: "windows", value: "dots")
-        t = Settings.setNested(t, section: "bar", key: "windows-full-only", value: "false")
-        t = Settings.setNested(t, section: "bar", key: "workspace-counts", value: "true")
+        var t = Settings.setNested(Settings.defaultYAML, section: "bar", block: "title", key: "windows", value: "dots")
+        t = Settings.setNested(t, section: "bar", block: "title", key: "only-in-full", value: "false")
+        t = Settings.setNested(t, section: "bar", block: "workspaces", key: "window-counts", value: "true")
         let b = try Settings.parse(t).bar
         XCTAssertEqual(b.windows, .dots)
         XCTAssertFalse(b.windowsFullOnly)
         XCTAssertTrue(b.workspaceCounts)
         // A bare `off` is a YAML boolean.
-        XCTAssertEqual(try Settings.parse("bar:\n  windows: off").bar.windows, .off)
-        XCTAssertThrowsError(try Settings.parse("bar:\n  windows: list"))
+        XCTAssertEqual(try Settings.parse("bar:\n  title:\n    windows: off").bar.windows, .off)
+        XCTAssertThrowsError(try Settings.parse("bar:\n  title:\n    windows: list"))
     }
 
     func testNested() throws {
-        var t = Settings.setNested(base, section: "bar", key: "clock-format", value: "\"HH:mm:ss\"")
+        var t = Settings.setNested(base, section: "bar", key: "font-size", value: "15")
         t = Settings.setNested(t, section: "border", key: "color", value: "\"#5DCAA5\"")
         t = Settings.setNested(t, section: "gestures", key: "fingers", value: "4")
         let s = try Settings.parse(t)
-        XCTAssertEqual(s.bar.clockFormat, "HH:mm:ss")
+        XCTAssertEqual(s.bar.fontSize, 15)
         XCTAssertEqual(s.border.color, "#5DCAA5")
         XCTAssertEqual(s.gestures.fingers, 4)
         XCTAssertTrue(t.contains("# Unicode date patterns"))
@@ -131,8 +131,46 @@ final class BatteryWidgetTests: XCTestCase {
         let d = try Settings.parse(Settings.defaultYAML).bar
         XCTAssertTrue(d.right.contains(.battery))
         XCTAssertTrue(d.batteryPercentage)
-        let s = try Settings.parse("bar:\n  right: [battery, clock]\n  battery-percentage: false").bar
+        let s = try Settings.parse("bar:\n  right: [battery, clock]\n  battery:\n    percentage: false").bar
         XCTAssertEqual(s.right, [.battery, .clock])
         XCTAssertFalse(s.batteryPercentage)
+    }
+}
+
+final class BarBlocksTests: XCTestCase {
+    func testDefaultsParse() throws {
+        let b = try Settings.parse(Settings.defaultYAML).bar
+        XCTAssertEqual(b.windows, .tabs)
+        XCTAssertTrue(b.windowsFullOnly)
+        XCTAssertEqual(b.interval, 2)
+        XCTAssertEqual(b.dateFormat, "EEE d MMM")
+        XCTAssertEqual(b.clockFormat, "HH:mm")
+    }
+
+    func testEditBlocksKeepsComments() throws {
+        var t = Settings.setNested(Settings.defaultYAML, section: "bar", block: "battery", key: "percentage", value: "false")
+        t = Settings.setNested(t, section: "bar", block: "clock", key: "format", value: "\"HH:mm:ss\"")
+        t = Settings.setNested(t, section: "bar", block: "title", key: "windows", value: "dots")
+        t = Settings.setNested(t, section: "bar", block: "workspaces", key: "window-counts", value: "true")
+        let b = try Settings.parse(t).bar
+        XCTAssertFalse(b.batteryPercentage)
+        XCTAssertEqual(b.clockFormat, "HH:mm:ss")
+        XCTAssertEqual(b.windows, .dots)
+        XCTAssertTrue(b.workspaceCounts)
+        XCTAssertTrue(t.contains("# the percentage next to the icon"))
+        XCTAssertTrue(t.contains("# Each widget's own options"))
+        XCTAssertEqual(try Settings.parse(t).keys.count, try Settings.parse(Settings.defaultYAML).keys.count)
+    }
+
+    func testMissingBlockIsAdded() throws {
+        let t = Settings.setNested("bar:\n  enabled: true\n\nkeys:\n  mod-1: workspace 1\n",
+                                   section: "bar", block: "battery", key: "percentage", value: "false")
+        XCTAssertFalse(try Settings.parse(t).bar.batteryPercentage)
+        XCTAssertEqual(try Settings.parse(t).keys.count, 1)
+    }
+
+    func testOldFlatKeysAreGone() {
+        XCTAssertThrowsError(try Settings.parse("bar:\n  battery-percentage: false"))
+        XCTAssertThrowsError(try Settings.parse("bar:\n  battery:\n    percent: false"))
     }
 }

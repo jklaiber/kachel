@@ -54,26 +54,34 @@ start-at-login: false     # launch Kachel when you log in (needs Kachel.app in /
 # The bar at the bottom of every screen. Click a workspace to show it on that
 # screen; right-click for the menu, where widgets can also be switched on and off.
 bar:
+  # The bar as a whole
   enabled: true
   height: auto            # auto = same as the menu bar at the top, or a number
   font-size: 13
   background: transparent # transparent = like the macOS menu bar; blur = frosted glass
   appearance: auto        # auto = white/black text depending on the wallpaper; light; dark
-  # Widgets, in order: workspaces, layout, title, cpu, memory, network, battery,
-  # date, clock.
-  # Leave one out to hide it.
+
+  # Which widgets, in order, on the left and the right. Leave one out to hide it.
+  # Widgets: workspaces, layout, title, cpu, memory, network, battery, date, clock.
   left: [workspaces, layout, title]
   right: [network, cpu, memory, battery, date, clock]
-  hide-empty-workspaces: false
-  battery-percentage: true  # the battery's percentage next to its icon; false = icon only
-  # The windows of the workspace you're on: position (2/4 next to the layout),
-  # dots, tabs (their names; click one to switch to it) or off.
-  windows: tabs
-  windows-full-only: true   # only in the Full layout, where the others are hidden
-  workspace-counts: false   # a small window count next to each workspace
-  date-format: "EEE d MMM"   # Unicode date patterns
-  clock-format: "HH:mm"
-  interval: 2               # seconds between cpu / memory / network updates
+
+  # Each widget's own options
+  workspaces:
+    hide-empty: false     # hide workspaces without windows
+    window-counts: false  # a small window count next to each workspace
+  title:
+    windows: tabs         # the other windows of this workspace: position (2/4 next
+                          # to the layout), dots, tabs (click one to switch) or off
+    only-in-full: true    # only in the Full layout, where the others are hidden
+  stats:
+    interval: 2           # seconds between cpu / memory / network updates
+  battery:
+    percentage: true      # the percentage next to the icon; false = icon only
+  date:
+    format: "EEE d MMM"   # Unicode date patterns
+  clock:
+    format: "HH:mm"
 
 # Trackpad swipes switch workspaces on the screen under the pointer. Turn
 # macOS's own swipe off first: System Settings → Trackpad → More Gestures →

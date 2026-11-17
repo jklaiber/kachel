@@ -373,9 +373,11 @@ struct BarPane: View {
     @State private var date = ""
     @State private var clock = ""
 
+    private static let stats: Set<BarWidget> = [.cpu, .memory, .network]
+
     var body: some View {
         Form {
-            Section {
+            Section("Appearance") {
                 Toggle("Show the bar", isOn: m.binding({ $0.bar.enabled }, { m.nested("bar", "enabled", SettingsModel.yaml($0)) }))
                 Toggle("Same height as the menu bar", isOn: m.binding({ $0.bar.height == nil }, {
                     m.nested("bar", "height", $0 ? "auto" : "30")
@@ -398,62 +400,141 @@ struct BarPane: View {
                     Text("Light text").tag(BarSettings.Appearance.dark)
                 }
             }
-            Section("Shows") {
-                ForEach(BarWidget.allCases, id: \.self) { w in
-                    Toggle(w.menuTitle, isOn: m.binding({ $0.bar.shows(w) }, { on in
-                        if on != m.s.bar.shows(w) { m.editExternally { Config.toggleWidget(w); WindowManager.shared.reload() } }
-                    }))
+            side("Left Side", key: "left", m.s.bar.left)
+            side("Right Side", key: "right", m.s.bar.right)
+            let hidden = BarWidget.allCases.filter { !m.s.bar.shows($0) }
+            if !hidden.isEmpty {
+                Section {
+                    ForEach(hidden, id: \.self) { w in row(w) }
+                } header: {
+                    Text("Not in the Bar")
+                } footer: {
+                    Text("Right-click a widget to move it up, down or to the other side.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                Toggle("Hide empty workspaces", isOn: m.binding({ $0.bar.hideEmptyWorkspaces }, {
-                    m.nested("bar", "hide-empty-workspaces", SettingsModel.yaml($0))
-                }))
-                Picker("Update CPU, memory and network", selection: m.binding({ $0.bar.interval }, {
-                    m.nested("bar", "interval", SettingsModel.yaml($0))
-                })) {
-                    ForEach(intervals(including: m.s.bar.interval), id: \.self) { s in
-                        Text(s == 1 ? "Every second" : "Every \(SettingsModel.yaml(s)) seconds").tag(s)
-                    }
-                }
-                .disabled(![BarWidget.cpu, .memory, .network].contains(where: m.s.bar.shows))
-                Toggle("Battery percentage next to the icon", isOn: m.binding({ $0.bar.batteryPercentage }, {
-                    m.nested("bar", "battery-percentage", SettingsModel.yaml($0))
-                }))
-                .disabled(!m.s.bar.shows(.battery))
             }
-            Section {
-                Picker("Show", selection: m.binding({ $0.bar.windows }, { m.nested("bar", "windows", $0.rawValue) })) {
+        }
+        .onAppear { date = m.s.bar.dateFormat; clock = m.s.bar.clockFormat }
+    }
+
+    /// One side of the bar: its widgets in order, each with its options beneath.
+    @ViewBuilder private func side(_ title: String, key: String, _ list: [BarWidget]) -> some View {
+        if !list.isEmpty {
+            Section(title) {
+                ForEach(list, id: \.self) { w in
+                    row(w, side: key, list: list)
+                    options(w, lastStats: list.last(where: Self.stats.contains) == w)
+                }
+            }
+        }
+    }
+
+    private func row(_ w: BarWidget, side: String? = nil, list: [BarWidget] = []) -> some View {
+        HStack {
+            Image(systemName: Self.icon(w)).foregroundStyle(.secondary).frame(width: 20)
+            Text(w.menuTitle)
+            Spacer()
+            Toggle(w.menuTitle, isOn: m.binding({ $0.bar.shows(w) }, { on in
+                if on != m.s.bar.shows(w) { m.editExternally { Config.toggleWidget(w); WindowManager.shared.reload() } }
+            }))
+            .labelsHidden()
+        }
+        .contextMenu {
+            if let side, let i = list.firstIndex(of: w) {
+                Button("Move Up") { move(w, in: side, list, to: i - 1) }.disabled(i == 0)
+                Button("Move Down") { move(w, in: side, list, to: i + 1) }.disabled(i == list.count - 1)
+                Button(side == "left" ? "Move to the Right Side" : "Move to the Left Side") { moveAcross(w, from: side) }
+            }
+        }
+    }
+
+    /// A widget's own options, indented under it, while it's in the bar.
+    @ViewBuilder private func options(_ w: BarWidget, lastStats: Bool) -> some View {
+        Group {
+            switch w {
+            case .workspaces:
+                Toggle("Hide empty workspaces", isOn: m.binding({ $0.bar.hideEmptyWorkspaces }, {
+                    block("workspaces", "hide-empty", SettingsModel.yaml($0))
+                }))
+                Toggle("Window count on each workspace", isOn: m.binding({ $0.bar.workspaceCounts }, {
+                    block("workspaces", "window-counts", SettingsModel.yaml($0))
+                }))
+            case .title:
+                Picker("Other windows", selection: m.binding({ $0.bar.windows }, { block("title", "windows", $0.rawValue) })) {
                     Text("Off").tag(BarSettings.WindowsStyle.off)
                     Text("Position").tag(BarSettings.WindowsStyle.position)
                     Text("Dots").tag(BarSettings.WindowsStyle.dots)
                     Text("Tabs").tag(BarSettings.WindowsStyle.tabs)
                 }
                 .pickerStyle(.segmented)
-                Toggle("Only in the Full layout", isOn: m.binding({ $0.bar.windowsFullOnly }, {
-                    m.nested("bar", "windows-full-only", SettingsModel.yaml($0))
-                }))
-                .disabled(m.s.bar.windows == .off)
-                Toggle("Window count on each workspace", isOn: m.binding({ $0.bar.workspaceCounts }, {
-                    m.nested("bar", "workspace-counts", SettingsModel.yaml($0))
-                }))
-                BarPreview(settings: m.s.bar)
-                    .frame(height: 34)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.06)))
-            } header: {
-                Text("Windows on This Workspace")
-            } footer: {
+                if m.s.bar.windows != .off {
+                    Toggle("Only in the Full layout", isOn: m.binding({ $0.bar.windowsFullOnly }, {
+                        block("title", "only-in-full", SettingsModel.yaml($0))
+                    }))
+                    BarPreview(settings: m.s.bar)
+                        .frame(height: 34)
+                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.06)))
+                }
                 Text(windowsHelp(m.s.bar.windows)).font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Date and Time") {
-                TextField("Date format", text: $date).commitOnLeave {
-                    if !date.isEmpty, date != m.s.bar.dateFormat { m.nested("bar", "date-format", KSettings.yamlScalar(date)) }
+            case .cpu, .memory, .network:
+                if lastStats {
+                    Picker("Update CPU, memory and network", selection: m.binding({ $0.bar.interval }, {
+                        block("stats", "interval", SettingsModel.yaml($0))
+                    })) {
+                        ForEach(intervals(including: m.s.bar.interval), id: \.self) { s in
+                            Text(s == 1 ? "Every second" : "Every \(SettingsModel.yaml(s)) seconds").tag(s)
+                        }
+                    }
                 }
-                TextField("Clock format", text: $clock).commitOnLeave {
-                    if !clock.isEmpty, clock != m.s.bar.clockFormat { m.nested("bar", "clock-format", KSettings.yamlScalar(clock)) }
+            case .battery:
+                Toggle("Show percentage", isOn: m.binding({ $0.bar.batteryPercentage }, {
+                    block("battery", "percentage", SettingsModel.yaml($0))
+                }))
+            case .date:
+                TextField("Format", text: $date, prompt: Text("EEE d MMM")).commitOnLeave {
+                    if !date.isEmpty, date != m.s.bar.dateFormat { block("date", "format", KSettings.yamlScalar(date)) }
                 }
-                Text("Unicode patterns, e.g. EEE d MMM or HH:mm:ss.").font(.caption).foregroundStyle(.secondary)
+            case .clock:
+                TextField("Format", text: $clock, prompt: Text("HH:mm")).commitOnLeave {
+                    if !clock.isEmpty, clock != m.s.bar.clockFormat { block("clock", "format", KSettings.yamlScalar(clock)) }
+                }
+            case .layout:
+                EmptyView()
             }
         }
-        .onAppear { date = m.s.bar.dateFormat; clock = m.s.bar.clockFormat }
+        .padding(.leading, 28)
+    }
+
+    private func block(_ block: String, _ key: String, _ value: String) {
+        m.edit { KSettings.setNested($0, section: "bar", block: block, key: key, value: value) }
+    }
+
+    private func move(_ w: BarWidget, in side: String, _ list: [BarWidget], to j: Int) {
+        guard let i = list.firstIndex(of: w), list.indices.contains(j) else { return }
+        var l = list
+        l.swapAt(i, j)
+        m.edit { KSettings.setBarList($0, key: side, l) }
+    }
+
+    private func moveAcross(_ w: BarWidget, from side: String) {
+        var left = m.s.bar.left, right = m.s.bar.right
+        if side == "left" { left.removeAll { $0 == w }; right.insert(w, at: 0) }
+        else { right.removeAll { $0 == w }; left.append(w) }
+        m.edit { KSettings.setBarList(KSettings.setBarList($0, key: "left", left), key: "right", right) }
+    }
+
+    static func icon(_ w: BarWidget) -> String {
+        switch w {
+        case .workspaces: return "square.grid.3x3"
+        case .layout: return "rectangle.split.2x1"
+        case .title: return "macwindow"
+        case .cpu: return "cpu"
+        case .memory: return "memorychip"
+        case .network: return "arrow.up.arrow.down"
+        case .battery: return "battery.75percent"
+        case .date: return "calendar"
+        case .clock: return "clock"
+        }
     }
 
     private func windowsHelp(_ style: BarSettings.WindowsStyle) -> String {
