@@ -33,6 +33,18 @@ taken from its section here.
   displays folds away when there's only one display. Trackpad feedback moved to
   the Trackpad pane.
 
+### Fixed
+- Apps that hide a window when you close it and bring it back later (Slack,
+  Telegram) hand out a new handle for it; Kachel kept the old one and stopped
+  arranging the window. It now picks up the new one.
+- Switching or closing native tabs (Finder, Terminal, TextEdit) shuffled the
+  layout: macOS shows each tab as its own window, so the tab that appeared was
+  treated as a new window. It now takes the previous tab's place.
+- Windows that can't be moved are left alone instead of being tiled.
+- A new window that briefly lacked its fullscreen button (some Electron apps)
+  could be floated as a dialog for good. Kachel looks again shortly after and
+  tiles it if it's a normal window.
+
 ## [0.1.13] - 2026-11-17
 
 Every Teams meeting works like on Spaces, whatever it's called, and Outlook's

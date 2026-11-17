@@ -132,3 +132,24 @@ final class TilingOptionsTests: XCTestCase {
         XCTAssertEqual(Set(Settings.layoutOrder), Set(LayoutKind.allCases))
     }
 }
+
+final class NativeTabsTests: XCTestCase {
+    func testReplaceKeepsPlaceAndFocus() {
+        var ss = StackSet(tags: ["1", "2"], screenCount: 1)
+        for w: WindowID in [1, 2, 3] { ss.insert(w) }
+        ss.focus(2)
+        ss.setWeights([2: 1.5], workspace: 0)
+        ss.floating.insert(2)
+        let before = ss.workspaces[0].windows
+        ss.replace(2, with: 9)                     // a tab switch in window 2
+        XCTAssertEqual(ss.workspaces[0].windows, before.map { $0 == 2 ? 9 : $0 })
+        XCTAssertEqual(ss.workspaces[0].focused, 9)
+        XCTAssertEqual(ss.workspaces[0].weights[9], 1.5)
+        XCTAssertTrue(ss.floating.contains(9))
+        XCTAssertFalse(ss.floating.contains(2))
+        XCTAssertNil(ss.workspaceIndex(of: 2))
+        // Switching back swaps again.
+        ss.replace(9, with: 2)
+        XCTAssertEqual(ss.workspaces[0].windows, before)
+    }
+}

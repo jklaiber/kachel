@@ -21,6 +21,10 @@ final class WindowManager {
     private var observers: [pid_t: AXObserver] = [:]
     private var screens: [Screen] = []
     private var hidden: Set<WindowID> = []
+    /// When and where each managed window was last seen, to recognise a
+    /// native tab switch (one window of an app vanishes, another appears in
+    /// its place).
+    private var lastSeen: [WindowID: (time: Date, frame: CGRect?)] = [:]
     /// toggle-tiling: windows stay where they are (workspaces still switch).
     private var tilingPaused = false
     /// Windows logged as left alone (they float above others on their own).
@@ -865,9 +869,14 @@ final class WindowManager {
                     }
                     continue
                 }
-                if let known = windows[id] {
+                if let known = windows[id], CFEqual(known.element, el) {
                     result[id] = known
                 } else {
+                    // New, or an app (Slack, Telegram) hid the window and brought it
+                    // back with a new handle: the old one no longer answers.
+                    if windows[id] != nil {
+                        Log.info("window \(id) (\(app.localizedName ?? "?")) came back with a new handle: using it")
+                    }
                     result[id] = AXWindow(element: el, id: id, pid: pid, bundleID: app.bundleIdentifier)
                     if let obs = observers[pid] {
                         AXObserverAddNotification(obs, el, kAXUIElementDestroyedNotification as CFString, nil)
@@ -948,7 +957,26 @@ final class WindowManager {
         guard !asleep, !locked else { return }
         let found = enumerateWindows()
         var changed = false
-        let missing = ss.allWindows.filter { found[$0] == nil }
+        let focusedBefore = ss.workspaces.map(\.focused)
+        var missing = ss.allWindows.filter { found[$0] == nil }
+        // Native tabs (Finder, Terminal, TextEdit): macOS shows each tab as its own
+        // window. Switching tabs hides one and shows another; closing a tab removes
+        // one and shows another. Either way the window that appears in the very
+        // spot of the app's window that just went away takes its place.
+        for (id, w) in found where ss.workspaceIndex(of: id) == nil && !missing.isEmpty {
+            guard let f = w.frame, let old = missing.first(where: { o in
+                guard windows[o]?.pid == w.pid, let seen = lastSeen[o], let g = seen.frame,
+                      Date().timeIntervalSince(seen.time) < 3.5 else { return false }
+                return abs(g.minX - f.minX) < 8 && abs(g.minY - f.minY) < 8
+                    && abs(g.width - f.width) < 8 && abs(g.height - f.height) < 8
+            }), let wsIndex = ss.workspaceIndex(of: old) else { continue }
+            ss.replace(old, with: id)
+            if focusedBefore.indices.contains(wsIndex), focusedBefore[wsIndex] == old { ss.focus(id) }
+            missing.removeAll { $0 == old }
+            hidden.remove(old)
+            Log.info("tab switch in \(appName(of: w)): window \(id) takes the place of \(old)")
+            changed = true
+        }
         if !missing.isEmpty {
             // Accessibility sometimes reports no windows at all: during sleep,
             // for busy apps, for minimized or fullscreen windows. Only forget a
@@ -997,6 +1025,7 @@ final class WindowManager {
             if shouldFloat(w) {
                 ss.floating.insert(id)
                 if let f = w.frame, isOffscreen(f) { centerOnCurrentScreen(w, f.size) }
+                if floatsOnlyAsDialog(w) { recheckDialog(id) }
             }
             Log.info("new window \(id): \(appName(of: w)) \"\(w.title.prefix(40))\"")
             if let sp = startingScratchpad(for: w) {
@@ -1048,6 +1077,12 @@ final class WindowManager {
             changed = true
         }
         windows = found
+        // Remember where every managed window is (tiled: where we put it).
+        let now = Date()
+        for (id, w) in found where ss.workspaceIndex(of: id) != nil {
+            lastSeen[id] = (now, expected[id] ?? (ss.floating.contains(id) ? w.frame : lastSeen[id]?.frame))
+        }
+        lastSeen = lastSeen.filter { ss.workspaceIndex(of: $0.key) != nil }
         if changed { render() }
     }
 
@@ -1081,6 +1116,29 @@ final class WindowManager {
         if cfg.floatSmallWindows > 0, let f = w.frame,
            f.width < CGFloat(cfg.floatSmallWindows), f.height < CGFloat(cfg.floatSmallWindows) { return true }
         return false
+    }
+
+    /// Floats only because it has no fullscreen button yet; some apps (often
+    /// Electron) add it a moment after the window appears.
+    private func floatsOnlyAsDialog(_ w: AXWindow) -> Bool {
+        let cfg = Config.current
+        guard cfg.floatDialogs, !w.hasFullscreenButton, rule(for: w)?.float != true, w.isResizable else { return false }
+        if cfg.floatSmallWindows > 0, let f = w.frame,
+           f.width < CGFloat(cfg.floatSmallWindows), f.height < CGFloat(cfg.floatSmallWindows) { return false }
+        return true
+    }
+
+    /// Look again shortly after: if the window got its fullscreen button, it's
+    /// a normal window after all and gets tiled.
+    private func recheckDialog(_ id: WindowID) {
+        for delay in [0.5, 1.5] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [unowned self] in
+                guard self.ss.floating.contains(id), let w = self.windows[id], w.hasFullscreenButton else { return }
+                Log.info("window \(id) (\(self.appName(of: w))) turned out to be a normal window: tiling it")
+                self.ss.floating.remove(id)
+                self.render()
+            }
+        }
     }
 
     private static let terminals: Set<String> = [

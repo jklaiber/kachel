@@ -193,6 +193,20 @@ public struct StackSet {
         workspaces[i] = ws
     }
 
+    /// `new` takes `old`'s place: same workspace, position, size share,
+    /// floating state and focus; `old` is gone. For native tabs, where
+    /// switching tabs swaps one window for another.
+    public mutating func replace(_ old: WindowID, with new: WindowID) {
+        guard let i = workspaceIndex(of: old), workspaceIndex(of: new) == nil else { return }
+        var ws = workspaces[i]
+        let idx = ws.windows.firstIndex(of: old)!
+        ws.windows[idx] = new
+        ws.weights[new] = ws.weights.removeValue(forKey: old)
+        if ws.focused == old { ws.focused = new }
+        workspaces[i] = ws
+        if floating.remove(old) != nil { floating.insert(new) }
+    }
+
     public mutating func remove(_ w: WindowID) {
         floating.remove(w)
         guard let i = workspaceIndex(of: w) else { return }

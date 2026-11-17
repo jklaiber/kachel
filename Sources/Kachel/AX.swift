@@ -47,6 +47,10 @@ func isManageable(_ el: AXUIElement) -> Bool {
           axString(el, kAXSubroleAttribute) == kAXStandardWindowSubrole else { return false }
     if axBool(el, kAXMinimizedAttribute) == true { return false }
     if axBool(el, "AXFullScreen") == true { return false }
+    // A window that can't be moved can't be tiled or parked either.
+    var movable: DarwinBoolean = false
+    AXUIElementIsAttributeSettable(el, kAXPositionAttribute as CFString, &movable)
+    if !movable.boolValue { return false }
     return true
 }
 
