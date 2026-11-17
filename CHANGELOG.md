@@ -7,6 +7,18 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-11-17
+
+A battery widget, bar settings grouped per widget, and windows that apps move
+after tiling are put back.
+
+### Added
+- **Battery widget** for the bar (`battery`): the battery level as an icon like
+  the menu bar's, with or without the percentage (`bar:` → `battery:` →
+  `percentage:`, also in Settings → Bar). A bolt while plugged in, red when nearly empty; a click
+  opens Battery settings. It's in the default bar; configs with their own
+  `right:` list can add it from the bar's menu (Show in Bar → Battery).
+
 ### Changed
 - **Bar settings are grouped per widget**, in Settings → Bar and in config.yaml.
   The window lists each side's widgets in order, each with its options beneath
@@ -21,13 +33,6 @@ taken from its section here.
 - When an app moved or resized a tiled window by itself after it was tiled (e.g.
   iTerm sizing a tmux window to its session), the window stayed out of place
   until the next re-tile. Kachel now puts it back, a few times at most.
-
-### Added
-- **Battery widget** for the bar (`battery`): the battery level as an icon like
-  the menu bar's, with or without the percentage (`bar.battery-percentage`, also
-  in Settings → Bar). A bolt while plugged in, red when nearly empty; a click
-  opens Battery settings. It's in the default bar; configs with their own
-  `right:` list can add it from the bar's menu (Show in Bar → Battery).
 
 ## [0.1.14] - 2026-11-17
 
@@ -354,7 +359,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.14...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.15...HEAD
+[0.1.15]: https://github.com/jklaiber/kachel/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/jklaiber/kachel/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/jklaiber/kachel/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/jklaiber/kachel/compare/v0.1.11...v0.1.12
