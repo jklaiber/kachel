@@ -10,6 +10,12 @@ taken from its section here.
 ### Changed
 - Settings → App Rules: Float and Minimize are checkboxes next to their names.
   As switches side by side, it wasn't clear which switch belonged to which.
+- Settings: text fields also apply when you leave them (a click elsewhere, Tab,
+  another pane), not only on Return; before, a change without Return was lost.
+- Settings → General: the shortcut overview slider shows its delay; the layouts
+  that Next layout cycles through have their own group; pinning workspaces to
+  displays folds away when there's only one display. Trackpad feedback moved to
+  the Trackpad pane.
 
 ## [0.1.13] - 2026-11-17
 

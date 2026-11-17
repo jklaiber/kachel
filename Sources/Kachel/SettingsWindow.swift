@@ -222,6 +222,7 @@ struct GeneralPane: View {
     @ObservedObject var m: SettingsModel
     @State private var workspacesText = ""
     @State private var terminalText = ""
+    @State private var pinsOpen = NSScreen.screens.count > 1
 
     static let mods: [(String, String)] = [("alt", "⌥ Option"), ("ctrl+alt", "⌃⌥ Control-Option"),
                                            ("alt+cmd", "⌥⌘ Option-Command"), ("ctrl+cmd", "⌃⌘ Control-Command")]
@@ -237,18 +238,20 @@ struct GeneralPane: View {
                 }
                 Slider(value: m.binding({ $0.shortcutOverview }, { m.top("shortcut-overview", SettingsModel.yaml(($0 * 10).rounded() / 10)) }),
                        in: 0...2, step: 0.1) {
-                    Text("Shortcut overview after holding mod")
+                    Text(m.s.shortcutOverview == 0 ? "Shortcut overview: off"
+                         : "Shortcut overview after holding mod: \(SettingsModel.yaml(m.s.shortcutOverview)) s")
                 } minimumValueLabel: { Text("Off") } maximumValueLabel: { Text("2 s") }
             }
             Section("Workspaces") {
                 TextField("Names", text: $workspacesText, prompt: Text("1 2 3 4 5 6 7 8 9"))
-                    .onSubmit {
+                    .commitOnLeave {
                         let names = workspacesText.split(separator: " ").map(String.init)
-                        if !names.isEmpty { m.top("workspaces", KSettings.flowList(names)) }
+                        if !names.isEmpty, names != m.s.workspaces { m.top("workspaces", KSettings.flowList(names)) }
                     }
-                Text("Separated by spaces; press Return to apply.").font(.caption).foregroundStyle(.secondary)
+                Text("Separated by spaces.").font(.caption).foregroundStyle(.secondary)
                 Toggle("The key of the current workspace goes back to the previous one",
                        isOn: m.binding({ $0.workspaceBackAndForth }, { m.top("workspace-back-and-forth", SettingsModel.yaml($0)) }))
+                DisclosureGroup("Pin workspaces to displays", isExpanded: $pinsOpen) {
                 ForEach(m.s.workspaces, id: \.self) { tag in
                     Picker("Workspace \(tag) always on", selection: m.binding({ $0.workspaceScreens[tag] ?? "" }, { pin(tag, $0) })) {
                         Text("Any display").tag("")
@@ -260,6 +263,7 @@ struct GeneralPane: View {
                             Text(p).tag(p)
                         }
                     }
+                }
                 }
             }
             Section("Windows") {
@@ -275,34 +279,43 @@ struct GeneralPane: View {
                     Text(m.s.floatSmallWindows == 0 ? "Float small windows: off" : "Float windows smaller than \(m.s.floatSmallWindows) pt")
                 }
             }
-            Section("Layout") {
+            Section("Tiling") {
                 Stepper(value: m.binding({ $0.gap }, { m.top("gap", SettingsModel.yaml($0)) }), in: 0...40) {
                     Text("Gap between windows: \(Int(m.s.gap)) pt")
                 }
                 Slider(value: m.binding({ $0.ratio }, { m.top("ratio", SettingsModel.yaml(($0 * 100).rounded() / 100)) }), in: 0.2...0.8) {
                     Text("Master size for new workspaces: \(Int(m.s.ratio * 100)) %")
                 }
+            }
+            Section {
                 ForEach([LayoutKind.tall, .mirrorTall, .threeColumn, .column, .full], id: \.self) { kind in
-                    Toggle("Layout: \(kind.rawValue)", isOn: m.binding({ $0.layouts.contains(kind) }, { on in
+                    Toggle(kind.rawValue, isOn: m.binding({ $0.layouts.contains(kind) }, { on in
                         var l = m.s.layouts.filter { $0 != kind }
                         if on { l = [LayoutKind.tall, .mirrorTall, .threeColumn, .column, .full].filter { l.contains($0) || $0 == kind } }
                         if !l.isEmpty { m.top("layouts", KSettings.flowList(l.map(\.configName))) }
                     }))
+                    .disabled(m.s.layouts == [kind])   // at least one stays
                 }
+            } header: {
+                Text("Layouts")
+            } footer: {
+                Text("Next layout\(nextLayoutKey.map { " (\($0))" } ?? "") goes through these, in this order.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            Section("Mouse and Trackpad") {
+            Section("Mouse") {
                 Picker("Pointer follows focus", selection: m.binding({ $0.mouseFollowsFocus }, { m.top("mouse-follows-focus", $0.rawValue) })) {
                     Text("To the focused window").tag(KSettings.MouseFollows.window)
                     Text("Only between displays").tag(KSettings.MouseFollows.screen)
                     Text("Never").tag(KSettings.MouseFollows.off)
                 }
                 Toggle("Focus follows the pointer", isOn: m.binding({ $0.focusFollowsMouse }, { m.top("focus-follows-mouse", SettingsModel.yaml($0)) }))
-                Toggle("Trackpad feedback", isOn: m.binding({ $0.haptics }, { m.top("haptics", SettingsModel.yaml($0)) }))
             }
             Section("Kachel") {
                 Toggle("Start at login", isOn: m.binding({ $0.startAtLogin }, { m.top("start-at-login", SettingsModel.yaml($0)) }))
                 Toggle("Icon in the menu bar", isOn: m.binding({ $0.menubarIcon }, { m.top("menubar-icon", SettingsModel.yaml($0)) }))
-                TextField("Terminal command", text: $terminalText).onSubmit { m.top("terminal", KSettings.yamlScalar(terminalText)) }
+                TextField("Terminal command", text: $terminalText).commitOnLeave {
+                    if !terminalText.isEmpty, terminalText != m.s.terminal { m.top("terminal", KSettings.yamlScalar(terminalText)) }
+                }
                 LabeledContent("Version") {
                     HStack {
                         Text(AppVersion.string).textSelection(.enabled)
@@ -311,7 +324,15 @@ struct GeneralPane: View {
                 }
             }
         }
-        .onAppear { workspacesText = m.s.workspaces.joined(separator: " "); terminalText = m.s.terminal }
+        .onAppear {
+            workspacesText = m.s.workspaces.joined(separator: " "); terminalText = m.s.terminal
+            if !m.s.workspaceScreens.isEmpty { pinsOpen = true }
+        }
+    }
+
+    /// The key for next-layout, e.g. ⌥⇧Space.
+    private var nextLayoutKey: String? {
+        m.s.keys.first { $0.value == .nextLayout }.map { ShortcutList.glyphs($0.key) }
     }
 
     private func modName(_ mods: Set<Modifier>) -> String {
@@ -399,9 +420,13 @@ struct BarPane: View {
                 Text(windowsHelp(m.s.bar.windows)).font(.caption).foregroundStyle(.secondary)
             }
             Section("Date and Time") {
-                TextField("Date format", text: $date).onSubmit { m.nested("bar", "date-format", KSettings.yamlScalar(date)) }
-                TextField("Clock format", text: $clock).onSubmit { m.nested("bar", "clock-format", KSettings.yamlScalar(clock)) }
-                Text("Unicode patterns, e.g. EEE d MMM or HH:mm:ss. Press Return to apply.").font(.caption).foregroundStyle(.secondary)
+                TextField("Date format", text: $date).commitOnLeave {
+                    if !date.isEmpty, date != m.s.bar.dateFormat { m.nested("bar", "date-format", KSettings.yamlScalar(date)) }
+                }
+                TextField("Clock format", text: $clock).commitOnLeave {
+                    if !clock.isEmpty, clock != m.s.bar.clockFormat { m.nested("bar", "clock-format", KSettings.yamlScalar(clock)) }
+                }
+                Text("Unicode patterns, e.g. EEE d MMM or HH:mm:ss.").font(.caption).foregroundStyle(.secondary)
             }
         }
         .onAppear { date = m.s.bar.dateFormat; clock = m.s.bar.clockFormat }
@@ -471,6 +496,8 @@ struct TrackpadPane: View {
                     Text("Reversed").tag(GestureSettings.SwipeDirection.reversed)
                 }
                 Toggle("Skip empty workspaces", isOn: m.binding({ $0.gestures.skipEmpty }, { m.nested("gestures", "skip-empty", SettingsModel.yaml($0)) }))
+                Toggle("Feedback on the trackpad", isOn: m.binding({ $0.haptics }, { m.top("haptics", SettingsModel.yaml($0)) }))
+                    .help("A light tap when a swipe switches workspaces or a window snaps into place.")
             }
             Section("Commands") {
                 swipeRow("Swipe left", "swipe-left", m.s.gestures.left)
@@ -610,9 +637,9 @@ private struct RuleRow: View {
                     .help("Remove this rule")
             }
             TextField("Window title contains", text: $title, prompt: Text("Any window"))
-                .onSubmit { saveTitle() }
+                .commitOnLeave { saveTitle() }
             TextField("But not if it contains", text: $titleNot, prompt: Text("Microsoft Teams, teams.microsoft.com"))
-                .onSubmit { saveTitle() }
+                .commitOnLeave { saveTitle() }
             HStack {
                 Picker("Workspace", selection: Binding(get: { rule.workspace ?? "" }, set: { ws in
                     update { $0.workspace = ws.isEmpty ? nil : ws }
@@ -694,7 +721,7 @@ struct ScratchpadsPane: View {
     }
 }
 
-/// One scratchpad's settings. Text fields apply on Return; the rest at once.
+/// One scratchpad's settings. Text fields apply when you leave them; the rest at once.
 struct ScratchpadEditor: View {
     @ObservedObject var m: SettingsModel
     var pad: Scratchpad
@@ -706,20 +733,22 @@ struct ScratchpadEditor: View {
 
     var body: some View {
         Section {
-            TextField("Name", text: $name).onSubmit { rename() }
+            TextField("Name", text: $name).commitOnLeave { rename() }
             HStack {
-                TextField("App", text: $app, prompt: Text("bundle ID or app name")).onSubmit { save { $0.app = app } }
+                TextField("App", text: $app, prompt: Text("bundle ID or app name")).commitOnLeave {
+                    if app != pad.app { save { $0.app = app } }
+                }
                 Menu {
                     ForEach(runningApps, id: \.bundleIdentifier) { a in
                         Button(a.localizedName ?? a.bundleIdentifier ?? "?") { app = a.bundleIdentifier ?? ""; save { $0.app = app } }
                     }
                 } label: { Image(systemName: "app.badge") }.menuStyle(.borderlessButton).fixedSize().help("Choose a running app")
             }
-            TextField("Window title contains", text: $title, prompt: Text("optional")).onSubmit {
-                save { $0.title = title.isEmpty ? nil : title }
+            TextField("Window title contains", text: $title, prompt: Text("optional")).commitOnLeave {
+                if (title.isEmpty ? nil : title) != pad.title { save { $0.title = title.isEmpty ? nil : title } }
             }
-            TextField("Start with", text: $run, prompt: Text("shell command, e.g. open -a Notes")).onSubmit {
-                save { $0.run = run.isEmpty ? nil : run }
+            TextField("Start with", text: $run, prompt: Text("shell command, e.g. open -a Notes")).commitOnLeave {
+                if (run.isEmpty ? nil : run) != pad.run { save { $0.run = run.isEmpty ? nil : run } }
             }
             Button("Take App and Title from the Focused Window") {
                 guard let w = WindowManager.shared.focusedWindowInfo() else { NSSound.beep(); return }
@@ -763,7 +792,8 @@ struct ScratchpadEditor: View {
 
     private func save(_ change: (inout Scratchpad) -> Void) {
         var list = m.s.scratchpads
-        guard list.indices.contains(index) else { return }
+        // Only if this position still holds this scratchpad (not after a removal).
+        guard list.indices.contains(index), list[index].name == pad.name else { return }
         change(&list[index])
         guard !list[index].app.isEmpty else { return }
         m.edit { KSettings.setScratchpads($0, list) }
@@ -865,9 +895,9 @@ struct CommandPicker: View {
             .fixedSize()
             if askSpawn || isSpawn {
                 TextField("Shell command", text: $spawnText, prompt: Text("e.g. open -a Safari"))
-                    .onSubmit {
+                    .commitOnLeave {
                         let c = spawnText.trimmingCharacters(in: .whitespaces)
-                        if !c.isEmpty { onPick(.spawn(c)) }
+                        if !c.isEmpty, value != .spawn(c) { onPick(.spawn(c)) }
                         askSpawn = false
                     }
                     .frame(minWidth: 180)
@@ -1037,5 +1067,28 @@ private struct BarPreview: NSViewRepresentable {
                                  now: Date(), cpu: 0, memory: 0, down: 0, up: 0)
             addSubview(v)
         }
+    }
+}
+
+
+/// Text fields apply on Return and when you leave them (a click elsewhere,
+/// Tab, another pane, closing the window), like the fields in System Settings.
+/// The action must do nothing when the value didn't change.
+private struct CommitOnLeave: ViewModifier {
+    let commit: () -> Void
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .focused($focused)
+            .onSubmit(commit)
+            .onChange(of: focused) { isFocused in if !isFocused { commit() } }
+            .onDisappear(perform: commit)
+    }
+}
+
+extension View {
+    fileprivate func commitOnLeave(_ commit: @escaping () -> Void) -> some View {
+        modifier(CommitOnLeave(commit: commit))
     }
 }
