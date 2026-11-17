@@ -21,6 +21,8 @@ final class WindowManager {
     private var observers: [pid_t: AXObserver] = [:]
     private var screens: [Screen] = []
     private var hidden: Set<WindowID> = []
+    /// When apps moved their own tiled windows (see correctAppMove).
+    private var appMoves: [WindowID: [Date]] = [:]
     /// When and where each managed window was last seen, to recognise a
     /// native tab switch (one window of an app vanishes, another appears in
     /// its place).
@@ -922,6 +924,8 @@ final class WindowManager {
             if NSEvent.pressedMouseButtons & 1 != 0, let id = axWindowID(element), windows[id] != nil {
                 mouseMoved = id
                 waitForMouseUp()
+            } else if let id = axWindowID(element) {
+                correctAppMove(id)
             }
             return
         }
@@ -931,6 +935,8 @@ final class WindowManager {
             if NSEvent.pressedMouseButtons & 1 != 0, let id = axWindowID(element), windows[id] != nil {
                 mouseResized = id
                 waitForMouseUp()
+            } else if let id = axWindowID(element) {
+                correctAppMove(id)
             }
             return
         }
@@ -941,6 +947,20 @@ final class WindowManager {
             systemFocusChanged()
         }
         scheduleRefresh()
+    }
+
+    /// An app moved or resized one of its tiled windows by itself, e.g. iTerm
+    /// sizing a tmux window to its session after we tiled it. Put it back (the
+    /// verify pass also learns a real minimum size), at most a few times per
+    /// window and minute so we never fight an app.
+    private func correctAppMove(_ id: WindowID) {
+        guard expected[id] != nil else { return }
+        let now = Date()
+        var log = appMoves[id, default: []].filter { now.timeIntervalSince($0) < 60 }
+        guard log.count < 4 else { return }
+        log.append(now)
+        appMoves[id] = log
+        scheduleVerify()
     }
 
     private func scheduleRefresh() {

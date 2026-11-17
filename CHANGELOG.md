@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Fixed
+- When an app moved or resized a tiled window by itself after it was tiled (e.g.
+  iTerm sizing a tmux window to its session), the window stayed out of place
+  until the next re-tile. Kachel now puts it back, a few times at most.
+
 ### Added
 - **Battery widget** for the bar (`battery`): the battery level as an icon like
   the menu bar's, with or without the percentage (`bar.battery-percentage`, also
