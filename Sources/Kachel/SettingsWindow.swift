@@ -622,8 +622,15 @@ private struct RuleRow: View {
                 }
                 .frame(width: 170)
                 Spacer()
+                // Checkboxes: in a row, a switch's label and switch drift apart and it's
+                // unclear which belongs to which; a checkbox sits right next to its label.
                 Toggle("Float", isOn: Binding(get: { rule.float }, set: { on in update { $0.float = on } }))
+                    .toggleStyle(.checkbox)
+                    .help("Not tiled: keeps its own size and position, above the tiled windows.")
                 Toggle("Minimize", isOn: Binding(get: { rule.hide == .minimize }, set: { on in update { $0.hide = on ? .minimize : .park } }))
+                    .toggleStyle(.checkbox)
+                    .padding(.leading, 12)
+                    .help("Minimized while its workspace is out of sight, so call apps show their small window.")
             }
         }
         .padding(.vertical, 4)

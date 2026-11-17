@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- Settings → App Rules: Float and Minimize are checkboxes next to their names.
+  As switches side by side, it wasn't clear which switch belonged to which.
+
 ## [0.1.13] - 2026-11-17
 
 Every Teams meeting works like on Spaces, whatever it's called, and Outlook's
