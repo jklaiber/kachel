@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.14] - 2026-11-17
+
+Six more layouts, a way to pause tiling, more control over spacing, and fixes for
+Finder tabs and apps like Slack that bring a closed window back.
+
 ### Added
 - **Six more layouts**: `tall-right`, `two-pane`, `rows`,
   `widescreen-tall`, `bsp` and `floating` (nothing tiled on that workspace).
@@ -327,7 +332,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.13...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.14...HEAD
+[0.1.14]: https://github.com/jklaiber/kachel/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/jklaiber/kachel/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/jklaiber/kachel/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/jklaiber/kachel/compare/v0.1.10...v0.1.11
