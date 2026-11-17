@@ -7,16 +7,21 @@ taken from its section here.
 
 ## [Unreleased]
 
-### Changed
-- The default config includes the Teams rule: every Teams meeting window is
-  minimized while its workspace is out of sight, so Teams shows its small call
-  window. Configs that already list their own `rules:` keep them as they are.
+## [0.1.13] - 2026-11-17
+
+Every Teams meeting works like on Spaces, whatever it's called, and Outlook's
+meeting reminder floats like it does without Kachel.
 
 ### Added
 - App rules: `title-not` leaves out windows whose title contains one of the
   given texts. With it, one rule covers **every Teams meeting window**, whatever
   the meeting is called: Teams windows except the main one. Also a field in
   Settings → App Rules.
+
+### Changed
+- The default config includes the Teams rule: every Teams meeting window is
+  minimized while its workspace is out of sight, so Teams shows its small call
+  window. Configs that already list their own `rules:` keep them as they are.
 
 ### Fixed
 - Windows an app keeps above other windows on its own, like Outlook's meeting
@@ -284,7 +289,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.12...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.13...HEAD
+[0.1.13]: https://github.com/jklaiber/kachel/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/jklaiber/kachel/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/jklaiber/kachel/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/jklaiber/kachel/compare/v0.1.9...v0.1.10
