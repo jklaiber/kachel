@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- The default config includes the Teams rule: every Teams meeting window is
+  minimized while its workspace is out of sight, so Teams shows its small call
+  window. Configs that already list their own `rules:` keep them as they are.
+
 ### Added
 - App rules: `title-not` leaves out windows whose title contains one of the
   given texts. With it, one rule covers **every Teams meeting window**, whatever

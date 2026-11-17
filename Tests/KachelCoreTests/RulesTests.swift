@@ -114,7 +114,8 @@ final class RulesTests: XCTestCase {
     func testSetRuleOnDefaultConfig() throws {
         let defaults = [Rule(app: "com.apple.systempreferences", float: true),
                         Rule(app: "com.apple.calculator", float: true),
-                        Rule(app: "com.apple.archiveutility", float: true)]
+                        Rule(app: "com.apple.archiveutility", float: true),
+                        Rule(app: "com.microsoft.teams2", titleNot: ["Microsoft Teams", "teams.microsoft.com"], hide: .minimize)]
         XCTAssertEqual(try Settings.parse(Settings.defaultYAML).rules, defaults)
 
         var text = Settings.setRule(Settings.defaultYAML, app: "com.tinyspeck.slackmacgap",
@@ -130,16 +131,18 @@ final class RulesTests: XCTestCase {
         text = Settings.setRule(text, app: "com.tinyspeck.slackmacgap",
                                 rule: Rule(app: "com.tinyspeck.slackmacgap", workspace: "2", float: true))
         s = try Settings.parse(text)
-        XCTAssertEqual(s.rules, [defaults[0], defaults[2],
+        XCTAssertEqual(s.rules, [defaults[0], defaults[2], defaults[3],
                                  Rule(app: "com.apple.calculator", workspace: "3"),
                                  Rule(app: "com.tinyspeck.slackmacgap", workspace: "2", float: true)])
 
-        // Remove them all.
-        for app in ["com.tinyspeck.slackmacgap", "com.apple.calculator", "com.apple.systempreferences", "com.apple.archiveutility"] {
+        // Remove the plain ones; the Teams rule looks at titles, so the
+        // app-wide editor (⌥⇧P) leaves it alone.
+        for app in ["com.tinyspeck.slackmacgap", "com.apple.calculator", "com.apple.systempreferences",
+                    "com.apple.archiveutility", "com.microsoft.teams2"] {
             text = Settings.setRule(text, app: app, rule: nil)
         }
         s = try Settings.parse(text)
-        XCTAssertEqual(s.rules, [])
+        XCTAssertEqual(s.rules, [defaults[3]])
         XCTAssertEqual(s.keys.count, 52)
         XCTAssertNoThrow(try Settings.parse(text))
     }

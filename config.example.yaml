@@ -113,10 +113,9 @@ border:
 #   - app: com.google.Chrome
 #     title: "Meet"                    # only windows whose title contains this
 #     workspace: 5
-#   - app: com.microsoft.teams2        # every Teams meeting window: all windows
-#     title-not: [Microsoft Teams, teams.microsoft.com]   # except the main one
-#     hide: minimize                   # minimized while its workspace is out of sight,
-#                                      # so Teams shows its small call window
+# title-not leaves out windows whose title contains one of the texts.
+# hide: minimize minimizes a window while its workspace is out of sight
+# instead of moving it into a corner, so call apps show their small window.
 rules:
   - app: com.apple.systempreferences   # System Settings
     float: true
@@ -124,6 +123,9 @@ rules:
     float: true
   - app: com.apple.archiveutility   # Archive Utility
     float: true
+  - app: com.microsoft.teams2   # Microsoft Teams: every meeting window (all but the main one)
+    title-not: ["Microsoft Teams", teams.microsoft.com]
+    hide: minimize
 
 # Keys: <modifiers>-<key>: <command>.  Modifiers: mod, cmd, ctrl, alt, shift.
 # Key names: a–z, 0–9, return, tab, space, escape, delete, left, right, up,
