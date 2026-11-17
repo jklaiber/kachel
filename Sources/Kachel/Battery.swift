@@ -15,7 +15,10 @@ final class Battery {
     var onChange: (() -> Void)?
     private var source: CFRunLoopSource?
 
-    init() {
+    /// - watch: follow changes. Sample bars (settings preview, screenshots)
+    ///   don't: they show a made-up battery and come and go all the time.
+    init(watch: Bool = true) {
+        guard watch else { return }
         read()
         let me = Unmanaged.passUnretained(self).toOpaque()
         source = IOPSNotificationCreateRunLoopSource({ ctx in
@@ -25,6 +28,15 @@ final class Battery {
             battery.onChange?()
         }, me)?.takeRetainedValue()
         if let source { CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode) }
+    }
+
+    /// macOS must not call us once we're gone (that crashed Kachel on the next
+    /// battery change after a settings preview was redrawn).
+    deinit {
+        if let source {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .defaultMode)
+            CFRunLoopSourceInvalidate(source)
+        }
     }
 
     /// Screenshots and the settings preview: a made-up battery.

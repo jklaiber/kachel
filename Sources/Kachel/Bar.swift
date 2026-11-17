@@ -42,7 +42,7 @@ final class Bar {
     var menuActions: [(title: String, action: () -> Void)] = []
 
     let stats = Stats()
-    let battery = Battery()
+    let battery: Battery
     /// Screenshots use a fixed time; nil = now.
     var fixedNow: Date?
     private var panels: [BarPanel] = []
@@ -52,7 +52,12 @@ final class Bar {
     private var statsTimer: Timer?
     private(set) var settings = BarSettings()
 
-    init() {
+    /// - demo: a sample bar (settings preview, screenshots). It's redrawn and
+    ///   thrown away all the time, so it watches nothing: no battery, timers or
+    ///   notifications that would outlive it.
+    init(demo: Bool = false) {
+        battery = Battery(watch: !demo)
+        if demo { return }
         battery.onChange = { [weak self] in self?.redraw() }
         // Follow wallpaper, Space and light/dark changes, like the menu bar does.
         DistributedNotificationCenter.default().addObserver(forName: .init("com.apple.desktop"), object: "BackgroundChanged",
@@ -666,7 +671,7 @@ extension Bar {
     static func demoView(width: CGFloat, height: CGFloat, settings: BarSettings, content: Content,
                          now: Date, cpu: Double, memory: UInt64, down: Double, up: Double,
                          battery: Battery.State? = Battery.State(percent: 82, charging: false, onPower: false)) -> NSView {
-        let bar = Bar()
+        let bar = Bar(demo: true)
         bar.battery.setDemo(battery)
         bar.settings = settings
         bar.fixedNow = now

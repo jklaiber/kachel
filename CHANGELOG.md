@@ -7,6 +7,16 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- Settings → Bar: drag a widget by its grip to reorder it, also to the other
+  side, as in other macOS lists. Right-click still offers Move Up / Down.
+
+### Fixed
+- Kachel could crash when the battery level changed after Settings → Bar had
+  been open: every redraw of the bar preview left a battery watcher behind that
+  macOS then called after it was gone. Previews no longer watch the battery, and
+  a watcher unregisters when it goes away.
+
 ## [0.1.15] - 2026-11-17
 
 A battery widget, bar settings grouped per widget, and windows that apps move

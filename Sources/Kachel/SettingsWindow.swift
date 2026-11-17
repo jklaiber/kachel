@@ -408,9 +408,6 @@ struct BarPane: View {
                     ForEach(hidden, id: \.self) { w in row(w) }
                 } header: {
                     Text("Not in the Bar")
-                } footer: {
-                    Text("Right-click a widget to move it up, down or to the other side.")
-                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -420,10 +417,17 @@ struct BarPane: View {
     /// One side of the bar: its widgets in order, each with its options beneath.
     @ViewBuilder private func side(_ title: String, key: String, _ list: [BarWidget]) -> some View {
         if !list.isEmpty {
-            Section(title) {
+            Section {
                 ForEach(list, id: \.self) { w in
                     row(w, side: key, list: list)
                     options(w, lastStats: list.last(where: Self.stats.contains) == w)
+                }
+            } header: {
+                Text(title)
+            } footer: {
+                if key == "right" {
+                    Text("Drag a widget by its grip to move it, also to the other side.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -431,6 +435,10 @@ struct BarPane: View {
 
     private func row(_ w: BarWidget, side: String? = nil, list: [BarWidget] = []) -> some View {
         HStack {
+            if side != nil {
+                // The grip: drag the row to move the widget, within its side or across.
+                Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary).help("Drag to move")
+            }
             Image(systemName: Self.icon(w)).foregroundStyle(.secondary).frame(width: 20)
             Text(w.menuTitle)
             Spacer()
@@ -438,6 +446,19 @@ struct BarPane: View {
                 if on != m.s.bar.shows(w) { m.editExternally { Config.toggleWidget(w); WindowManager.shared.reload() } }
             }))
             .labelsHidden()
+        }
+        .contentShape(Rectangle())
+        .onDrag {
+            guard side != nil else { return NSItemProvider() }
+            return NSItemProvider(object: w.rawValue as NSString)
+        }
+        .onDrop(of: [.text], isTargeted: nil) { providers in
+            guard let side, let p = providers.first else { return false }
+            _ = p.loadObject(ofClass: NSString.self) { obj, _ in
+                guard let raw = obj as? String, let dragged = BarWidget(rawValue: raw) else { return }
+                DispatchQueue.main.async { place(dragged, onto: w, side: side) }
+            }
+            return true
         }
         .contextMenu {
             if let side, let i = list.firstIndex(of: w) {
@@ -514,6 +535,25 @@ struct BarPane: View {
         var l = list
         l.swapAt(i, j)
         m.edit { KSettings.setBarList($0, key: side, l) }
+    }
+
+    /// Dropped `dragged` on `target`'s row: it takes target's place. Moving
+    /// down a side it lands after it, moving up or from the other side before;
+    /// dropped on the last row, it goes last.
+    private func place(_ dragged: BarWidget, onto target: BarWidget, side: String) {
+        guard dragged != target else { return }
+        var left = m.s.bar.left, right = m.s.bar.right
+        let list = side == "left" ? left : right
+        let from = list.firstIndex(of: dragged)
+        guard let to = list.firstIndex(of: target) else { return }
+        let after = (from.map { $0 < to } ?? false) || to == list.count - 1
+        left.removeAll { $0 == dragged }
+        right.removeAll { $0 == dragged }
+        var dest = side == "left" ? left : right
+        guard let t = dest.firstIndex(of: target) else { return }
+        dest.insert(dragged, at: after ? t + 1 : t)
+        if side == "left" { left = dest } else { right = dest }
+        m.edit { KSettings.setBarList(KSettings.setBarList($0, key: "left", left), key: "right", right) }
     }
 
     private func moveAcross(_ w: BarWidget, from side: String) {
