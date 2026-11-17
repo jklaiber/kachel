@@ -31,7 +31,12 @@ rules:
   - app: com.google.Chrome
     title: Meet                      # only windows whose title contains this
     workspace: 5
+  - app: Mail
+    title-not: Inbox                 # every window except ones with this in the title
+    float: true
 ```
+
+`title-not` takes one text or a list: `[Inbox, Drafts]`.
 
 Rules apply when a window appears; you can still move it afterwards.
 
@@ -45,8 +50,8 @@ sight, and restores it, in its old place and size, when you come back:
 
 ```yaml
 rules:
-  - app: com.microsoft.teams2        # Microsoft Teams
-    title: Meeting with              # the meeting window, not the chat
+  - app: com.microsoft.teams2        # Microsoft Teams: every meeting window,
+    title-not: [Microsoft Teams, teams.microsoft.com]   # whatever it's called
     hide: minimize
   - app: us.zoom.xos                 # Zoom (title not verified yet)
     title: Zoom Meeting
@@ -58,8 +63,11 @@ rules:
 - The app's small window stays on screen on every workspace.
 - Clicking it (or the window in the Dock) takes you back to the meeting's workspace.
 - Windows you minimize yourself stay minimized.
-- `title` is matched each time, so a window that only becomes a meeting later is
-  covered. See a window's title with `scripts/kachel-ctl dump` (written to the log).
+- Teams names a meeting window after the meeting ("Daily stand-up"), and its
+  main window "Microsoft Teams" or "teams.microsoft.com/…". So the rule above
+  takes every Teams window except the main one, whatever the meeting is called.
+- `title` and `title-not` are matched each time, so a window that only becomes
+  a meeting later is covered. See a window's title with `scripts/kachel-ctl dump` (written to the log).
 
 In **Settings → App Rules** this is the **Minimize** switch.
 

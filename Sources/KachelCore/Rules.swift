@@ -21,17 +21,23 @@ public struct Rule: Equatable {
 
     public var app: String
     public var title: String?
+    /// Windows whose title contains any of these don't match (e.g. Teams'
+    /// main window, so that a rule covers all its meeting windows).
+    public var titleNot: [String] = []
     public var workspace: String?     // workspace name (or number)
     public var float = false
     public var hide = Hide.park
 
-    public init(app: String, title: String? = nil, workspace: String? = nil, float: Bool = false, hide: Hide = .park) {
-        self.app = app; self.title = title; self.workspace = workspace; self.float = float; self.hide = hide
+    public init(app: String, title: String? = nil, titleNot: [String] = [], workspace: String? = nil,
+                float: Bool = false, hide: Hide = .park) {
+        self.app = app; self.title = title; self.titleNot = titleNot; self.workspace = workspace
+        self.float = float; self.hide = hide
     }
 
     public func matches(bundleID: String?, appName: String?, title windowTitle: String) -> Bool {
         let a = app.lowercased()
         guard a == bundleID?.lowercased() || a == appName?.lowercased() else { return false }
+        if titleNot.contains(where: { !$0.isEmpty && windowTitle.localizedCaseInsensitiveContains($0) }) { return false }
         if let t = title, !t.isEmpty { return windowTitle.localizedCaseInsensitiveContains(t) }
         return true
     }
@@ -57,12 +63,16 @@ extension Settings {
         return try list.enumerated().map { i, item in
             let ctx = "rules[\(i + 1)]"
             guard let d = item as? [String: Any] else { throw SettingsError("\(ctx) must be a mapping with app: …") }
-            if let bad = d.keys.first(where: { !["app", "title", "workspace", "float", "hide"].contains($0) }) {
-                throw SettingsError("\(ctx): unknown setting '\(bad)' (use app, title, workspace, float, hide)")
+            if let bad = d.keys.first(where: { !["app", "title", "title-not", "workspace", "float", "hide"].contains($0) }) {
+                throw SettingsError("\(ctx): unknown setting '\(bad)' (use app, title, title-not, workspace, float, hide)")
             }
             guard let app = d["app"].map({ "\($0)" }), !app.isEmpty else { throw SettingsError("\(ctx) needs app:") }
             var r = Rule(app: app)
             if let t = d["title"], !(t is NSNull) { r.title = "\(t)" }
+            if let t = d["title-not"], !(t is NSNull) {
+                // One text, or a list of them.
+                r.titleNot = (t as? [Any])?.map { "\($0)" } ?? ["\(t)"]
+            }
             if let w = d["workspace"], !(w is NSNull) {
                 let name = "\(w)"
                 guard probe.workspaceIndex(named: name) != nil else {
@@ -138,7 +148,11 @@ extension Settings {
                 v = v.trimmingCharacters(in: CharacterSet(charactersIn: "\"' "))
                 return v.lowercased() == app.lowercased()
             }
-            let hasTitle = block.contains { $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "- ", with: "").hasPrefix("title:") }
+            // Rules that look at the title (title: or title-not:) are more specific: leave them.
+            let hasTitle = block.contains {
+                let t = $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "- ", with: "")
+                return t.hasPrefix("title:") || t.hasPrefix("title-not:")
+            }
             if isThisApp && !hasTitle {
                 lines.removeSubrange(i..<j)
             } else {
@@ -192,6 +206,9 @@ extension Settings {
     static func entryLines(_ rule: Rule, comment: String) -> [String] {
         var entry = ["  - app: \(yamlScalar(rule.app))" + comment]
         if let t = rule.title, !t.isEmpty { entry.append("    title: \(yamlScalar(t))") }
+        let not = rule.titleNot.filter { !$0.isEmpty }
+        if not.count == 1 { entry.append("    title-not: \(yamlScalar(not[0]))") }
+        if not.count > 1 { entry.append("    title-not: [\(not.map(yamlScalar).joined(separator: ", "))]") }
         if let w = rule.workspace { entry.append("    workspace: \(yamlScalar(w))") }
         if rule.float { entry.append("    float: true") }
         if rule.hide != .park { entry.append("    hide: \(rule.hide.rawValue)") }

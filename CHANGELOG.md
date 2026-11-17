@@ -7,6 +7,12 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- App rules: `title-not` leaves out windows whose title contains one of the
+  given texts. With it, one rule covers **every Teams meeting window**, whatever
+  the meeting is called: Teams windows except the main one. Also a field in
+  Settings → App Rules.
+
 ### Fixed
 - Windows an app keeps above other windows on its own, like Outlook's meeting
   reminder, are left alone, as in Amethyst: not tiled, not part of ⌥J / ⌥K, and

@@ -556,11 +556,12 @@ struct RulesPane: View {
                 ForEach(Array(m.s.rules.enumerated()), id: \.offset) { i, rule in
                     RuleRow(m: m, index: i, rule: rule)
                         // Fresh text field state when the rule at this position changes.
-                        .id("\(i)|\(rule.app)|\(rule.title ?? "")")
+                        .id("\(i)|\(rule.app)|\(rule.title ?? "")|\(rule.titleNot)")
                 }
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("**Window title contains**: only windows whose title contains this text, e.g. “Meeting with” for Teams meetings. Empty: every window of the app.")
+                    Text("**Window title contains**: only windows whose title contains this text. Empty: every window of the app.")
+                    Text("**But not if it contains**: leaves out windows whose title contains one of these (separate with commas). For every Teams meeting, whatever it's called: leave the first field empty and put “Microsoft Teams, teams.microsoft.com” here, the titles of Teams' main window.")
                     Text("**Workspace**: new windows of the app open there, and you stay where you are.")
                     Text("**Float**: the window isn't tiled. It keeps its own size and position, above the tiled windows.")
                     Text("**Minimize**: while its workspace is out of sight, the window is minimized instead of moved into a corner. Teams, Zoom and Webex then show their small call window, and clicking it takes you back.")
@@ -594,6 +595,7 @@ private struct RuleRow: View {
     let index: Int
     let rule: Rule
     @State private var title = ""
+    @State private var titleNot = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -609,6 +611,8 @@ private struct RuleRow: View {
             }
             TextField("Window title contains", text: $title, prompt: Text("Any window"))
                 .onSubmit { saveTitle() }
+            TextField("But not if it contains", text: $titleNot, prompt: Text("Microsoft Teams, teams.microsoft.com"))
+                .onSubmit { saveTitle() }
             HStack {
                 Picker("Workspace", selection: Binding(get: { rule.workspace ?? "" }, set: { ws in
                     update { $0.workspace = ws.isEmpty ? nil : ws }
@@ -623,7 +627,7 @@ private struct RuleRow: View {
             }
         }
         .padding(.vertical, 4)
-        .onAppear { title = rule.title ?? "" }
+        .onAppear { title = rule.title ?? ""; titleNot = rule.titleNot.joined(separator: ", ") }
         .onDisappear { saveTitle() }
     }
 
@@ -632,6 +636,7 @@ private struct RuleRow: View {
         guard m.s.rules.indices.contains(index), m.s.rules[index] == rule else { return }
         var r = rule
         if title != (rule.title ?? "") { r.title = title.isEmpty ? nil : title }   // a typed, unsaved title
+        if Self.list(titleNot) != rule.titleNot { r.titleNot = Self.list(titleNot) }
         change(&r)
         guard r != rule else { return }
         m.edit { KSettings.setRule($0, at: index, rule: r) }
@@ -639,8 +644,14 @@ private struct RuleRow: View {
 
     private func saveTitle() {
         let t = title.trimmingCharacters(in: .whitespaces)
-        guard t != (rule.title ?? "") else { return }
-        update { $0.title = t.isEmpty ? nil : t }
+        let not = Self.list(titleNot)
+        guard t != (rule.title ?? "") || not != rule.titleNot else { return }
+        update { $0.title = t.isEmpty ? nil : t; $0.titleNot = not }
+    }
+
+    /// "a, b" → ["a", "b"]
+    static func list(_ text: String) -> [String] {
+        text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
     static func appName(_ id: String) -> String {

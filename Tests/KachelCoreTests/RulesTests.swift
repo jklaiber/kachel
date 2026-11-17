@@ -70,6 +70,33 @@ final class RulesTests: XCTestCase {
         XCTAssertEqual(Settings.setRule(text, at: 5, rule: nil), text)
     }
 
+    func testTitleNot() throws {
+        let s = try Settings.parse("""
+        rules:
+          - app: com.microsoft.teams2
+            title-not: [Microsoft Teams, teams.microsoft.com]
+            hide: minimize
+          - app: Mail
+            title-not: Inbox
+        """)
+        let teams = Rule(app: "com.microsoft.teams2", titleNot: ["Microsoft Teams", "teams.microsoft.com"], hide: .minimize)
+        XCTAssertEqual(s.rules, [teams, Rule(app: "Mail", titleNot: ["Inbox"])])
+        for meeting in ["Daily stand-up", "Meeting with Ada", "Retro"] {
+            XCTAssertEqual(s.rule(bundleID: "com.microsoft.teams2", appName: "Microsoft Teams", title: meeting), teams)
+        }
+        for main in ["Microsoft Teams", "Chat | Microsoft Teams", "teams.microsoft.com/v2/?cb=17"] {
+            XCTAssertNil(s.rule(bundleID: "com.microsoft.teams2", appName: "Microsoft Teams", title: main))
+        }
+        // Written back (one value plain, several as a list) and read again.
+        var t = Settings.addRule("rules:\n\nkeys:\n  mod-1: workspace 1", teams)
+        t = Settings.addRule(t, Rule(app: "Mail", titleNot: ["Inbox"]))
+        XCTAssertTrue(t.contains("title-not: [\"Microsoft Teams\", teams.microsoft.com]") && t.contains("title-not: Inbox"))
+        XCTAssertEqual(try Settings.parse(t).rules, [teams, Rule(app: "Mail", titleNot: ["Inbox"])])
+        // The rule picker (⌥⇧P) replaces plain rules, not ones that look at the title.
+        t = Settings.setRule(t, app: "com.microsoft.teams2", rule: Rule(app: "com.microsoft.teams2", workspace: "3"))
+        XCTAssertEqual(try Settings.parse(t).rules.first, teams)
+    }
+
     func testHideMinimize() throws {
         let s = try Settings.parse("rules:\n  - app: com.microsoft.teams2\n    title: Meeting with\n    hide: minimize\n  - app: Slack\n    workspace: 2")
         XCTAssertEqual(s.rules, [Rule(app: "com.microsoft.teams2", title: "Meeting with", hide: .minimize),
