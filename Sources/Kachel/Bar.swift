@@ -51,11 +51,15 @@ final class Bar {
     private var clockTimer: Timer?
     private var statsTimer: Timer?
     private(set) var settings = BarSettings()
+    private var dock: DockWatch?
 
     /// - demo: a sample bar (settings preview, screenshots). It's redrawn and
     ///   thrown away all the time, so it watches nothing: no battery, timers or
     ///   notifications that would outlive it.
+    private let isDemo: Bool
+
     init(demo: Bool = false) {
+        isDemo = demo
         battery = Battery(watch: !demo)
         if demo { return }
         battery.onChange = { [weak self] in self?.redraw() }
@@ -93,7 +97,18 @@ final class Bar {
             panels.forEach { $0.orderOut(nil) }
             panels.removeAll()
             statsTimer?.invalidate()
+            dock = nil
             return
+        }
+        if settings.makeWayForDock, !isDemo {
+            if dock == nil {
+                let d = DockWatch()
+                d.onChange = { [weak self] r in self?.makeWay(for: r) }
+                d.start()
+                dock = d
+            }
+        } else {
+            dock = nil
         }
         while panels.count > screens.count { panels.removeLast().orderOut(nil) }
         while panels.count < screens.count { panels.append(BarPanel(bar: self, index: panels.count)) }
@@ -105,6 +120,7 @@ final class Bar {
             p.setBackground(settings.background)
             p.orderFrontRegardless()
         }
+        makeWay(for: dock?.shownOn)
         updateAppearance()
 
         statsTimer?.invalidate()
@@ -117,6 +133,18 @@ final class Bar {
             }
         }
         redraw()
+    }
+
+    /// Fade out the bar on the screen the Dock slid up on, back in once it's gone.
+    private func makeWay(for dockScreen: CGRect?) {
+        for p in panels {
+            let away = dockScreen.map { $0.contains(CGPoint(x: p.frame.midX, y: p.frame.midY)) } ?? false
+            p.ignoresMouseEvents = away
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = away ? 0.12 : 0.2
+                p.animator().alphaValue = away ? 0 : 1
+            }
+        }
     }
 
     /// White text on dark wallpapers, black on light ones (per screen), unless

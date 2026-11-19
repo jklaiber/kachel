@@ -72,6 +72,8 @@ public struct BarSettings: Equatable {
     public var workspaceCounts = false
     /// The battery widget shows the percentage next to its icon.
     public var batteryPercentage = true
+    /// The bar fades out while an auto-hidden Dock slides up over it.
+    public var makeWayForDock = true
     public init() {}
 
     public enum WindowsStyle: String, CaseIterable {
@@ -421,6 +423,7 @@ public struct Settings {
                         throw SettingsError("bar.appearance must be auto, light or dark")
                     }
                     s.bar.appearance = a
+                case "make-way-for-dock": s.bar.makeWayForDock = try bool(v, "bar.make-way-for-dock")
                 default: throw SettingsError("unknown setting 'bar.\(k)'")
                 }
             }
@@ -708,6 +711,7 @@ bar:
   font-size: 13
   background: transparent # transparent = like the macOS menu bar; blur = frosted glass
   appearance: auto        # auto = white/black text depending on the wallpaper; light; dark
+  make-way-for-dock: true # an auto-hidden Dock slides up: the bar fades out until it hides again
 
   # Which widgets, in order, on the left and the right. Leave one out to hide it.
   # Widgets: workspaces, layout, title, cpu, memory, network, battery, date, clock.

@@ -60,6 +60,7 @@ bar:
   font-size: 13
   background: transparent # transparent = like the macOS menu bar; blur = frosted glass
   appearance: auto        # auto = white/black text depending on the wallpaper; light; dark
+  make-way-for-dock: true # an auto-hidden Dock slides up: the bar fades out until it hides again
 
   # Which widgets, in order, on the left and the right. Leave one out to hide it.
   # Widgets: workspaces, layout, title, cpu, memory, network, battery, date, clock.

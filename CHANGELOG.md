@@ -7,6 +7,12 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- The bar makes way for the Dock: when a hidden Dock slides up at the bottom,
+  the bar fades out on that screen and comes back once the Dock hides again.
+  On by default; turn it off with `bar.make-way-for-dock: false` or in
+  Settings → Bar.
+
 ## [0.1.16] - 2026-11-17
 
 Fixes a crash after using Settings → Bar, and widgets can be dragged into order.

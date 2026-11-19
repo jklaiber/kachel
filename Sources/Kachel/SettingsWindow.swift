@@ -399,6 +399,10 @@ struct BarPane: View {
                     Text("Dark text").tag(BarSettings.Appearance.light)
                     Text("Light text").tag(BarSettings.Appearance.dark)
                 }
+                Toggle(isOn: m.binding({ $0.bar.makeWayForDock }, { m.nested("bar", "make-way-for-dock", SettingsModel.yaml($0)) })) {
+                    Text("Make way for the Dock")
+                    Text("When a hidden Dock slides up, the bar fades out until it's gone again.")
+                }
             }
             side("Left Side", key: "left", m.s.bar.left)
             side("Right Side", key: "right", m.s.bar.right)

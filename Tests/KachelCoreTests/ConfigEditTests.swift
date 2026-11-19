@@ -137,6 +137,15 @@ final class BatteryWidgetTests: XCTestCase {
     }
 }
 
+final class MakeWayForDockTests: XCTestCase {
+    func testDefaultOnAndCanBeTurnedOff() throws {
+        XCTAssertTrue(try Settings.parse(Settings.defaultYAML).bar.makeWayForDock)
+        XCTAssertTrue(try Settings.parse("bar:\n  enabled: true").bar.makeWayForDock)
+        XCTAssertFalse(try Settings.parse("bar:\n  make-way-for-dock: false").bar.makeWayForDock)
+        XCTAssertThrowsError(try Settings.parse("bar:\n  make-way-for-dock: sometimes"))
+    }
+}
+
 final class BarBlocksTests: XCTestCase {
     func testDefaultsParse() throws {
         let b = try Settings.parse(Settings.defaultYAML).bar

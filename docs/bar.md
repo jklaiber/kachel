@@ -56,6 +56,7 @@ bar:
   height: auto                 # same as the menu bar, or a number
   background: transparent      # or blur
   appearance: auto             # white or black text depending on the wallpaper
+  make-way-for-dock: true      # fade out while a hidden Dock slides up
 
   # Which widgets, in order
   left: [workspaces, layout, title]
@@ -77,6 +78,11 @@ bar:
   clock:
     format: "HH:mm"
 ```
+
+With the Dock set to hide automatically (recommended), it slides up over the
+bar when you move the pointer to the bottom edge. `make-way-for-dock` fades the
+bar out on that screen while the Dock is there, and back in once it hides again.
+Set it to `false` to keep the bar in place.
 
 **Settings → Bar** shows the same: the appearance, then each side's widgets in
 order with their options beneath them. Right-click a widget to move it.
