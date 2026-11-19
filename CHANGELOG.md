@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-11-19
+
+The bar makes way for the Dock, and mod can be only the left Option key.
+
 ### Added
 - The bar makes way for the Dock: when a hidden Dock slides up at the bottom,
   the bar fades out on that screen and comes back once the Dock hides again.
@@ -383,7 +387,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.16...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.17...HEAD
+[0.1.17]: https://github.com/jklaiber/kachel/compare/v0.1.16...v0.1.17
 [0.1.16]: https://github.com/jklaiber/kachel/compare/v0.1.15...v0.1.16
 [0.1.15]: https://github.com/jklaiber/kachel/compare/v0.1.14...v0.1.15
 [0.1.14]: https://github.com/jklaiber/kachel/compare/v0.1.13...v0.1.14
