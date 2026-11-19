@@ -172,6 +172,10 @@ final class WindowManager {
         guard !managing else { return }
         managing = true
         Log.info("Accessibility granted, managing windows")
+        // One-sided shortcuts (mod: left-alt) couldn't start without it.
+        if !Config.current.modSides.isEmpty {
+            hotkeyProblems = HotKeys.shared.bind(Config.current.keys, sides: Config.current.modSides) { [unowned self] cmd in self.perform(cmd) }
+        }
         AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), 1.0)
 
         let ws = NSWorkspace.shared.notificationCenter
@@ -245,7 +249,7 @@ final class WindowManager {
     private func applySettings(rebindKeys: Bool = true) {
         let cfg = Config.current
         if rebindKeys {
-            hotkeyProblems = HotKeys.shared.bind(cfg.keys) { [unowned self] cmd in self.perform(cmd) }
+            hotkeyProblems = HotKeys.shared.bind(cfg.keys, sides: cfg.modSides) { [unowned self] cmd in self.perform(cmd) }
         }
         ss.setTags(cfg.workspaces)
         ss.insertPosition = cfg.newWindows
@@ -517,7 +521,7 @@ final class WindowManager {
         if e.type == .flagsChanged {
             let mods = e.modifierFlags.intersection([.command, .option, .control, .shift])
             holdTimer?.invalidate()
-            if delay > 0, managing, mods == Self.flags(Config.current.mod) {
+            if delay > 0, managing, mods == Self.flags(Config.current.mod), Self.rightSide(e) {
                 holdTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [unowned self] _ in
                     let now = NSEvent.modifierFlags.intersection([.command, .option, .control, .shift])
                     guard now == Self.flags(Config.current.mod) else { return }
@@ -530,6 +534,12 @@ final class WindowManager {
             holdTimer?.invalidate()
             overview.hide()
         }
+    }
+
+    /// With `mod: left-alt`, holding right Option is typing, not mod.
+    private static func rightSide(_ e: NSEvent) -> Bool {
+        let raw = CGEventFlags(rawValue: UInt64(e.modifierFlags.rawValue))
+        return Config.current.modSides.allSatisfy { raw.contains(HotKeys.deviceFlag($0.key, $0.value)) }
     }
 
     private static func flags(_ mods: Set<Modifier>) -> NSEvent.ModifierFlags {

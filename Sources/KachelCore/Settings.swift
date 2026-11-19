@@ -9,6 +9,9 @@ public enum Modifier: String, CaseIterable {
     case cmd, ctrl, alt, shift
 }
 
+/// Which physical key of a modifier counts, for `mod: left-alt`.
+public enum ModifierSide: String { case left, right }
+
 public struct KeyChord: Hashable, CustomStringConvertible {
     public var modifiers: Set<Modifier>
     /// Key name as written in the config: "j", "1", "return", "comma", "f5", …
@@ -138,6 +141,9 @@ public struct SettingsError: Error, CustomStringConvertible {
 
 public struct Settings {
     public var mod: Set<Modifier> = [.ctrl, .alt]
+    /// `mod: left-alt`: only that key of the modifier counts as mod, the
+    /// other one is left to the keyboard layout. Empty = both keys.
+    public var modSides: [Modifier: ModifierSide] = [:]
     public var workspaces = (1...9).map(String.init)
     public var gap: Double = 6
     public var ratio: Double = 0.5
@@ -215,7 +221,7 @@ public struct Settings {
             throw SettingsError("unknown setting '\(bad)'")
         }
 
-        if let v = dict["mod"] { s.mod = try parseModifiers(string(v, "mod"), "mod") }
+        if let v = dict["mod"] { (s.mod, s.modSides) = try parseMod(string(v, "mod")) }
         if let v = dict["workspaces"] {
             guard let list = v as? [Any], !list.isEmpty else { throw SettingsError("workspaces must be a non-empty list") }
             s.workspaces = list.map { "\($0)" }
@@ -477,10 +483,33 @@ public struct Settings {
         return KeyChord(modifiers: mods, key: key)
     }
 
-    static func parseModifiers(_ text: String, _ ctx: String) throws -> Set<Modifier> {
-        let parts = text.lowercased().split(whereSeparator: { $0 == "-" || $0 == "+" || $0 == " " })
-        guard !parts.isEmpty else { throw SettingsError("\(ctx): empty modifier") }
-        return Set(try parts.map { try modifier(String($0), ctx) })
+    /// "alt", "ctrl+alt", "left-alt", "right-cmd+shift"
+    public static func parseMod(_ text: String) throws -> (Set<Modifier>, [Modifier: ModifierSide]) {
+        let parts = text.lowercased().split(whereSeparator: { $0 == "-" || $0 == "+" || $0 == " " }).map(String.init)
+        var mods: Set<Modifier> = []
+        var sides: [Modifier: ModifierSide] = [:]
+        var side: ModifierSide?
+        for p in parts {
+            if let s = ModifierSide(rawValue: p) {
+                guard side == nil else { throw SettingsError("mod: '\(text)' has '\(p)' twice in a row") }
+                side = s
+                continue
+            }
+            let m = try modifier(p, "mod")
+            mods.insert(m)
+            if let side { sides[m] = side }
+            side = nil
+        }
+        if side != nil { throw SettingsError("mod: '\(text)' ends in left/right; write e.g. left-alt") }
+        guard !mods.isEmpty else { throw SettingsError("mod: empty modifier") }
+        return (mods, sides)
+    }
+
+    /// Back to config text: "left-alt", "ctrl+alt".
+    public static func modText(_ mods: Set<Modifier>, sides: [Modifier: ModifierSide]) -> String {
+        [Modifier.ctrl, .alt, .cmd, .shift].filter(mods.contains)
+            .map { m in (sides[m].map { "\($0.rawValue)-" } ?? "") + m.rawValue }
+            .joined(separator: "+")
     }
 
     static func modifier(_ p: String, _ ctx: String) throws -> Modifier {
@@ -654,6 +683,7 @@ extension Settings {
 # and the previous settings stay.
 
 # Modifier used by "mod-…" below. Combine cmd, ctrl, alt (= option), shift.
+# left-alt / right-cmd …: only that key; the other one stays free for typing.
 # Option, like Amethyst's mod1. On Swiss and German keyboards this means
 # Option+3/5/6/7/8/9 no longer type # [ ] | { } (use ctrl+alt to keep them).
 mod: alt

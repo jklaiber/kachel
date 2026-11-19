@@ -230,11 +230,27 @@ struct GeneralPane: View {
     var body: some View {
         Form {
             Section("Keyboard") {
-                Picker("Modifier (mod)", selection: m.binding({ modName($0.mod) }, { m.top("mod", $0) })) {
+                Picker("Modifier (mod)", selection: m.binding({ modName($0.mod) }, { name in
+                    // Keep "left only" / "right only" when the modifier changes.
+                    let mods = (try? KSettings.parseMod(name).0) ?? m.s.mod
+                    let side = m.s.modSides.values.first
+                    m.top("mod", KSettings.modText(mods, sides: side.map { s in Dictionary(uniqueKeysWithValues: mods.map { ($0, s) }) } ?? [:]))
+                })) {
                     ForEach(Self.mods, id: \.0) { Text($0.1).tag($0.0) }
                     if !Self.mods.contains(where: { $0.0 == modName(m.s.mod) }) {
                         Text(ShortcutList.glyphs(m.s.mod)).tag(modName(m.s.mod))
                     }
+                }
+                Picker(selection: m.binding({ $0.modSides.values.first?.rawValue ?? "both" }, { side in
+                    let s = ModifierSide(rawValue: side)
+                    m.top("mod", KSettings.modText(m.s.mod, sides: s.map { s in Dictionary(uniqueKeysWithValues: m.s.mod.map { ($0, s) }) } ?? [:]))
+                })) {
+                    Text("Both sides").tag("both")
+                    Text("Left keys only").tag("left")
+                    Text("Right keys only").tag("right")
+                } label: {
+                    Text("Which keys")
+                    Text("Left only leaves the right \(ShortcutList.glyphs(m.s.mod)) free for typing, e.g. for a keyboard layout that uses it.")
                 }
                 Slider(value: m.binding({ $0.shortcutOverview }, { m.top("shortcut-overview", SettingsModel.yaml(($0 * 10).rounded() / 10)) }),
                        in: 0...2, step: 0.1) {

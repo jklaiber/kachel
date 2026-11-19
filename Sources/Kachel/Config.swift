@@ -40,7 +40,7 @@ enum Config {
             current = try Settings.parse(text)
             error = nil
             defer { NotificationCenter.default.post(name: didLoad, object: nil) }
-            Log.info("loaded \(url.path): \(current.keys.count) keys, mod=\(KeyChord(modifiers: current.mod, key: "").description)")
+            Log.info("loaded \(url.path): \(current.keys.count) keys, mod=\(KSettings.modText(current.mod, sides: current.modSides))")
         } catch {
             self.error = "\(error)"
             Log.info("config error (keeping previous settings): \(error)")

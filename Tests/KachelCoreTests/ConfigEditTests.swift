@@ -183,3 +183,36 @@ final class BarBlocksTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("bar:\n  battery:\n    percent: false"))
     }
 }
+
+final class ModifierSideTests: XCTestCase {
+    func testParse() throws {
+        let (m, s) = try Settings.parseMod("left-alt")
+        XCTAssertEqual(m, [.alt])
+        XCTAssertEqual(s, [.alt: .left])
+        let (m2, s2) = try Settings.parseMod("ctrl+right-cmd")
+        XCTAssertEqual(m2, [.ctrl, .cmd])
+        XCTAssertEqual(s2, [.cmd: .right])
+        XCTAssertEqual(try Settings.parseMod("alt").1, [:])
+        XCTAssertThrowsError(try Settings.parseMod("left"))
+        XCTAssertThrowsError(try Settings.parseMod("left-right-alt"))
+        XCTAssertThrowsError(try Settings.parseMod("left-hyper"))
+    }
+
+    func testSettingsAndKeys() throws {
+        let s = try Settings.parse("mod: left-alt")
+        XCTAssertEqual(s.mod, [.alt])
+        XCTAssertEqual(s.modSides, [.alt: .left])
+        // mod-1 still means Option+1; only which Option key differs.
+        XCTAssertNotNil(s.keys[KeyChord(modifiers: [.alt], key: "1")])
+        XCTAssertEqual(try Settings.parse(Settings.defaultYAML).modSides, [:])
+    }
+
+    func testRoundTrip() throws {
+        XCTAssertEqual(Settings.modText([.alt], sides: [.alt: .left]), "left-alt")
+        XCTAssertEqual(Settings.modText([.ctrl, .alt], sides: [:]), "ctrl+alt")
+        for t in ["left-alt", "ctrl+alt", "right-ctrl+right-alt"] {
+            let (m, s) = try Settings.parseMod(t)
+            XCTAssertEqual(Settings.modText(m, sides: s), t)
+        }
+    }
+}

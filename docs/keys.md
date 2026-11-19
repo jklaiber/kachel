@@ -4,6 +4,24 @@
 `alt+cmd`, …). **Hold `mod` alone** for a moment and Kachel shows every
 shortcut, grouped (`shortcut-overview: 0.8`, seconds; `0` turns it off).
 
+## Only the left (or right) key
+
+Many keyboard layouts type characters with Option, for example ü, @ or [ on
+Swiss and German layouts. To keep one Option key for typing, give `mod` a side:
+
+```yaml
+mod: left-alt        # left Option is mod; right Option types as before
+```
+
+`left-` and `right-` work with every modifier (`left-cmd`, `ctrl+right-alt`, …),
+and **Settings → General → Which keys** sets the same. Keys pressed with the
+other side go straight to the app, untouched.
+
+!!! note
+    One-sided shortcuts read the keyboard through Accessibility. Like every
+    such tool, they pause while you type in a password field, where macOS hides
+    key presses from other apps.
+
 ## Default keys
 
 | Key | Action |

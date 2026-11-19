@@ -3,6 +3,7 @@
 # and the previous settings stay.
 
 # Modifier used by "mod-…" below. Combine cmd, ctrl, alt (= option), shift.
+# left-alt / right-cmd …: only that key; the other one stays free for typing.
 # Option, like Amethyst's mod1. On Swiss and German keyboards this means
 # Option+3/5/6/7/8/9 no longer type # [ ] | { } (use ctrl+alt to keep them).
 mod: alt

@@ -12,6 +12,10 @@ taken from its section here.
   the bar fades out on that screen and comes back once the Dock hides again.
   On by default; turn it off with `bar.make-way-for-dock: false` or in
   Settings → Bar.
+- `mod: left-alt`: only the left Option key is Kachel's modifier, and the
+  right one stays free for typing (ü, @, [ … on Swiss and German layouts).
+  `left-` and `right-` work with every modifier; Settings → General →
+  Which keys sets the same.
 
 ## [0.1.16] - 2026-11-17
 
