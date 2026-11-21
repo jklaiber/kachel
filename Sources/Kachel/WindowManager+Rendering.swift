@@ -353,7 +353,7 @@ extension WindowManager {
             border.hide()
             // Empty workspace: take focus ourselves so keystrokes don't go
             // to a window that's parked in a corner.
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
         guard !headless else { return }       // tests never move your pointer
         // Pointer follows focus, unless it's already there (so clicks and

@@ -4,12 +4,12 @@ on:
   pull_request:
 jobs:
   build:
-    # Every macOS GitHub has, Apple Silicon and Intel: the tests (including the
-    # window manager against fakes and the UI checks) and a start of the real app.
+    # Kachel needs macOS 26 (Liquid Glass): Apple Silicon, and Intel (macOS 26 is
+    # the last version for Intel Macs) if GitHub offers it.
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15, macos-15-intel, macos-26]
+        os: [macos-26, macos-26-intel]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:

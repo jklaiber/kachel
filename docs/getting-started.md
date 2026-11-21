@@ -9,8 +9,8 @@ open -a Kachel
 
 Or download `Kachel-<version>.zip` from the
 [releases](https://github.com/jklaiber/kachel/releases) (one app for Apple Silicon
-and Intel) and move `Kachel.app` to `/Applications`. Requires macOS 13 or newer;
-macOS 26 adds Liquid Glass.
+and Intel) and move `Kachel.app` to `/Applications`. Requires macOS 26 (Tahoe) or newer:
+Kachel is built around its Liquid Glass.
 
 ## Upgrade
 

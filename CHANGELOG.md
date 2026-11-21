@@ -8,6 +8,8 @@ taken from its section here.
 ## [Unreleased]
 
 ### Changed
+- Kachel now requires **macOS 26 (Tahoe)**: it's built around Liquid Glass, and
+  only what CI can test is supported. Homebrew keeps older Macs on 0.1.20.
 - An unknown setting in `config.yaml` (a typo, or a setting from a newer Kachel)
   no longer stops the whole file from loading: it's ignored, with a note in the
   bar and at the top of Settings, and a suggestion when it looks like a typo
