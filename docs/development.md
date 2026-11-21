@@ -21,11 +21,26 @@ the permission across your own rebuilds, use any certificate of yours:
 | Path | |
 |---|---|
 | `Sources/KachelCore/` | the pure model, fully unit-tested: `StackSet` (workspaces, displays, greedyView), `Layout`, `Settings` (parsing, the default config, careful edits of the YAML), `WindowSearch`, `Navigation`, `ShortcutList` |
-| `Sources/Kachel/WindowManager.swift` | Accessibility, window tracking, rendering, commands |
+| `Sources/Kachel/WindowManager.swift` | the window manager's state and lifecycle; its parts are in `WindowManager+….swift`: `Discovery` (new, closed and returning windows), `Rendering` (tiling, parking), `Actions` (commands), `Focus`, `Mouse`, `Scratchpads`, `Search`, `State`, `Command`, `Overlays` |
+| `Sources/Kachel/WindowSystem.swift`, `AX.swift` | everything WindowManager asks macOS about windows, behind the `WindowSystem` and `AppWindow` protocols |
+| `Sources/Kachel/Watchdog.swift`, `CrashPrompt.swift`, `Ctl.swift`, `UpdateCheck.swift` | crash recovery, crash reports, the `kachel` command, the update notice |
 | `Sources/Kachel/Bar.swift`, `WindowSwitcher.swift`, `RulePicker.swift`, `ShortcutOverview.swift` | the panels |
 | `Sources/Kachel/SettingsWindow.swift`, `WelcomeWindow.swift` | the SwiftUI windows |
 | `Sources/Kachel/Gestures.swift` | trackpad swipes |
 | `config.example.yaml` | the default config; a test keeps it equal to the built-in one |
+
+## Tests
+
+```bash
+swift test
+```
+
+- `Tests/KachelCoreTests`: the model, layouts, config parsing and editing.
+- `Tests/KachelTests`: the real `WindowManager` driven by a fake window system
+  (`FakeWindowSystem.swift`): windows open, close, switch tabs, get new handles,
+  vanish while the screen is locked; workspaces switch on one or two displays.
+  It runs headless: no windows of its own, nothing moved on your screen, nothing
+  written to your log or saved state. A scenario that broke in real use belongs here.
 
 After changing the default config:
 

@@ -20,7 +20,11 @@ enum Log {
         return f
     }()
 
+    /// Tests turn it off: they must not write into your log.
+    static var enabled = true
+
     static func info(_ message: String) {
+        guard enabled else { return }
         NSLog("Kachel: %@", message)
         let line = "\(stamp.string(from: Date()))  \(message)\n"
         handle?.write(line.data(using: .utf8)!)

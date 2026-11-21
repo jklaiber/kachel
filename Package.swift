@@ -12,6 +12,8 @@ let package = Package(
         .target(name: "KachelCore", dependencies: ["Yams"]),
         // The actual window manager (Accessibility API, hotkeys, bar).
         .executableTarget(name: "Kachel", dependencies: ["KachelCore"]),
-        .testTarget(name: "KachelCoreTests", dependencies: ["KachelCore"]),
+        .testTarget(name: "KachelCoreTests", dependencies: ["KachelCore"], exclude: ["Fixtures"]),
+        // WindowManager against a fake window system (see FakeWindowSystem.swift).
+        .testTarget(name: "KachelTests", dependencies: ["Kachel", "KachelCore"]),
     ]
 )

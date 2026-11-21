@@ -56,7 +56,26 @@ func isManageable(_ el: AXUIElement) -> Bool {
 
 // MARK: - window wrapper
 
-final class AXWindow {
+/// A window as WindowManager sees it. AXWindow is the real one (through
+/// Accessibility); the tests use a fake.
+protocol AppWindow: AnyObject {
+    var id: WindowID { get }
+    var pid: pid_t { get }
+    var bundleID: String? { get }
+    var title: String { get }
+    var frame: CGRect? { get }
+    /// The green "full screen" button. Dialogs, panels and utility windows don't have one.
+    var hasFullscreenButton: Bool { get }
+    var isResizable: Bool { get }
+    func setFrame(_ r: CGRect)
+    func move(to p: CGPoint)
+    func setMinimized(_ on: Bool)
+    func raise()
+    func focus()
+    func close()
+}
+
+final class AXWindow: AppWindow {
     let element: AXUIElement
     let id: WindowID
     let pid: pid_t

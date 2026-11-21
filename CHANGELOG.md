@@ -7,6 +7,16 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- The window manager is split into parts and talks to macOS through one
+  interface, so it can be tested: a new test suite drives it with made-up
+  windows and displays (tab switches, windows coming back, locked screen,
+  Teams meetings on two displays). No change in behaviour.
+
+### Fixed
+- A native tab switch right after the window first appeared could put the new
+  tab at the end of the stack instead of in the old tab's place.
+
 ## [0.1.18] - 2026-11-21
 
 Crash recovery, the `kachel` command, an update notice, and upgrades keep the

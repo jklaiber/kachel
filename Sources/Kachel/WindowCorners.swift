@@ -6,15 +6,15 @@ import AppKit
 ///    old 10 pt corners (many Electron apps), newer ones get the rounder ones;
 ///  - on macOS 26, windows with a toolbar are rounder than plain ones.
 enum WindowCorners {
-    static func radius(of w: AXWindow) -> CGFloat {
+    static func radius(of w: AppWindow) -> CGFloat {
         let os = ProcessInfo.processInfo.operatingSystemVersion.majorVersion
         guard os >= 26 else { return 10 }
         if let sdk = sdkMajor(pid: w.pid), sdk < 26 { return 10 }
         return hasToolbar(w) ? 26 : 16
     }
 
-    private static func hasToolbar(_ w: AXWindow) -> Bool {
-        guard let children = axCopy(w.element, kAXChildrenAttribute) as? [AXUIElement] else { return false }
+    private static func hasToolbar(_ w: AppWindow) -> Bool {
+        guard let w = w as? AXWindow, let children = axCopy(w.element, kAXChildrenAttribute) as? [AXUIElement] else { return false }
         return children.contains { axString($0, kAXRoleAttribute) == kAXToolbarRole }
     }
 

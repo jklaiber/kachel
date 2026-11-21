@@ -9,6 +9,12 @@ enum Config {
     /// Last error from loading the file, shown in the bar.
     static private(set) var error: String?
 
+    /// Tests: settings without a file.
+    static func use(_ s: Settings) {
+        current = s
+        error = nil
+    }
+
     static let url: URL = {
         let base = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"].map(URL.init(fileURLWithPath:))
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config")
