@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-11-21
+
+Crash recovery, the `kachel` command, an update notice, and upgrades keep the
+Accessibility permission from now on.
+
 ### Added
 - The `kachel` command (installed by Homebrew): run any command from the
   config (`kachel workspace 3`) and ask where things are as JSON
@@ -414,7 +419,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.17...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.18...HEAD
+[0.1.18]: https://github.com/jklaiber/kachel/compare/v0.1.17...v0.1.18
 [0.1.17]: https://github.com/jklaiber/kachel/compare/v0.1.16...v0.1.17
 [0.1.16]: https://github.com/jklaiber/kachel/compare/v0.1.15...v0.1.16
 [0.1.15]: https://github.com/jklaiber/kachel/compare/v0.1.14...v0.1.15
