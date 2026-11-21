@@ -2,6 +2,21 @@ import AppKit
 import ApplicationServices
 import KachelCore
 
+// The `kachel` command (Homebrew links it as `kachel`), or `Kachel --ctl …`.
+if (CommandLine.arguments[0] as NSString).lastPathComponent == "kachel" {
+    Ctl.client(Array(CommandLine.arguments.dropFirst()))
+}
+if CommandLine.arguments.count > 1, CommandLine.arguments[1] == "--ctl" {
+    Ctl.client(Array(CommandLine.arguments.dropFirst(2)))
+}
+
+// `Kachel --watchdog <pid> <bundle>`: the helper that puts windows back if
+// Kachel dies (see Watchdog.swift). Nothing else of the app runs in it.
+if let i = CommandLine.arguments.firstIndex(of: "--watchdog"), CommandLine.arguments.count > i + 2,
+   let pid = pid_t(CommandLine.arguments[i + 1]) {
+    Watchdog.run(parent: pid, bundle: CommandLine.arguments[i + 2])
+}
+
 let app = NSApplication.shared
 
 if CommandLine.arguments.contains("--version") {
@@ -56,22 +71,25 @@ for sig in [SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP] {
 }
 NSSetUncaughtExceptionHandler { _ in WindowManager.shared.emergencyRestore() }
 
-// Debug hooks for scripts:
-//   kachel-ctl dump              → state into ~/Library/Logs/Kachel.log
-//   kachel-ctl "workspace 2"     → run any config command
-DistributedNotificationCenter.default().addObserver(forName: .init("io.github.jklaiber.kachel.ctl"), object: nil, queue: .main) { note in
-    let text = (note.object as? String) ?? ""
-    Log.info("ctl: \(text)")
-    if text == "dump" { WindowManager.shared.dumpState(); return }
-    do {
-        let cmd = try Settings.parseCommand(text, workspaceCount: Config.current.workspaces.count, context: "ctl")
-        WindowManager.shared.perform(cmd)
-    } catch { Log.info("ctl: \(error)") }
+// The `kachel` command (see Ctl.swift).
+Ctl.listen { WindowManager.shared.ctl($0) }
+
+/// A quit from outside (`brew upgrade` quits Kachel this way, as do logout
+/// and AppleScript) goes the same way as mod-shift-q: windows come back first.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        Log.info("asked to quit (Apple Event or logout)")
+        WindowManager.shared.quit()      // exits
+        return .terminateNow
+    }
 }
+let appDelegate = AppDelegate()
+app.delegate = appDelegate
 
 // Bar, config and hotkeys come up right away, so you can see what's going on
 // even before Accessibility is granted.
 WindowManager.shared.startUI()
+CrashPrompt.scheduleChecks()
 
 // startUI shows the welcome window and asks macOS for Accessibility.
 if AXIsProcessTrusted() {

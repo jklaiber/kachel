@@ -20,7 +20,7 @@ final class WindowManager {
     private var windows: [WindowID: AXWindow] = [:]
     private var observers: [pid_t: AXObserver] = [:]
     private var screens: [Screen] = []
-    private var hidden: Set<WindowID> = []
+    private var hidden: Set<WindowID> = [] { didSet { scheduleRecordParked() } }
     /// When apps moved their own tiled windows (see correctAppMove).
     private var appMoves: [WindowID: [Date]] = [:]
     /// When and where each managed window was last seen, to recognise a
@@ -34,7 +34,21 @@ final class WindowManager {
     /// Windows we minimized because their workspace went out of sight (rules
     /// with `hide: minimize`, e.g. a Teams meeting, so the app shows its small
     /// window). Ones you minimized yourself aren't here and stay minimized.
-    private var minimizedByUs: [WindowID: (window: AXWindow, at: Date, wasFocused: Bool)] = [:]
+    private var minimizedByUs: [WindowID: (window: AXWindow, at: Date, wasFocused: Bool)] = [:] { didSet { scheduleRecordParked() } }
+    private var recordPending = false
+
+    /// Tell the watchdog what's out of sight, once per run loop pass.
+    private func scheduleRecordParked() {
+        guard !recordPending else { return }
+        recordPending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.recordPending = false
+            let entry = { (id: WindowID) in self.windows[id].map { Watchdog.Parked.Entry(pid: $0.pid, window: id) } }
+            Watchdog.record(.init(parked: self.hidden.sorted().compactMap(entry),
+                                  minimized: self.minimizedByUs.keys.sorted().compactMap(entry)))
+        }
+    }
     /// Restored by us; focus them again once they're back.
     private var refocusWhenBack: Set<WindowID> = []
     /// Floating window frames relative to their screen's visible origin, saved on hide.
@@ -107,6 +121,7 @@ final class WindowManager {
         }
         bar.menuActions = menuEntries()
         menuBarItem.entries = { [unowned self] in self.menuEntries() }
+        UpdateCheck.shared.onChange = { [unowned self] in self.bar.menuActions = self.menuEntries() }
         switcher.onGo = { [unowned self] id in self.goToWindow(id) }
         switcher.onBring = { [unowned self] id in self.bringWindow(id) }
         switcher.onCancel = { [unowned self] in self.focusCurrent() }
@@ -142,7 +157,10 @@ final class WindowManager {
 
     /// Shared by the menu bar icon and the bar's right-click menu.
     private func menuEntries() -> [(title: String, action: () -> Void)] {
-        [
+        let update: [(title: String, action: () -> Void)] = UpdateCheck.shared.available.map {
+            [("Update Available: Kachel \($0.version)…", { UpdateCheck.shared.showDetails() }), ("-", {})]
+        } ?? []
+        return update + [
             ("About Kachel", { AppVersion.showAbout() }),
             ("Settings…", { [unowned self] in self.settingsWindow.show() }),
             ("Keyboard Shortcuts", { [unowned self] in self.showOverview(hint: "Press any key to close") }),
@@ -172,6 +190,7 @@ final class WindowManager {
         guard !managing else { return }
         managing = true
         Log.info("Accessibility granted, managing windows")
+        Watchdog.spawn()
         // One-sided shortcuts (mod: left-alt) couldn't start without it.
         if !Config.current.modSides.isEmpty {
             hotkeyProblems = HotKeys.shared.bind(Config.current.keys, sides: Config.current.modSides) { [unowned self] cmd in self.perform(cmd) }
@@ -255,6 +274,7 @@ final class WindowManager {
         ss.insertPosition = cfg.newWindows
         ss.setLayoutIfUnlisted(cfg.layouts)
         menuBarItem.setVisible(cfg.menubarIcon)
+        UpdateCheck.shared.apply(enabled: cfg.checkForUpdates)
         LoginItem.apply(cfg.startAtLogin)
         updateGestures()
         bar.menuBarIconShown = cfg.menubarIcon
@@ -317,6 +337,8 @@ final class WindowManager {
     func quit() {
         if managing { saveSnapshot() }
         restoreAllWindows()
+        Watchdog.stop()
+        Ctl.stopListening()
         HotKeys.shared.unbindAll()
         Log.info("quit")
         exit(0)
@@ -327,6 +349,7 @@ final class WindowManager {
         Log.info("restarting")
         if managing { saveSnapshot() }
         restoreAllWindows()
+        Watchdog.stop()
         HotKeys.shared.unbindAll()
         let bundle = Bundle.main.bundlePath
         let p = Process()
@@ -786,6 +809,71 @@ final class WindowManager {
         }
         Log.info("rule for \(name): moved \(moved) window(s)")
         render()
+    }
+
+    // MARK: - the kachel command
+
+    /// One line from `kachel …` (see Ctl.swift).
+    func ctl(_ text: String) -> (ok: Bool, output: String) {
+        Log.info("kachel command: \(text)")
+        let parts = text.split(separator: " ").map(String.init)
+        switch parts.first {
+        case "version": return (true, "Kachel.app \(AppVersion.string)")
+        case "dump": dumpState(); return (true, "written to ~/Library/Logs/Kachel.log")
+        case "query":
+            guard managing else { return (false, "Kachel isn't managing windows yet (Accessibility permission)") }
+            guard let what = parts.dropFirst().first, let json = query(what) else {
+                return (false, "query what? workspaces, windows, screens or focused")
+            }
+            return (true, json)
+        default:
+            do {
+                let cmd = try Settings.parseCommand(text, workspaceCount: Config.current.workspaces.count, context: "command")
+                perform(cmd)
+                return (true, "")
+            } catch {
+                return (false, "\(error)")
+            }
+        }
+    }
+
+    private func query(_ what: String) -> String? {
+        func window(_ id: WindowID) -> [String: Any] {
+            let w = windows[id]
+            var d: [String: Any] = [
+                "id": id, "app": w.flatMap { NSRunningApplication(processIdentifier: $0.pid)?.localizedName } ?? "",
+                "bundle-id": w?.bundleID ?? "", "title": w?.title ?? "", "pid": w?.pid ?? 0,
+                "workspace": ss.workspaceIndex(of: id).map { ss.workspaces[$0].tag } ?? NSNull(),
+                "floating": ss.floating.contains(id), "visible": !hidden.contains(id),
+                "focused": ss.current.focused == id,
+            ]
+            if let f = w?.frame { d["frame"] = ["x": f.minX, "y": f.minY, "width": f.width, "height": f.height] }
+            return d
+        }
+        func workspace(_ i: Int) -> [String: Any] {
+            let ws = ss.workspaces[i]
+            return ["index": i + 1, "name": ws.tag, "layout": ws.effectiveLayout.configName,
+                    "screen": ss.screenWorkspace.firstIndex(of: i).map { $0 + 1 } ?? NSNull(),
+                    "visible": ss.screenWorkspace.contains(i), "focused": ss.currentWorkspaceIndex == i,
+                    "windows": ws.windows, "focused-window": ws.focused ?? NSNull()]
+        }
+        let value: Any
+        switch what {
+        case "workspaces": value = ss.workspaces.indices.map(workspace)
+        case "windows": value = ss.workspaces.flatMap(\.windows).map(window)
+        case "screens":
+            value = screens.enumerated().map { i, s -> [String: Any] in
+                ["index": i + 1, "name": s.ns.localizedName, "builtin": s.builtin, "focused": ss.currentScreen == i,
+                 "workspace": ss.screenWorkspace.indices.contains(i) ? ss.workspaces[ss.screenWorkspace[i]].tag : NSNull(),
+                 "frame": ["x": s.frame.minX, "y": s.frame.minY, "width": s.frame.width, "height": s.frame.height]]
+            }
+        case "focused":
+            value = ["workspace": workspace(ss.currentWorkspaceIndex),
+                     "window": ss.current.focused.map(window) ?? NSNull()] as [String: Any]
+        default: return nil
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted, .sortedKeys]) else { return nil }
+        return String(decoding: data, as: UTF8.self)
     }
 
     // MARK: - state across restarts

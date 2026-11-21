@@ -352,9 +352,16 @@ struct GeneralPane: View {
                 TextField("Terminal command", text: $terminalText).commitOnLeave {
                     if !terminalText.isEmpty, terminalText != m.s.terminal { m.top("terminal", KSettings.yamlScalar(terminalText)) }
                 }
+                Toggle(isOn: m.binding({ $0.checkForUpdates }, { m.top("check-for-updates", SettingsModel.yaml($0)) })) {
+                    Text("Check for updates")
+                    Text("Once a day, Kachel looks up the latest release on GitHub. A newer one shows up in the menu.")
+                }
                 LabeledContent("Version") {
                     HStack {
                         Text(AppVersion.string).textSelection(.enabled)
+                        if let r = UpdateCheck.shared.available {
+                            Button("\(r.version) available…") { UpdateCheck.shared.showDetails() }
+                        }
                         Button("About Kachel") { AppVersion.showAbout() }
                     }
                 }

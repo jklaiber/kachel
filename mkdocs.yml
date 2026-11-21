@@ -69,6 +69,7 @@ nav:
       - Window search and app rules: window-search-and-rules.md
       - Scratchpads: scratchpads.md
       - Mouse and trackpad: mouse-and-trackpad.md
+      - Command line: command-line.md
   - Configuration:
       - Settings and config.yaml: settings.md
       - Reference: configuration.md

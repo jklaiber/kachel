@@ -1,0 +1,91 @@
+{"app_name": "Kachel", "app_version": "0.0.0-dev", "bundleID": "io.github.jklaiber.kachel", "bug_type": "309", "os_version": "macOS 26.5.2 (25F84)", "name": "Kachel"}
+{
+ "exception": {
+  "codes": "0x0000000000000002, 0x00000001f9364408",
+  "rawCodes": [
+   2,
+   8476050440
+  ],
+  "type": "EXC_BAD_ACCESS",
+  "signal": "SIGBUS",
+  "subtype": "KERN_PROTECTION_FAILURE at 0x00000001f9364408"
+ },
+ "faultingThread": 0,
+ "threads": [
+  {
+   "triggered": true,
+   "frames": [
+    {
+     "imageOffset": 8476050440,
+     "symbol": "_swiftEmptyDictionarySingleton",
+     "symbolLocation": 0,
+     "imageIndex": 3
+    },
+    {
+     "symbol": "closure #1 in Battery.init()",
+     "inline": true,
+     "imageIndex": 0,
+     "imageOffset": 172504,
+     "symbolLocation": 4,
+     "sourceLine": 25,
+     "sourceFile": "Battery.swift"
+    },
+    {
+     "imageOffset": 172504,
+     "sourceLine": 21,
+     "sourceFile": "/<compiler-generated>",
+     "symbol": "@objc closure #1 in Battery.init()",
+     "imageIndex": 0,
+     "symbolLocation": 60
+    },
+    {
+     "imageOffset": 693260,
+     "symbol": "__CFMachPortPerform",
+     "symbolLocation": 288,
+     "imageIndex": 4
+    },
+    {
+     "imageOffset": 517288,
+     "symbol": "__CFRUNLOOP_IS_CALLING_OUT_TO_A_SOURCE1_PERFORM_FUNCTION__",
+     "symbolLocation": 60,
+     "imageIndex": 4
+    },
+    {
+     "imageOffset": 517072,
+     "symbol": "__CFRunLoopDoSource1",
+     "symbolLocation": 504,
+     "imageIndex": 4
+    },
+    {
+     "imageOffset": 511384,
+     "symbol": "__CFRunLoopRun",
+     "symbolLocation": 2168,
+     "imageIndex": 4
+    },
+    {
+     "imageOffset": 1372612,
+     "symbol": "_CFRunLoopRunSpecificWithOptions",
+     "symbolLocation": 532,
+     "imageIndex": 4
+    }
+   ]
+  }
+ ],
+ "usedImages": [
+  {
+   "name": "Kachel"
+  },
+  {
+   "name": "?"
+  },
+  {
+   "name": "?"
+  },
+  {
+   "name": "?"
+  },
+  {
+   "name": "CoreFoundation"
+  }
+ ]
+}

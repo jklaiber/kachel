@@ -1,6 +1,3 @@
-#!/usr/bin/env swift
-// Send a command to the running Kachel:  kachel-ctl dump | "workspace 2" | "focus-down" …
-import Foundation
-let text = CommandLine.arguments.dropFirst().joined(separator: " ")
-DistributedNotificationCenter.default().postNotificationName(.init("io.github.jklaiber.kachel.ctl"), object: text,
-                                                             userInfo: nil, deliverImmediately: true)
+#!/bin/bash
+# The `kachel` command from the dev build:  scripts/kachel-ctl dump | query windows | "workspace 2" …
+exec "$(dirname "$0")/../build/Kachel.app/Contents/MacOS/Kachel" --ctl "$@"

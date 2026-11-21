@@ -37,14 +37,25 @@ Everything Kachel does is logged to `~/Library/Logs/Kachel.log` (also *Show Log*
 in the bar's menu): commands, new and closed windows, moves that didn't work,
 config errors.
 
-## kachel-ctl
+## The kachel command
 
-`scripts/kachel-ctl` in the repository sends commands to the running Kachel:
+[`kachel`](command-line.md) shows what Kachel sees and runs commands:
 
 ```bash
-scripts/kachel-ctl dump             # write every workspace and window to the log
-scripts/kachel-ctl "workspace 3"    # any command from config.yaml
+kachel dump                # write every workspace and window to the log
+kachel query windows       # the same as JSON
+kachel workspace 3         # any command from config.yaml
 ```
+
+From a clone of the repository, `scripts/kachel-ctl` does the same with the dev build.
+
+## After a crash
+
+If Kachel crashes or is force-quit, a small helper process puts windows from
+hidden workspaces back on screen, unminimizes the ones Kachel minimized, and
+starts Kachel again (not if it keeps crashing: three times in ten minutes).
+The next time, Kachel offers to report the crash: **Report on GitHub…** opens
+a new issue with the crash details filled in, for you to look over and send.
 
 ## Command line options
 

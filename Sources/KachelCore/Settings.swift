@@ -188,6 +188,8 @@ public struct Settings {
     /// Float windows smaller than this in both directions (Amethyst's float-small-windows); 0 = off.
     public var floatSmallWindows = 0
     public var startAtLogin = false
+    /// Once a day, ask GitHub for the latest release (nothing else is sent).
+    public var checkForUpdates = true
     public var scratchpads: [Scratchpad] = []
     public var border = BorderSettings()
     public var bar = BarSettings()
@@ -212,7 +214,7 @@ public struct Settings {
 
         let known: Set<String> = ["mod", "workspaces", "gap", "ratio", "ratio-step", "mouse-follows-focus",
                                   "terminal", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
-                                  "float-dialogs", "float-small-windows", "start-at-login",
+                                  "float-dialogs", "float-small-windows", "start-at-login", "check-for-updates",
                                   "scratchpads", "border", "focus-follows-mouse",
                                   "workspace-back-and-forth", "workspace-screens", "new-windows",
                                   "haptics", "shortcut-overview", "padding", "builtin-display-padding",
@@ -285,6 +287,7 @@ public struct Settings {
             else { s.floatSmallWindows = max(0, Int(try number(v, "float-small-windows"))) }
         }
         if let v = dict["start-at-login"] { s.startAtLogin = try bool(v, "start-at-login") }
+        if let v = dict["check-for-updates"] { s.checkForUpdates = try bool(v, "check-for-updates") }
         if dict["scratchpads"] == nil, yaml != defaultYAML {
             s.scratchpads = Settings.defaults.scratchpads
         }
@@ -731,6 +734,7 @@ float-dialogs: true
 float-small-windows: 0
 
 start-at-login: false     # launch Kachel when you log in (needs Kachel.app in /Applications)
+check-for-updates: true   # once a day, look up the latest release on GitHub; the menu says when there's a newer one
 
 # The bar at the bottom of every screen. Click a workspace to show it on that
 # screen; right-click for the menu, where widgets can also be switched on and off.

@@ -31,6 +31,9 @@ cask "kachel" do
   depends_on macos: :ventura
 
   app "Kachel.app"
+  # The `kachel` command: the app's own executable, which acts as the
+  # command line tool when started under this name.
+  binary "#{appdir}/Kachel.app/Contents/MacOS/Kachel", target: "kachel"
 
   # Kachel isn't notarized (no paid Apple Developer ID); without this macOS
   # refuses to open the downloaded app.

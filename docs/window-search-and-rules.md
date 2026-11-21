@@ -67,7 +67,7 @@ rules:
   main window "Microsoft Teams" or "teams.microsoft.com/…". So the rule above
   takes every Teams window except the main one, whatever the meeting is called.
 - `title` and `title-not` are matched each time, so a window that only becomes
-  a meeting later is covered. See a window's title with `scripts/kachel-ctl dump` (written to the log).
+  a meeting later is covered. See window titles with `kachel query windows`.
 
 The default config includes the Teams rule; add the others if you use Zoom or
 Webex. Outlook's meeting reminder needs no rule: it floats above other windows

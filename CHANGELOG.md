@@ -7,6 +7,28 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- The `kachel` command (installed by Homebrew): run any command from the
+  config (`kachel workspace 3`) and ask where things are as JSON
+  (`kachel query windows`, `workspaces`, `screens`, `focused`). See
+  [Command line](https://jklaiber.github.io/kachel/command-line/).
+- If Kachel crashes or is force-quit, a helper puts windows from hidden
+  workspaces back on screen, unminimizes the ones Kachel minimized, and starts
+  Kachel again.
+- After a crash, Kachel offers to report it: a GitHub issue with the crash
+  details filled in, for you to look over and send.
+- Update notice: once a day Kachel looks up the latest release on GitHub, and
+  the menu shows when a newer one is out. Turn it off with
+  `check-for-updates: false` or in Settings → General.
+
+### Removed
+- `scripts/kachel-ctl` no longer sends commands as a system-wide notification
+  that any app could post; it's now a wrapper around the `kachel` command.
+
+### Fixed
+- `brew upgrade` (and logging out) left windows of hidden workspaces parked in
+  a corner: quitting from outside now puts them back like ⌥⇧Q does.
+
 ## [0.1.17] - 2026-11-19
 
 The bar makes way for the Dock, and mod can be only the left Option key.
