@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.19] - 2026-11-21
+
+Plugging displays in and out keeps your workspaces where they were, and
+Kachel's window handling is now covered by tests.
+
 ### Changed
 - The window manager is split into parts and talks to macOS through one
   interface, so it can be tested: a new test suite drives it with made-up
@@ -436,7 +441,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.18...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.19...HEAD
+[0.1.19]: https://github.com/jklaiber/kachel/compare/v0.1.18...v0.1.19
 [0.1.18]: https://github.com/jklaiber/kachel/compare/v0.1.17...v0.1.18
 [0.1.17]: https://github.com/jklaiber/kachel/compare/v0.1.16...v0.1.17
 [0.1.16]: https://github.com/jklaiber/kachel/compare/v0.1.15...v0.1.16

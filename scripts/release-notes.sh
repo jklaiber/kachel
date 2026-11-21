@@ -37,9 +37,9 @@ brew update && brew upgrade --cask kachel   # from an earlier version
 \`\`\`
 
 Or download \`Kachel-$V.zip\` below (universal: Apple Silicon and Intel).
-After installing or upgrading, grant Accessibility again under System Settings →
-Privacy & Security → Accessibility: the app is ad-hoc signed, so macOS treats each
-version as a new app.
+On first install, grant Accessibility under System Settings → Privacy & Security
+→ Accessibility. Upgrades keep it (since 0.1.18; coming from an older version,
+macOS asks once more).
 NOTES
 if [[ -n "$compare" && "$compare" == *compare* ]]; then
     printf '\n**Full changelog**: %s\n' "$compare"
