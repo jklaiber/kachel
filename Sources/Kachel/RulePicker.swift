@@ -43,7 +43,7 @@ final class RulePicker: NSObject, NSWindowDelegate {
         content.frame = panel.contentView!.bounds
         view.frame = content.bounds
         view.needsDisplay = true
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(view)
     }

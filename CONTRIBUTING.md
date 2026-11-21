@@ -21,7 +21,7 @@ Security problems go through [private reporting](SECURITY.md), not issues.
 
 ## Building
 
-Requires macOS 26+ and Xcode 26 (or its Command Line Tools).
+Requires macOS 13+ and the Xcode Command Line Tools.
 
 ```bash
 swift test                          # the model, and the window manager against made-up windows

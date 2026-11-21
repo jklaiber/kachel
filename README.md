@@ -76,7 +76,7 @@ Coming from xmonad, Amethyst or AeroSpace? See
 
 ## Build
 
-Requires macOS 26+ and Xcode 26 (or its Command Line Tools).
+Requires macOS 13+ and the Xcode Command Line Tools.
 
 ```bash
 swift test

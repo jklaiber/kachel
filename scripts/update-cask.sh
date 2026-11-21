@@ -28,7 +28,7 @@ cask "kachel" do
   desc "Tiling window manager with xmonad's workspace model"
   homepage "https://github.com/jklaiber/kachel"
 
-  depends_on macos: :tahoe
+  depends_on macos: :ventura
 
   app "Kachel.app"
   # The `kachel` command: the app's own executable, which acts as the

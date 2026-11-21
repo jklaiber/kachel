@@ -65,7 +65,7 @@ final class UpdateCheck {
         a.addButton(withTitle: "Copy Command")
         a.addButton(withTitle: "Release Notes")
         a.addButton(withTitle: "Later")
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         a.window.orderFrontRegardless()
         switch a.runModal() {
         case .alertFirstButtonReturn:
