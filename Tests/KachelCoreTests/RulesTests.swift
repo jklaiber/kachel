@@ -147,8 +147,9 @@ final class RulesTests: XCTestCase {
         XCTAssertNoThrow(try Settings.parse(text))
     }
 
-    func testFloatingListIsGone() {
-        XCTAssertThrowsError(try Settings.parse("floating:\n  - com.apple.calculator"))
+    func testFloatingListIsGone() throws {
+        XCTAssertEqual(try Settings.parse("floating:\n  - com.apple.calculator").warnings,
+                       ["unknown setting 'floating' ignored"])
     }
 
     func testSetRuleKeepsHandWrittenTitleRules() throws {

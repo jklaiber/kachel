@@ -45,6 +45,21 @@ swift test
   the way, in order.
   It runs headless: no windows of its own, nothing moved on your screen, nothing
   written to your log or saved state. A scenario that broke in real use belongs here.
+- `Tests/KachelTests/UITests.swift`: Kachel's own UI (the bar, Settings, the
+  welcome window, window search, alerts) drawn with made-up content and compared
+  pixel by pixel with references in `__Snapshots__/macOS-<version>/`. Rendering is
+  exactly reproducible on one macOS version, so any change shows: the test writes
+  `….actual.png` and a `….diff.png` with the changes in red next to the reference.
+  After an intended change, record new references and look at them before
+  committing:
+
+  ```bash
+  KACHEL_RECORD_SNAPSHOTS=1 swift test --filter UITests
+  ```
+
+  On a macOS version without references, the first run records them (in CI the
+  comparison is skipped). Checks that hold on every version run anyway, e.g. that
+  the crash alert's text isn't cut off.
 
 After changing the default config:
 

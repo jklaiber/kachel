@@ -202,6 +202,9 @@ public struct Settings {
     public var border = BorderSettings()
     public var bar = BarSettings()
     public var keys: [KeyChord: Command] = [:]
+    /// Things in the file that were ignored (unknown settings: typos, or
+    /// settings of a newer Kachel). The rest of the file still applies.
+    public var warnings: [String] = []
 
     public init() {}
 
@@ -227,8 +230,9 @@ public struct Settings {
                                   "workspace-back-and-forth", "workspace-screens", "workspace-layouts", "new-windows",
                                   "haptics", "shortcut-overview", "padding", "builtin-display-padding",
                                   "smart-gaps", "window-limit", "follow-moved-windows"]
-        if let bad = dict.keys.first(where: { !known.contains($0) }) {
-            throw SettingsError("unknown setting '\(bad)'")
+        s.warnings = []
+        for bad in dict.keys.sorted() where !known.contains(bad) {
+            s.warnings.append(unknown(bad, known))
         }
 
         if let v = dict["mod"] { (s.mod, s.modSides) = try parseMod(string(v, "mod")) }
@@ -323,8 +327,8 @@ public struct Settings {
                 let ctx = "scratchpads[\(i + 1)]"
                 guard let d = item as? [String: Any] else { throw SettingsError("\(ctx) must be a mapping") }
                 let allowed = ["name", "app", "title", "run", "size", "position"]
-                if let bad = d.keys.first(where: { !allowed.contains($0) }) {
-                    throw SettingsError("\(ctx): unknown setting '\(bad)' (use \(allowed.joined(separator: ", ")))")
+                for bad in d.keys.sorted() where !allowed.contains(bad) {
+                    s.warnings.append(unknown("\(ctx).\(bad)", allowed, last: bad))
                 }
                 guard let name = d["name"].map({ "\($0)" }), !name.isEmpty, !name.contains(" ") else {
                     throw SettingsError("\(ctx) needs a name: without spaces")
@@ -371,7 +375,7 @@ public struct Settings {
                         throw SettingsError("border.color must be accent or a colour like \"#5DCAA5\"")
                     }
                     s.border.color = c
-                default: throw SettingsError("unknown setting 'border.\(k)'")
+                default: s.warnings.append(unknown("border.\(k)", BorderKeys.all, last: k))
                 }
             }
         }
@@ -397,7 +401,7 @@ public struct Settings {
                 case "swipe-right": s.gestures.right = try cmd()
                 case "swipe-up": s.gestures.up = try cmd()
                 case "swipe-down": s.gestures.down = try cmd()
-                default: throw SettingsError("unknown setting 'gestures.\(k)'")
+                default: s.warnings.append(unknown("gestures.\(k)", GesturesKeys.all, last: k))
                 }
             }
         }
@@ -416,12 +420,12 @@ public struct Settings {
                 case "right": s.bar.right = try widgets(v, "bar.right")
                 // Each widget's own options, in a block named after it.
                 case "workspaces":
-                    for (k2, v2) in try block(v, "bar.workspaces", keys: ["hide-empty", "window-counts"]) {
+                    for (k2, v2) in try block(v, "bar.workspaces", keys: ["hide-empty", "window-counts"], warnings: &s.warnings) {
                         if k2 == "hide-empty" { s.bar.hideEmptyWorkspaces = try bool(v2, "bar.workspaces.hide-empty") }
                         if k2 == "window-counts" { s.bar.workspaceCounts = try bool(v2, "bar.workspaces.window-counts") }
                     }
                 case "title":
-                    for (k2, v2) in try block(v, "bar.title", keys: ["windows", "only-in-full"]) {
+                    for (k2, v2) in try block(v, "bar.title", keys: ["windows", "only-in-full"], warnings: &s.warnings) {
                         if k2 == "windows" {
                             // YAML reads a bare `off` as false.
                             if let b = v2 as? Bool, !b { s.bar.windows = .off; continue }
@@ -433,19 +437,19 @@ public struct Settings {
                         if k2 == "only-in-full" { s.bar.windowsFullOnly = try bool(v2, "bar.title.only-in-full") }
                     }
                 case "stats":
-                    for (_, v2) in try block(v, "bar.stats", keys: ["interval"]) {
+                    for (_, v2) in try block(v, "bar.stats", keys: ["interval"], warnings: &s.warnings) {
                         s.bar.interval = max(0.5, try number(v2, "bar.stats.interval"))
                     }
                 case "battery":
-                    for (_, v2) in try block(v, "bar.battery", keys: ["percentage"]) {
+                    for (_, v2) in try block(v, "bar.battery", keys: ["percentage"], warnings: &s.warnings) {
                         s.bar.batteryPercentage = try bool(v2, "bar.battery.percentage")
                     }
                 case "date":
-                    for (_, v2) in try block(v, "bar.date", keys: ["format"]) {
+                    for (_, v2) in try block(v, "bar.date", keys: ["format"], warnings: &s.warnings) {
                         s.bar.dateFormat = try string(v2, "bar.date.format")
                     }
                 case "clock":
-                    for (_, v2) in try block(v, "bar.clock", keys: ["format"]) {
+                    for (_, v2) in try block(v, "bar.clock", keys: ["format"], warnings: &s.warnings) {
                         s.bar.clockFormat = try string(v2, "bar.clock.format")
                     }
                 case "background":
@@ -459,7 +463,7 @@ public struct Settings {
                     }
                     s.bar.appearance = a
                 case "make-way-for-dock": s.bar.makeWayForDock = try bool(v, "bar.make-way-for-dock")
-                default: throw SettingsError("unknown setting 'bar.\(k)'")
+                default: s.warnings.append(unknown("bar.\(k)", BarKeys.all, last: k))
                 }
             }
         }
@@ -690,14 +694,49 @@ public struct Settings {
     }
     /// A widget's block under `bar:`, e.g. `battery: {percentage: true}`; an
     /// empty block is fine, unknown keys aren't.
-    private static func block(_ v: Any, _ k: String, keys: Set<String>) throws -> [String: Any] {
+    private static func block(_ v: Any, _ k: String, keys: Set<String>, warnings: inout [String]) throws -> [String: Any] {
         if v is NSNull { return [:] }
         guard let d = v as? [String: Any] else { throw SettingsError("\(k) must be a mapping") }
-        if let bad = d.keys.first(where: { !keys.contains($0) }) {
-            throw SettingsError("unknown setting '\(k).\(bad)' (use \(keys.sorted().joined(separator: ", ")))")
+        for bad in d.keys.sorted() where !keys.contains(bad) {
+            warnings.append(unknown("\(k).\(bad)", keys, last: bad))
         }
-        return d
+        return d.filter { keys.contains($0.key) }
     }
+
+    enum BorderKeys { static let all = ["enabled", "width", "radius", "smart", "color"] }
+    enum GesturesKeys { static let all = ["enabled", "fingers", "skip-empty", "direction", "swipe-left", "swipe-right", "swipe-up", "swipe-down"] }
+    enum BarKeys { static let all = ["enabled", "height", "font-size", "left", "right", "workspaces", "title", "stats", "battery", "date", "clock", "background", "appearance", "make-way-for-dock"] }
+
+    /// "unknown setting 'gapp' ignored (did you mean 'gap'?)"
+    static func unknown<C: Collection>(_ path: String, _ allowed: C, last: String? = nil) -> String where C.Element == String {
+        let key = last ?? path
+        // A typo (a letter or two off), or the start of a longer name ("percent").
+        let close = allowed.filter {
+            editDistance($0, key) <= max(1, key.count / 4) || (key.count >= 4 && ($0.hasPrefix(key) || key.hasPrefix($0)))
+        }.min { editDistance($0, key) < editDistance($1, key) }
+        return "unknown setting '\(path)' ignored" + (close.map { " (did you mean '\($0)'?)" } ?? "")
+    }
+
+    /// Typos between two names: letters added, missing, changed, or two
+    /// neighbours swapped ("titel" → "title" is one).
+    static func editDistance(_ a: String, _ b: String) -> Int {
+        let a = Array(a), b = Array(b)
+        if a.isEmpty || b.isEmpty { return max(a.count, b.count) }
+        var d = [[Int]](repeating: [Int](repeating: 0, count: b.count + 1), count: a.count + 1)
+        for i in 0...a.count { d[i][0] = i }
+        for j in 0...b.count { d[0][j] = j }
+        for i in 1...a.count {
+            for j in 1...b.count {
+                let cost = a[i - 1] == b[j - 1] ? 0 : 1
+                d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost)
+                if i > 1, j > 1, a[i - 1] == b[j - 2], a[i - 2] == b[j - 1] {
+                    d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)
+                }
+            }
+        }
+        return d[a.count][b.count]
+    }
+
 
     private static func bool(_ v: Any, _ k: String) throws -> Bool {
         guard let b = v as? Bool else { throw SettingsError("\(k) must be true or false") }

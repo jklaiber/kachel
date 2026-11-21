@@ -307,6 +307,10 @@ extension WindowManager {
             warning = "config: \(e)"
         } else if let p = hotkeyProblems.first {
             warning = p + (hotkeyProblems.count > 1 ? " (+\(hotkeyProblems.count - 1) more, see log)" : "")
+        } else if let w = Config.current.warnings.first {
+            // Ignored settings: everything else applies, but you should know.
+            let more = Config.current.warnings.count - 1
+            warning = "config: \(w)" + (more > 0 ? " (+\(more) more, see Settings)" : "")
         }
         var contents: [Bar.Content] = []
         for (s, wsIndex) in ss.screenWorkspace.enumerated() {

@@ -34,8 +34,11 @@ keys:
 
 - Anything you leave out uses the default.
 - **`keys:` replaces the default keymap as a whole**; leave it out to keep it.
-- If the file has an error, the bar shows it in orange and the previous
-  settings stay in effect.
+- If the file has an error (a value that doesn't fit, like `gap: banana`), the
+  bar shows it in orange and the previous settings stay in effect.
+- A setting Kachel doesn't know (a typo, or one from a newer version) is
+  ignored with a note in the bar and at the top of Settings ("unknown setting
+  'gapp' ignored (did you mean 'gap'?)"); everything else applies.
 
 The [configuration reference](configuration.md) lists every option.
 After an upgrade, compare your config with the new defaults:

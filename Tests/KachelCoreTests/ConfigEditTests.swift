@@ -178,9 +178,14 @@ final class BarBlocksTests: XCTestCase {
         XCTAssertEqual(try Settings.parse(t).keys.count, 1)
     }
 
-    func testOldFlatKeysAreGone() {
-        XCTAssertThrowsError(try Settings.parse("bar:\n  battery-percentage: false"))
-        XCTAssertThrowsError(try Settings.parse("bar:\n  battery:\n    percent: false"))
+    func testOldFlatKeysAreGone() throws {
+        // Ignored with a warning; the rest of the file applies.
+        XCTAssertEqual(try Settings.parse("bar:\n  battery-percentage: false").warnings,
+                       ["unknown setting 'bar.battery-percentage' ignored (did you mean 'battery'?)"])
+        let s = try Settings.parse("bar:\n  battery:\n    percent: false\n  font-size: 15")
+        XCTAssertEqual(s.warnings, ["unknown setting 'bar.battery.percent' ignored (did you mean 'percentage'?)"])
+        XCTAssertTrue(s.bar.batteryPercentage, "the default")
+        XCTAssertEqual(s.bar.fontSize, 15)
     }
 }
 

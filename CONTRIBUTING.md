@@ -39,7 +39,10 @@ code layout and how to sign builds so the permission sticks.
 - Logic that doesn't need macOS belongs in `Sources/KachelCore` with tests.
   Window handling is tested in `Tests/KachelTests` against a fake window system
   (made-up windows, displays and time): a bug from real use belongs there as a
-  test. `swift test` must pass.
+  test. A change to Kachel's own UI changes the reference images in
+  `Tests/KachelTests/__Snapshots__`: re-record them
+  (`KACHEL_RECORD_SNAPSHOTS=1 swift test --filter UITests`) and look at them.
+  `swift test` must pass.
 - A new or changed setting goes into the default config in `Settings.swift`.
   Regenerate `config.example.yaml` afterwards (a test checks they match):
   `swift run Kachel --print-default-config > config.example.yaml`

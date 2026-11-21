@@ -5,3 +5,7 @@ build/
 .DS_Store
 site/
 .venv/
+
+# Snapshot test failures (written next to the references)
+*.actual.png
+*.diff.png

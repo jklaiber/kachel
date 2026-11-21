@@ -44,7 +44,7 @@ final class SettingsTests: XCTestCase {
     }
 
     func testErrors() {
-        XCTAssertThrowsError(try Settings.parse("gapp: 3"))
+        XCTAssertThrowsError(try Settings.parse("gap: banana"), "a wrong value still is an error")
         XCTAssertThrowsError(try Settings.parse("keys:\n  mod-1: workspace 10"))
         XCTAssertThrowsError(try Settings.parse("keys:\n  hyper-1: quit"))
         XCTAssertThrowsError(try Settings.parse("keys:\n  mod-1: fly"))
@@ -219,10 +219,10 @@ final class GestureSettingsTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("gestures:\n  direction: up"))
     }
 
-    func testBad() {
+    func testBad() throws {
         XCTAssertThrowsError(try Settings.parse("gestures:\n  fingers: 5"))
         XCTAssertThrowsError(try Settings.parse("gestures:\n  swipe-left: fly"))
-        XCTAssertThrowsError(try Settings.parse("gestures:\n  pinch: quit"))
+        XCTAssertEqual(try Settings.parse("gestures:\n  pinch: quit").warnings.count, 1)
     }
 }
 
@@ -262,5 +262,39 @@ final class WorkspaceLayoutsTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("workspace-layouts: {\"12\": full}\n"))          // no such workspace
         XCTAssertThrowsError(try Settings.parse("workspace-layouts: {\"1\": spiral}\n"))         // no such layout
         XCTAssertThrowsError(try Settings.parse("layouts: [tall, full]\nworkspace-layouts: {\"1\": bsp}\n")) // not in layouts
+    }
+}
+
+/// A typo or a setting from a newer Kachel must not throw away the whole file.
+final class UnknownSettingsTests: XCTestCase {
+    func testTypoIsIgnoredAndTheRestApplies() throws {
+        let s = try Settings.parse("gapp: 3\nratio: 0.6\n")
+        XCTAssertEqual(s.warnings, ["unknown setting 'gapp' ignored (did you mean 'gap'?)"])
+        XCTAssertEqual(s.ratio, 0.6)
+    }
+
+    func testSettingFromANewerVersion() throws {
+        let s = try Settings.parse("window-snapping: true\nborder:\n  glow: 3\n  width: 5\n")
+        XCTAssertEqual(s.warnings, ["unknown setting 'window-snapping' ignored",
+                                    "unknown setting 'border.glow' ignored"])
+        XCTAssertEqual(s.border.width, 5)
+    }
+
+    func testScratchpadTypo() throws {
+        let s = try Settings.parse("keys: {}\nscratchpads:\n  - name: t\n    app: Terminal\n    titel: x\n")
+        XCTAssertEqual(s.warnings, ["unknown setting 'scratchpads[1].titel' ignored (did you mean 'title'?)"])
+        XCTAssertEqual(s.scratchpads.first?.name, "t")
+    }
+
+    func testDefaultsHaveNoWarnings() throws {
+        XCTAssertEqual(try Settings.parse(Settings.defaultYAML).warnings, [])
+    }
+
+    func testEditDistance() {
+        XCTAssertEqual(Settings.editDistance("gapp", "gap"), 1)
+        XCTAssertEqual(Settings.editDistance("", "gap"), 3)
+        XCTAssertEqual(Settings.editDistance("gap", ""), 3)
+        XCTAssertEqual(Settings.editDistance("kitten", "sitting"), 3)
+        XCTAssertEqual(Settings.editDistance("titel", "title"), 1, "swapped neighbours: one typo")
     }
 }

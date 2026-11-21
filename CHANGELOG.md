@@ -7,6 +7,13 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- An unknown setting in `config.yaml` (a typo, or a setting from a newer Kachel)
+  no longer stops the whole file from loading: it's ignored, with a note in the
+  bar and at the top of Settings, and a suggestion when it looks like a typo
+  ("unknown setting 'gapp' ignored (did you mean 'gap'?)"). Values that don't
+  fit are still errors.
+
 ## [0.1.20] - 2026-11-21
 
 Workspaces come back after a restart of the Mac, a hung app can't freeze Kachel

@@ -180,6 +180,18 @@ struct SettingsView: View {
                         Spacer()
                     }
                     .padding(10).background(Color.orange.opacity(0.12))
+                } else if !model.s.warnings.isEmpty {
+                    // Ignored settings (typos, or from a newer Kachel): the rest applies.
+                    HStack(alignment: .top) {
+                        Image(systemName: "info.circle.fill").foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(model.s.warnings, id: \.self) { Text($0).font(.callout) }
+                            Text("Everything else in config.yaml applies.").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Edit Config…") { Config.openInEditor() }.controlSize(.small)
+                    }
+                    .padding(10).background(Color.secondary.opacity(0.1))
                 }
                 Group {
                     switch pane ?? .general {

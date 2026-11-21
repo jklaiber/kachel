@@ -49,8 +49,8 @@ enum CrashPrompt {
         return Date().timeIntervalSince(c.at) < 120
     }
 
-    /// Not modal: Kachel keeps managing windows while it's open.
-    private static func show(_ report: CrashReport, file: URL, restarted: Bool) {
+    /// The alert, laid out and ready to show (its buttons get their actions in `show`).
+    static func makeAlert(_ report: CrashReport, restarted: Bool) -> NSAlert {
         let a = NSAlert()
         a.messageText = "Kachel quit unexpectedly"
         a.informativeText = (restarted ? "It started again by itself, and windows that were out of sight are back on screen.\n\n" : "")
@@ -59,6 +59,14 @@ enum CrashPrompt {
         a.addButton(withTitle: "Report on GitHub…")
         a.addButton(withTitle: "Show Crash Report")
         a.addButton(withTitle: "Not Now")
+        // runModal() would lay it out; shown without it, we have to.
+        a.layout()
+        return a
+    }
+
+    /// Not modal: Kachel keeps managing windows while it's open.
+    private static func show(_ report: CrashReport, file: URL, restarted: Bool) {
+        let a = makeAlert(report, restarted: restarted)
         let t = Target(report: report, file: file)
         for (i, b) in a.buttons.enumerated() {
             b.tag = i
@@ -67,8 +75,6 @@ enum CrashPrompt {
         }
         alert = a
         target = t
-        // runModal() would lay it out; shown without it, we have to.
-        a.layout()
         // Kachel has no Dock icon: activating alone leaves it behind other apps,
         // and an alert panel would vanish whenever another app is in front.
         a.window.hidesOnDeactivate = false
