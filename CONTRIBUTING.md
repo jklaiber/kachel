@@ -14,7 +14,7 @@ Use the bug report form. The most useful things to include:
 - your macOS and Kachel versions, and how many displays you use
 - what you did, what you expected, and what happened
 - the lines from `~/Library/Logs/Kachel.log` around the time it happened
-  (bar → right-click → *Show Log*)
+  (bar → right-click → *Show Log*); it holds no window titles and no user name
 - the part of your `~/.config/kachel/config.yaml` that matters
 
 Security problems go through [private reporting](SECURITY.md), not issues.
@@ -24,7 +24,7 @@ Security problems go through [private reporting](SECURITY.md), not issues.
 Requires macOS 13+ and the Xcode Command Line Tools.
 
 ```bash
-swift test                          # the model: workspaces, layouts, config
+swift test                          # the model, and the window manager against made-up windows
 ./scripts/bundle.sh && open build/Kachel.app
 ```
 
@@ -36,8 +36,10 @@ code layout and how to sign builds so the permission sticks.
 
 - Keep a pull request to one change, and open an issue or discussion first for
   bigger ones, so we can agree on the approach.
-- Logic that doesn't need macOS belongs in `Sources/KachelCore` with tests;
-  `swift test` must pass.
+- Logic that doesn't need macOS belongs in `Sources/KachelCore` with tests.
+  Window handling is tested in `Tests/KachelTests` against a fake window system
+  (made-up windows, displays and time): a bug from real use belongs there as a
+  test. `swift test` must pass.
 - A new or changed setting goes into the default config in `Settings.swift`.
   Regenerate `config.example.yaml` afterwards (a test checks they match):
   `swift run Kachel --print-default-config > config.example.yaml`

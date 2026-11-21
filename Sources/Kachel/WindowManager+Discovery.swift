@@ -137,9 +137,17 @@ extension WindowManager {
             Log.info("window \(id) (\(appName(of: w))) is back on workspace \(ss.workspaces[ss.workspaceIndex(of: id)!].tag), \(Log.frame(w.frame))")
             changed = true
         }
+        let placed = takeRemembered(found.filter { ss.workspaceIndex(of: $0.key) == nil })
         // Several new at once (an app restoring its windows): in the order
         // they were opened, which is the order of their IDs.
         for (id, w) in found.sorted(by: { $0.key < $1.key }) where ss.workspaceIndex(of: id) == nil {
+            if let m = placed[id] {
+                windows[id] = w
+                putBack(id, m)
+                hidden.remove(id)
+                changed = true
+                continue
+            }
             if shouldFloat(w) {
                 ss.floating.insert(id)
                 if let f = w.frame, isOffscreen(f) { centerOnCurrentScreen(w, f.size) }

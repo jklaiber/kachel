@@ -32,6 +32,20 @@ ratio-step: 0.05           # what mod-h / mod-l change
 
 `increase-window-limit` / `decrease-window-limit` change the limit with a key.
 
+## A layout per workspace
+
+```yaml
+workspace-layouts:
+  "1": full
+  "9": three-column
+```
+
+Those workspaces start with that layout: when Kachel starts and as soon as you
+change it. The others keep the layout they had, also across restarts. The keys
+still switch layouts on any workspace. **Settings → General → Workspaces →
+Starting layout per workspace** sets the same. Only layouts from `layouts:` work
+here, so `mod-shift-space` can always cycle on from them.
+
 ## Pausing tiling
 
 `toggle-tiling` pauses tiling: windows stay where they are and you can move them
@@ -53,8 +67,10 @@ The mouse works too: drag the edge between master and stack, or the top/bottom
 edge of a window in a column. See [Mouse and trackpad](mouse-and-trackpad.md).
 
 **Minimum sizes**: some apps can't get smaller than a certain size. Kachel
-learns that from the window and gives it the room it needs; if the column is
-too small for all of them, they overlap evenly and stay on screen.
+learns that from the window and gives it the room it needs in its column; if
+the column is too small for all of them, they overlap evenly and stay on screen.
+A window too *wide* for its column grows towards the middle over its neighbour
+(the columns don't move for it): widen it with `mod-l` / `mod-h`, or float it.
 
 ## New windows
 

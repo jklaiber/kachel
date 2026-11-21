@@ -13,7 +13,7 @@ kachel query focused        # JSON
 ```
 
 Every command from [Keys](keys.md#all-commands) works: write it just like in
-`keys:`. `kachel help` lists the rest.
+`keys:`. Also `kachel settings` opens Kachel's settings; `kachel help` lists the rest.
 
 ## Queries
 

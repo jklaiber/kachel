@@ -68,6 +68,22 @@ extension WindowManager {
         }
     }
 
+    /// An app that didn't answer does again. What Kachel asked of it in the
+    /// meantime (park this window, tile that one) may have been lost: put its
+    /// windows in place once more.
+    func appAnswersAgain(_ pid: pid_t) {
+        guard managing, !asleep, !locked else { return }
+        let ids = windows.filter { $0.value.pid == pid }.map(\.key)
+        guard !ids.isEmpty else { return }
+        // Meant to be parked but still in sight: the move got lost. Park
+        // again (only those: a parked floating window must not have the
+        // corner remembered as its place).
+        let lost = ids.filter { id in hidden.contains(id) && windows[id]?.frame.map { !isOffscreen($0) } == true }
+        hidden.subtract(lost)
+        Log.info("putting the windows of pid \(pid) back in place" + (lost.isEmpty ? "" : " (\(lost.count) to park again)"))
+        render(refocus: false)
+    }
+
     func screenIndex(containing p: CGPoint) -> Int? {
         screens.firstIndex { $0.frame.contains(p) }
     }

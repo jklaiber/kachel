@@ -223,6 +223,7 @@ struct GeneralPane: View {
     @State private var workspacesText = ""
     @State private var terminalText = ""
     @State private var pinsOpen = NSScreen.screens.count > 1
+    @State private var layoutsOpen = false
 
     static let mods: [(String, String)] = [("alt", "⌥ Option"), ("ctrl+alt", "⌃⌥ Control-Option"),
                                            ("alt+cmd", "⌥⌘ Option-Command"), ("ctrl+cmd", "⌃⌘ Control-Command")]
@@ -282,6 +283,17 @@ struct GeneralPane: View {
                         }
                     }
                 }
+                }
+                DisclosureGroup("Starting layout per workspace", isExpanded: $layoutsOpen) {
+                    ForEach(Array(m.s.workspaces.enumerated()), id: \.element) { i, tag in
+                        Picker("Workspace \(tag) starts with", selection: m.binding({ $0.configuredLayout(forWorkspace: i)?.configName ?? "" },
+                                                                                   { startLayout(tag, $0) })) {
+                            Text("The layout it had").tag("")
+                            ForEach(m.s.layouts, id: \.self) { Text($0.rawValue).tag($0.configName) }
+                        }
+                    }
+                    Text("Applies when Kachel starts and right after you change it here. Only layouts from Layouts below.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
             Section("Windows") {
@@ -370,6 +382,7 @@ struct GeneralPane: View {
         .onAppear {
             workspacesText = m.s.workspaces.joined(separator: " "); terminalText = m.s.terminal
             if !m.s.workspaceScreens.isEmpty { pinsOpen = true }
+            if !m.s.workspaceLayouts.isEmpty { layoutsOpen = true }
         }
     }
 
@@ -380,6 +393,17 @@ struct GeneralPane: View {
 
     private func modName(_ mods: Set<Modifier>) -> String {
         [Modifier.ctrl, .alt, .cmd, .shift].filter(mods.contains).map { $0 == .ctrl ? "ctrl" : $0.rawValue }.joined(separator: "+")
+    }
+
+    /// workspace-layouts, keyed by the workspace's name (numbers stay numbers).
+    private func startLayout(_ tag: String, _ name: String) {
+        var map = m.s.workspaceLayouts.mapValues(\.configName)
+        // An entry by number for this workspace would win over the new one: drop it.
+        if let i = m.s.workspaces.firstIndex(of: tag) { map["\(i + 1)"] = nil }
+        map[tag] = name.isEmpty ? nil : name
+        let flow = map.isEmpty ? "{}" : "{" + map.sorted { $0.key < $1.key }
+            .map { "\"\($0.key)\": \($0.value)" }.joined(separator: ", ") + "}"
+        m.top("workspace-layouts", flow)
     }
 
     private func pin(_ tag: String, _ pattern: String) {

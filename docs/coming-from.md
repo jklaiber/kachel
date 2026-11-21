@@ -25,7 +25,7 @@ Kachel's workspace model is xmonad's; its default keys follow Amethyst
 | xmobar | [the bar](bar.md) |
 | `mod-q` recompile | saving `config.yaml` applies it; `mod-shift-r` restarts |
 
-Not there (yet): tabbed and BSP layouts, dynamic workspaces, `CopyWindow`.
+Not there (yet): tabbed layouts, dynamic workspaces, `CopyWindow`.
 
 ## From Amethyst
 

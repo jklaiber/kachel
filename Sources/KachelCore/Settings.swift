@@ -178,6 +178,14 @@ public struct Settings {
     public var shortcutOverview = 0.8
     /// Workspace name -> screen pattern (see ScreenMatcher): always shown there.
     public var workspaceScreens: [String: String] = [:]
+    /// The layout a workspace starts with, by name or number ("9", "mail").
+    public var workspaceLayouts: [String: LayoutKind] = [:]
+
+    /// Workspace `i`'s layout from `workspace-layouts`, if it has one.
+    public func configuredLayout(forWorkspace i: Int) -> LayoutKind? {
+        guard workspaces.indices.contains(i) else { return nil }
+        return workspaceLayouts[workspaces[i]] ?? workspaceLayouts["\(i + 1)"]
+    }
     public var terminal = "open -na Terminal"
     public var layouts: [LayoutKind] = [.tall, .mirrorTall, .threeColumn, .column, .full]
     public var menubarIcon = false
@@ -216,7 +224,7 @@ public struct Settings {
                                   "terminal", "bar", "keys", "layouts", "menubar-icon", "rules", "gestures",
                                   "float-dialogs", "float-small-windows", "start-at-login", "check-for-updates",
                                   "scratchpads", "border", "focus-follows-mouse",
-                                  "workspace-back-and-forth", "workspace-screens", "new-windows",
+                                  "workspace-back-and-forth", "workspace-screens", "workspace-layouts", "new-windows",
                                   "haptics", "shortcut-overview", "padding", "builtin-display-padding",
                                   "smart-gaps", "window-limit", "follow-moved-windows"]
         if let bad = dict.keys.first(where: { !known.contains($0) }) {
@@ -279,6 +287,24 @@ public struct Settings {
                     throw SettingsError("layouts: unknown layout '\($0)' (use tall, wide, column, full)")
                 }
                 return l
+            }
+        }
+        if let v = dict["workspace-layouts"], !(v is NSNull) {
+            guard let m = v as? [String: Any] else {
+                throw SettingsError("workspace-layouts must map workspaces to layouts, e.g. \"9\": full")
+            }
+            s.workspaceLayouts = [:]
+            for (k, val) in m {
+                guard s.workspaces.contains(k) || Int(k).map({ $0 >= 1 && $0 <= s.workspaces.count }) == true else {
+                    throw SettingsError("workspace-layouts: there is no workspace '\(k)'")
+                }
+                guard let kind = LayoutKind(configName: "\(val)") else {
+                    throw SettingsError("workspace-layouts: unknown layout '\(val)' for workspace \(k)")
+                }
+                guard s.layouts.contains(kind) else {
+                    throw SettingsError("workspace-layouts: '\(val)' for workspace \(k) isn't in layouts: (add it there)")
+                }
+                s.workspaceLayouts[k] = kind
             }
         }
         if let v = dict["float-dialogs"] { s.floatDialogs = try bool(v, "float-dialogs") }
@@ -720,6 +746,12 @@ shortcut-overview: 0.8        # hold mod alone this many seconds to see all shor
 workspace-screens: {}
 #   "8": external
 #   "9": external
+
+# The layout a workspace starts with, when Kachel starts and when you change it
+# here (it must be one of `layouts`). The others keep the layout they had.
+workspace-layouts: {}
+#   "1": full
+#   "9": three-column
 menubar-icon: false       # Kachel icon in the top menu bar (same menu as right-clicking the bar)
 
 # Used by the `terminal` command. Examples: "open -na Ghostty",

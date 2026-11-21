@@ -184,6 +184,15 @@ public struct StackSet {
     // MARK: windows
 
     /// Like xmonad's insertUp: the new window goes above the focused one and gets focus.
+    /// Put a workspace's windows in order by `rank` (lower first); windows
+    /// without a rank keep their place after the ranked ones.
+    public mutating func order(workspace i: Int, by rank: (WindowID) -> Int?) {
+        guard workspaces.indices.contains(i) else { return }
+        let ws = workspaces[i].windows
+        let ranked = ws.filter { rank($0) != nil }.sorted { rank($0)! < rank($1)! }
+        workspaces[i].windows = ranked + ws.filter { rank($0) == nil }
+    }
+
     public mutating func insert(_ w: WindowID, into target: Int? = nil) {
         guard workspaceIndex(of: w) == nil else { return }
         let i = target ?? currentWorkspaceIndex
@@ -324,6 +333,12 @@ public struct StackSet {
     }
 
     /// Set every workspace's layout (from config), e.g. the first of `layouts:`.
+    /// Workspace `i` (not necessarily the current one) to layout `k`.
+    public mutating func setLayout(_ k: LayoutKind, workspace i: Int) {
+        guard workspaces.indices.contains(i) else { return }
+        workspaces[i].layout = k
+    }
+
     public mutating func setLayoutIfUnlisted(_ order: [LayoutKind]) {
         guard let first = order.first else { return }
         for i in workspaces.indices where !order.contains(workspaces[i].layout) {

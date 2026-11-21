@@ -17,6 +17,24 @@ protocol WindowSystem: AnyObject {
     func appQuit(_ pid: pid_t)
     /// The displays, left to right; `reserveBottom` is kept free for the bar.
     func screens(reserveBottom: CGFloat) -> [Screen]
+    /// When the Mac started: window IDs start over after a restart.
+    var bootTime: Double { get }
+}
+
+/// Where Kachel keeps its state between runs (a file; in tests, memory).
+protocol StateStore: AnyObject {
+    func load() -> Data?
+    func save(_ data: Data) throws
+}
+
+final class FileStateStore: StateStore {
+    let url: URL
+    init(url: URL) { self.url = url }
+    func load() -> Data? { try? Data(contentsOf: url) }
+    func save(_ data: Data) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: url, options: .atomic)
+    }
 }
 
 /// The real one: Accessibility and the window server.
@@ -24,26 +42,60 @@ final class AXWindowSystem: WindowSystem {
     private var observers: [pid_t: AXObserver] = [:]
     /// Windows logged as left alone (they float above others on their own).
     private var leftAlone: Set<WindowID> = []
+    private let apps = AppResponsiveness.shared
+    /// How long one listing waits for all apps together; an app that isn't
+    /// done by then keeps the windows it had and counts as not answering.
+    private static let deadline: TimeInterval = 0.3
+    /// Apps being checked in the background to see if they answer again.
+    private var probing: Set<pid_t> = []
+
+    /// One app's windows, read on a background thread.
+    private final class Answer {
+        var elements: [(AXUIElement, WindowID)] = []
+        var ok = false
+    }
 
     func windows(known: [WindowID: AppWindow]) -> [WindowID: AppWindow] {
         var result: [WindowID: AppWindow] = [:]
         let me = getpid()
         let raised = raisedWindows()
-        for app in NSWorkspace.shared.runningApplications
-        where app.activationPolicy == .regular && app.processIdentifier != me {
+        let running = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.processIdentifier != me }
+
+        // Ask every app that answers, all at once, and wait at most `deadline`.
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var answers: [pid_t: Answer] = [:]
+        for app in running where !apps.isSlow(app.processIdentifier) {
             let pid = app.processIdentifier
-            ensureObserver(pid)
-            let appEl = AXUIElementCreateApplication(pid)
-            var value: CFTypeRef?
-            let err = AXUIElementCopyAttributeValue(appEl, kAXWindowsAttribute as CFString, &value)
-            guard err == .success, let elements = value as? [AXUIElement] else {
-                // App busy / not answering: keep what we knew instead of
-                // forgetting its windows (and their workspaces).
+            let answer = Answer()
+            lock.lock(); answers[pid] = answer; lock.unlock()
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                let read = Self.read(pid)
+                lock.lock(); answer.elements = read.elements; answer.ok = read.ok; lock.unlock()
+                group.leave()
+            }
+        }
+        let inTime = group.wait(timeout: .now() + Self.deadline) == .success
+
+        for app in running {
+            let pid = app.processIdentifier
+            lock.lock()
+            let answer = answers[pid]
+            let done = answer?.ok ?? false
+            let elements = answer?.elements ?? []
+            lock.unlock()
+            guard done else {
+                // Not answering (or busy, or still launching): keep what we
+                // knew instead of forgetting its windows (and their workspaces).
                 for (id, w) in known where w.pid == pid { result[id] = w }
+                if answer != nil, !inTime { apps.set(pid, slow: true) }
+                if apps.isSlow(pid) { probe(pid) }
                 continue
             }
-            for el in elements where isManageable(el) {
-                guard let id = axWindowID(el) else { continue }
+            ensureObserver(pid)
+            for (el, id) in elements {
                 if let level = raised[id] {
                     // The app keeps it above normal windows itself (Outlook's
                     // reminder, an "always on top" window), like a panel. As in
@@ -64,14 +116,46 @@ final class AXWindowSystem: WindowSystem {
                     }
                     result[id] = AXWindow(element: el, id: id, pid: pid, bundleID: app.bundleIdentifier)
                     if let obs = observers[pid] {
-                        AXObserverAddNotification(obs, el, kAXUIElementDestroyedNotification as CFString, nil)
-                        AXObserverAddNotification(obs, el, kAXWindowResizedNotification as CFString, nil)
-                        AXObserverAddNotification(obs, el, kAXWindowMovedNotification as CFString, nil)
+                        apps.queue(for: pid).async {
+                            AXObserverAddNotification(obs, el, kAXUIElementDestroyedNotification as CFString, nil)
+                            AXObserverAddNotification(obs, el, kAXWindowResizedNotification as CFString, nil)
+                            AXObserverAddNotification(obs, el, kAXWindowMovedNotification as CFString, nil)
+                        }
                     }
                 }
             }
         }
         return result
+    }
+
+    /// An app's manageable windows. Runs on a background thread.
+    private static func read(_ pid: pid_t) -> (elements: [(AXUIElement, WindowID)], ok: Bool) {
+        let appEl = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(appEl, 1.0)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(appEl, kAXWindowsAttribute as CFString, &value) == .success,
+              let elements = value as? [AXUIElement] else { return ([], false) }
+        var out: [(AXUIElement, WindowID)] = []
+        for el in elements {
+            AXUIElementSetMessagingTimeout(el, 1.0)
+            guard isManageable(el), let id = axWindowID(el) else { continue }
+            out.append((el, id))
+        }
+        return (out, true)
+    }
+
+    /// In the background: does an app that wasn't answering answer again?
+    private func probe(_ pid: pid_t) {
+        guard probing.insert(pid).inserted else { return }
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let start = Date()
+            let ok = Self.read(pid).ok
+            let fast = Date().timeIntervalSince(start) < AppResponsiveness.slowCall
+            DispatchQueue.main.async {
+                self?.probing.remove(pid)
+                if ok, fast { self?.apps.set(pid, slow: false) }
+            }
+        }
     }
 
     func windowServerIDs() -> Set<WindowID> {
@@ -82,14 +166,23 @@ final class AXWindowSystem: WindowSystem {
 
     func focusedWindow() -> WindowID? {
         guard let app = NSWorkspace.shared.frontmostApplication,
-              app.processIdentifier != getpid() else { return nil }
+              app.processIdentifier != getpid(), !apps.isSlow(app.processIdentifier) else { return nil }
         let appEl = AXUIElementCreateApplication(app.processIdentifier)
-        return axElement(appEl, kAXFocusedWindowAttribute).flatMap(axWindowID)
+        AXUIElementSetMessagingTimeout(appEl, 0.5)
+        return apps.timed(app.processIdentifier) { axElement(appEl, kAXFocusedWindowAttribute).flatMap(axWindowID) }
     }
 
     func screens(reserveBottom: CGFloat) -> [Screen] { Screen.all(reserveBottom: reserveBottom) }
 
+    let bootTime: Double = {
+        var tv = timeval()
+        var size = MemoryLayout<timeval>.size
+        sysctlbyname("kern.boottime", &tv, &size, nil, 0)
+        return Double(tv.tv_sec) + Double(tv.tv_usec) / 1_000_000
+    }()
+
     func appQuit(_ pid: pid_t) {
+        apps.appQuit(pid)
         guard let obs = observers.removeValue(forKey: pid) else { return }
         CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
     }
@@ -111,17 +204,26 @@ final class AXWindowSystem: WindowSystem {
         guard observers[pid] == nil else { return }
         var obs: AXObserver?
         guard AXObserverCreate(pid, axCallback, &obs) == .success, let obs else { return }
-        let appEl = AXUIElementCreateApplication(pid)
-        // Apps that are still launching refuse subscriptions. Don't cache the
-        // observer then, so the next refresh tries again.
-        guard AXObserverAddNotification(obs, appEl, kAXWindowCreatedNotification as CFString, nil) == .success
-        else { return }
-        for n in [kAXFocusedWindowChangedNotification,
-                  kAXWindowMiniaturizedNotification, kAXWindowDeminiaturizedNotification,
-                  kAXApplicationHiddenNotification, kAXApplicationShownNotification] {
-            AXObserverAddNotification(obs, appEl, n as CFString, nil)
-        }
-        CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
         observers[pid] = obs
+        CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
+        // Subscribing asks the app: on its own queue. Apps that are still
+        // launching refuse; then drop the observer so the next listing tries again.
+        apps.queue(for: pid).async { [weak self] in
+            let appEl = AXUIElementCreateApplication(pid)
+            AXUIElementSetMessagingTimeout(appEl, 1.0)
+            guard AXObserverAddNotification(obs, appEl, kAXWindowCreatedNotification as CFString, nil) == .success else {
+                DispatchQueue.main.async {
+                    guard let self, self.observers[pid] === obs else { return }
+                    CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(obs), .defaultMode)
+                    self.observers[pid] = nil
+                }
+                return
+            }
+            for n in [kAXFocusedWindowChangedNotification,
+                      kAXWindowMiniaturizedNotification, kAXWindowDeminiaturizedNotification,
+                      kAXApplicationHiddenNotification, kAXApplicationShownNotification] {
+                AXObserverAddNotification(obs, appEl, n as CFString, nil)
+            }
+        }
     }
 }

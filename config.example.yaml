@@ -37,6 +37,12 @@ shortcut-overview: 0.8        # hold mod alone this many seconds to see all shor
 workspace-screens: {}
 #   "8": external
 #   "9": external
+
+# The layout a workspace starts with, when Kachel starts and when you change it
+# here (it must be one of `layouts`). The others keep the layout they had.
+workspace-layouts: {}
+#   "1": full
+#   "9": three-column
 menubar-icon: false       # Kachel icon in the top menu bar (same menu as right-clicking the bar)
 
 # Used by the `terminal` command. Examples: "open -na Ghostty",

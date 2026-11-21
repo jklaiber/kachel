@@ -40,13 +40,18 @@ first. Upgrades keep the permission.
 
 - **Workspaces shared by all displays**, switched instantly, without macOS
   Spaces and without disabling SIP.
-- **Layouts**: Tall, Wide, Three-column, Column and Full; drag edges to resize.
+- **Eleven layouts**, from Tall and Three-column to BSP, a starting layout per
+  workspace; drag edges to resize.
 - **A bar along the bottom** of every display, in the style of the menu bar.
 - **Window search** (`mod-p`), **app rules** (`mod-shift-p`) and **scratchpads**
   (`mod-s`).
 - **Trackpad swipes** between workspaces, mouse drag-to-swap, focus border.
 - **A settings window** like System Settings, and a shortcut overview when you
   hold `mod`.
+- **A `kachel` command** for scripts and launchers: run any command, ask where
+  everything is as JSON.
+- **Dependable**: workspaces survive a restart, a crash puts windows back and
+  starts Kachel again, a hung app doesn't hold it up.
 - Everything lives in `~/.config/kachel/config.yaml`; the settings window
   writes into it with your comments kept.
 

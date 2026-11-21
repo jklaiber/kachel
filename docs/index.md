@@ -25,8 +25,9 @@ permission and checks your macOS settings. See [Getting started](getting-started
 
 - **[Workspaces and displays](workspaces.md)**: xmonad's workspaces on any number of
   displays, back and forth, pinning workspaces to a display. No macOS Spaces needed.
-- **[Layouts](layouts.md)**: Tall, Wide, Three-column, Column, Full; resize the
-  master and every window in a column, with keys or the mouse.
+- **[Layouts](layouts.md)**: eleven of them, from Tall, Wide and Three-column to
+  BSP and Floating, with a starting layout per workspace; resize the master and
+  every window in a column, with keys or the mouse.
 - **[Keys](keys.md)**: an xmonad/Amethyst-style keymap, an overview when you hold
   `mod`, and every command bindable.
 - **[The bar](bar.md)**: a second menu bar at the bottom of each display with
@@ -37,6 +38,11 @@ permission and checks your macOS settings. See [Getting started](getting-started
   any workspace.
 - **[Mouse and trackpad](mouse-and-trackpad.md)**: swipe between workspaces, drag
   to swap and resize, focus follows the pointer.
+- **[Command line](command-line.md)**: `kachel workspace 3`, and where everything
+  is as JSON, for scripts, launchers and other bars.
+- **Dependable**: workspaces survive a restart, a crash puts windows back and
+  starts Kachel again, and a hung app doesn't hold it up
+  ([troubleshooting](troubleshooting.md#windows-and-workspaces)).
 - **[Settings](settings.md)**: a settings window like System Settings, writing
   the same `config.yaml` you can edit by hand.
 

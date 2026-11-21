@@ -8,12 +8,25 @@ taken from its section here.
 ## [Unreleased]
 
 ### Added
+- Workspaces survive a restart of the Mac: windows go back to the workspace
+  they were on, recognised by app and title (also when the title changed a
+  bit, like "— Edited"; an app's windows whose titles changed go where that
+  app's windows were). Layouts and sizes of the workspaces come back too.
+  Titles are only stored as hashes.
+- A starting layout per workspace: `workspace-layouts: {"1": full}`, or in
+  Settings → General → Workspaces → Starting layout per workspace. It applies
+  when Kachel starts and as soon as you change it; the keys still switch layouts.
+- `kachel settings` opens the settings.
 - The log says more, so a problem can be traced from it: size and position of
   new, closed and returning windows and why a window floats, every display
   (name, size, position) when displays change, windows Accessibility stops
   listing, and focus changes macOS makes.
 
 ### Changed
+- A hung app no longer freezes Kachel: every app gets its own queue for what
+  Kachel asks of it, an app that doesn't answer is noticed and not waited for,
+  and once it answers again its windows are put in place once more.
+  Switching to a workspace with a frozen app took up to 7.5 s, now under 0.1 s.
 - The log no longer contains window titles or your user name: a title is
   written as a tag (`title #3fa2 (23 chars)`), your home folder as `~`, and the
   wallpaper's file name is left out. `kachel dump` follows the same rules.

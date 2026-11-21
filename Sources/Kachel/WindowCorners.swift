@@ -14,7 +14,7 @@ enum WindowCorners {
     }
 
     private static func hasToolbar(_ w: AppWindow) -> Bool {
-        guard let w = w as? AXWindow, let children = axCopy(w.element, kAXChildrenAttribute) as? [AXUIElement] else { return false }
+        guard let w = w as? AXWindow, !AppResponsiveness.shared.isSlow(w.pid), let children = axCopy(w.element, kAXChildrenAttribute) as? [AXUIElement] else { return false }
         return children.contains { axString($0, kAXRoleAttribute) == kAXToolbarRole }
     }
 

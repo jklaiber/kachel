@@ -3,7 +3,7 @@
 Requires macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
-swift test                    # the model: workspaces, layouts, config parsing and editing
+swift test                    # the model, and the window manager against made-up windows and displays
 ./scripts/bundle.sh           # build/Kachel.app
 open build/Kachel.app
 ```

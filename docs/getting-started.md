@@ -23,11 +23,11 @@ last day yet and says the latest version is already installed. Which version you
 have: **About Kachel** in the bar's right-click menu, Settings → General, or
 `/Applications/Kachel.app/Contents/MacOS/Kachel --version`.
 
-!!! note "Accessibility after every update"
-    Kachel isn't signed with a paid Apple Developer ID, so macOS treats each
-    version as a new app and asks for Accessibility again after an upgrade.
-    If an old entry is listed but doesn't work, remove it with **–** and add
-    Kachel again.
+!!! note "Accessibility and upgrades"
+    Since 0.1.18 every release is signed with the same certificate, so upgrades
+    keep the Accessibility permission. Coming from an older version, macOS asks
+    one last time; if an old entry is listed but doesn't work, remove it with
+    **–** and add Kachel again.
 
 ## The welcome window
 
@@ -75,4 +75,5 @@ Then open **Settings…** from the bar's right-click menu, or edit
 
 !!! tip "Swiss, German and French keyboards"
     With `mod: alt`, ⌥+digit no longer types characters like `# [ ] | { }`.
-    If you need them, use `mod: ctrl+alt`.
+    Use `mod: left-alt` to keep the right Option key for typing (Settings →
+    General → Which keys), or `mod: ctrl+alt`. See [Keys](keys.md#only-the-left-or-right-key).

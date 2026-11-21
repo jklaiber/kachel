@@ -38,7 +38,7 @@ other side go straight to the app, untouched.
 | `mod-h` / `mod-l` | narrower / wider master |
 | `mod-shift-h` / `mod-shift-l` | shorter / taller window in its column |
 | `mod-shift-space` | next layout |
-| `mod-shift-f` | toggle fullscreen |
+| `mod-shift-f` | Kachel's fullscreen: Full layout until pressed again ([macOS fullscreen](workspaces.md#fullscreen) is different) |
 | `mod-t` | float / tile the window |
 | `mod-,` / `mod-.` | focus next / previous display |
 | `mod-shift-,` / `mod-shift-.` | send the window to the next / previous display |
@@ -62,7 +62,8 @@ keys:
 ```
 
 Modifiers are `mod`, `cmd`, `ctrl`, `alt` (Option) and `shift`; letters follow
-your keyboard layout. **A `keys:` section replaces the default keymap as a
+your keyboard layout. `mod` itself can be one side only, e.g. `mod: left-alt`
+([above](#only-the-left-or-right-key)). **A `keys:` section replaces the default keymap as a
 whole**; leave it out to keep the defaults.
 
 ## Taken keys

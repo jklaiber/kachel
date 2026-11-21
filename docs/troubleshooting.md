@@ -21,11 +21,15 @@ look switched on but no longer count. Remove it with **–** and add Kachel agai
 
 ## Windows and workspaces
 
-- **After sleep, a restart or a crash**, windows keep their workspaces: Kachel
-  saves the state after every change and restores it on the next start. If it
-  crashes, it first puts parked windows back on screen.
-- **Minimized and native fullscreen windows** aren't tiled; they keep their
-  workspace and come back there.
+- **After sleep, a crash or a restart of Kachel**, windows keep their workspaces:
+  Kachel saves the state after every change and restores it on the next start. If
+  it crashes, a helper puts parked windows back on screen and starts it again.
+- **After a restart of the Mac**, windows are recognised by app and title as their
+  apps open them ([details](workspaces.md#after-a-restart)).
+- **Minimized and macOS fullscreen windows** aren't tiled; they keep their
+  workspace and come back there ([fullscreen](workspaces.md#fullscreen)).
+- **An app that hangs** doesn't hold Kachel up: the log says "… isn't answering:
+  not waiting for it", and once it answers again its windows are put in place.
 - **An app that keeps its window after closing it** (Calendar, many Electron
   apps) still counts as having a window on that workspace until it really closes.
 - **Apps with a minimum size** can't shrink into a small tile; Kachel gives them
@@ -68,6 +72,8 @@ a new issue with the crash details filled in, for you to look over and send.
 
 | Option | |
 |---|---|
+| `--version` | Kachel's version |
+| `--ctl COMMAND` | the [`kachel` command](command-line.md) without Homebrew's link |
 | `--print-default-config` | print the default config with all comments |
 | `--list-taken-keys` | key combinations macOS and skhd already use |
 | `--render-screenshots DIR` | draw the documentation images |

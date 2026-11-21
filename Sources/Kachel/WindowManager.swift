@@ -14,7 +14,8 @@ let axCallback: AXObserverCallback = { _, element, notification, _ in
 /// moved back when their workspace is shown. That makes switching instant
 /// and lets workspaces move freely between monitors, like in xmonad.
 final class WindowManager {
-    static let shared = WindowManager(system: AXWindowSystem(), clock: SystemClock())
+    static let shared = WindowManager(system: AXWindowSystem(), clock: SystemClock(),
+                                      store: FileStateStore(url: WindowManager.stateURL))
 
     /// macOS's windows, or a fake in tests.
     let system: WindowSystem
@@ -24,9 +25,13 @@ final class WindowManager {
     /// The time, or a fake one in tests.
     let clock: Clock
 
-    init(system: WindowSystem, clock: Clock, headless: Bool = false) {
+    /// Saved state between runs.
+    let store: StateStore
+
+    init(system: WindowSystem, clock: Clock, store: StateStore, headless: Bool = false) {
         self.system = system
         self.clock = clock
+        self.store = store
         self.headless = headless
     }
 
@@ -111,6 +116,17 @@ final class WindowManager {
     /// The workspace each display showed when it was last connected, by
     /// display (see displayKeys), to give it back when it's plugged in again.
     var lastShownOnDisplay: [String: Int] = [:]
+    /// Where windows were (by app and title), saved with the state for after
+    /// a restart. Captured at quit, sleep, lock and every few minutes, not on
+    /// every save: reading titles asks every app.
+    var lastMemory: [RememberedWindow] = []
+    /// After a restart: windows still to put back, until `rememberUntil`.
+    var remembered: [RememberedWindow] = []
+    var rememberUntil = Date.distantPast
+    /// Their old place in the stack, to keep the order as they come back one by one.
+    var restoredOrder: [WindowID: Int] = [:]
+    /// workspace-layouts as last applied, to apply only what changed.
+    var appliedLayouts: [Int: LayoutKind] = [:]
     var hoverTimer: Timer?
     var systemFocusPending = false
 
@@ -169,6 +185,7 @@ final class WindowManager {
             if Config.load() { self.applySettings() }
             self.pollTick += 1
             if self.managing, self.pollTick % 2 == 0 { self.refresh(); self.updateBar() }
+            if self.managing, !self.locked, !self.asleep, self.pollTick % 300 == 0 { self.rememberWindows() }
         }
     }
 
@@ -207,6 +224,7 @@ final class WindowManager {
         guard !managing else { return }
         managing = true
         Log.info("Accessibility granted, managing windows")
+        AppResponsiveness.shared.onAnswersAgain = { [unowned self] pid in self.appAnswersAgain(pid) }
         Watchdog.spawn()
         // One-sided shortcuts (mod: left-alt) couldn't start without it.
         if !Config.current.modSides.isEmpty {
@@ -233,7 +251,11 @@ final class WindowManager {
         }
         for n in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification] {
             ws.addObserver(forName: n, object: nil, queue: .main) { [unowned self] _ in
-                if !self.asleep { Log.info("sleeping: pausing window tracking") }
+                if !self.asleep {
+                    Log.info("sleeping: pausing window tracking")
+                    self.rememberWindows()
+                    self.saveSnapshot()
+                }
                 self.asleep = true
             }
         }
@@ -253,6 +275,7 @@ final class WindowManager {
         let dnc = DistributedNotificationCenter.default()
         dnc.addObserver(forName: .init("com.apple.screenIsLocked"), object: nil, queue: .main) { [unowned self] _ in
             Log.info("screen locked: pausing window tracking")
+            if self.managing { self.rememberWindows(); self.saveSnapshot() }
             self.locked = true
         }
         dnc.addObserver(forName: .init("com.apple.screenIsUnlocked"), object: nil, queue: .main) { [unowned self] _ in
@@ -290,6 +313,7 @@ final class WindowManager {
         ss.setTags(cfg.workspaces)
         ss.insertPosition = cfg.newWindows
         ss.setLayoutIfUnlisted(cfg.layouts)
+        applyWorkspaceLayouts()
         if !headless {
             menuBarItem.setVisible(cfg.menubarIcon)
             UpdateCheck.shared.apply(enabled: cfg.checkForUpdates)
@@ -311,6 +335,19 @@ final class WindowManager {
         }
     }
 
+    /// workspace-layouts: set what's configured, at the start (`force`) or
+    /// when the config changed for that workspace.
+    func applyWorkspaceLayouts(force: Bool = false) {
+        let cfg = Config.current
+        for i in ss.workspaces.indices {
+            let want = cfg.configuredLayout(forWorkspace: i)
+            if let want, force || appliedLayouts[i] != want {
+                ss.setLayout(want, workspace: i)
+            }
+            appliedLayouts[i] = want
+        }
+    }
+
     func reload() {
         Config.load(force: true)
         applySettings()
@@ -320,11 +357,28 @@ final class WindowManager {
     /// screen it currently sits on.
     func adoptExistingWindows() {
         let found = system.windows(known: windows)
-        if let snap = loadSnapshot() {
-            ss.restore(snap, existing: Set(found.keys))
-            Log.info("restored \(ss.allWindows.count) of \(found.count) windows to their workspaces from the last run")
+        if let saved = loadSaved() {
+            if abs(saved.boot - system.bootTime) < 1 {
+                ss.restore(saved.state, existing: Set(found.keys))
+                Log.info("restored \(ss.allWindows.count) of \(found.count) windows to their workspaces from the last run")
+            } else {
+                // Window IDs started over: keep the workspaces' layouts and
+                // sizes, and put windows back by app and title as they come.
+                ss.restore(saved.state, existing: [])
+                remembered = saved.memory ?? []
+                lastMemory = remembered
+                rememberUntil = clock.now.addingTimeInterval(600)
+                Log.info("after a restart: layouts back, \(remembered.count) windows to put back by app and title")
+            }
         }
+        // The saved state brought back layouts; configured ones start as configured.
+        applyWorkspaceLayouts(force: true)
+        let placed = takeRemembered(found.filter { ss.workspaceIndex(of: $0.key) == nil })
         for (id, w) in found.sorted(by: { $0.key < $1.key }) where ss.workspaceIndex(of: id) == nil {
+            if let m = placed[id] {
+                putBack(id, m)
+                continue
+            }
             var target = ss.screenWorkspace[ss.currentScreen]
             if let f = w.frame, let s = screenIndex(containing: CGPoint(x: f.midX, y: f.midY)) {
                 target = ss.screenWorkspace[s]
@@ -355,8 +409,11 @@ final class WindowManager {
     }
 
     func quit() {
-        if managing { saveSnapshot() }
+        if managing { rememberWindows(); saveSnapshot() }
         restoreAllWindows()
+        // Moving windows back happens on each app's queue: let it finish
+        // (a hung app gets 1.5 s; the watchdog file still lists its windows).
+        AppResponsiveness.shared.flush(timeout: 1.5)
         Watchdog.stop()
         Ctl.stopListening()
         HotKeys.shared.unbindAll()
@@ -367,8 +424,11 @@ final class WindowManager {
     /// Quit and start again; windows keep their workspaces (see saveSnapshot).
     func restart() {
         Log.info("restarting")
-        if managing { saveSnapshot() }
+        if managing { rememberWindows(); saveSnapshot() }
         restoreAllWindows()
+        // Moving windows back happens on each app's queue: let it finish
+        // (a hung app gets 1.5 s; the watchdog file still lists its windows).
+        AppResponsiveness.shared.flush(timeout: 1.5)
         Watchdog.stop()
         HotKeys.shared.unbindAll()
         let bundle = Bundle.main.bundlePath

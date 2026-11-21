@@ -18,6 +18,7 @@ enum Ctl {
       kachel query windows          JSON: every managed window
       kachel query screens          JSON: every display and the workspace on it
       kachel query focused          JSON: the focused window and workspace
+      kachel settings               open Kachel's settings
       kachel version                Kachel's version (this command's and the app's)
       kachel dump                   write Kachel's state to ~/Library/Logs/Kachel.log
 

@@ -14,6 +14,9 @@ final class FakeWindow: AppWindow {
     var hasFullscreenButton = true
     var isResizable = true
     var minimized = false
+    /// In macOS's own fullscreen (the green button): on a Space of its own,
+    /// and like minimized windows not one Kachel manages meanwhile.
+    var fullscreen = false
     /// How often Kachel minimized it: a minimize undone in the same pass
     /// still flashes on screen, so the end state alone isn't enough.
     var timesMinimized = 0
@@ -71,6 +74,12 @@ final class FakeWindowSystem: WindowSystem {
         return w
     }
 
+    /// A window that already exists (from an earlier fake), same ID.
+    func adopt(_ w: FakeWindow) {
+        w.system = self
+        all[w.id] = w
+    }
+
     /// Gone for good: not even the window server knows it any more.
     func close(_ id: WindowID) {
         all[id] = nil
@@ -90,11 +99,13 @@ final class FakeWindowSystem: WindowSystem {
 
     func windows(known: [WindowID: AppWindow]) -> [WindowID: AppWindow] {
         // Like Accessibility: minimized windows aren't manageable.
-        all.filter { !$0.value.minimized && !axHidden.contains($0.key) }.mapValues { $0 as AppWindow }
+        all.filter { !$0.value.minimized && !$0.value.fullscreen && !axHidden.contains($0.key) }.mapValues { $0 as AppWindow }
     }
     func windowServerIDs() -> Set<WindowID> { Set(all.keys) }
     func focusedWindow() -> WindowID? { focused }
     func appQuit(_ pid: pid_t) {}
+    /// Change it to simulate a restart of the Mac.
+    var bootTime: Double = 1_000
     func screens(reserveBottom: CGFloat) -> [Screen] {
         displays.sorted { ($0.frame.minX, $0.frame.minY) < ($1.frame.minX, $1.frame.minY) }
     }
@@ -107,6 +118,13 @@ extension Screen {
         let visible = CGRect(x: frame.minX, y: frame.minY + menuBar, width: frame.width, height: frame.height - menuBar)
         return Screen(frame: frame, visible: visible, nsVisible: visible, name: name, builtin: builtin, main: main)
     }
+}
+
+/// Saved state kept in memory, so a test can "restart" Kachel or the Mac.
+final class MemoryStateStore: StateStore {
+    var data: Data?
+    func load() -> Data? { data }
+    func save(_ d: Data) throws { data = d }
 }
 
 /// Time that only moves when the test says so. Work Kachel schedules
@@ -155,14 +173,16 @@ class WindowManagerTestCase: XCTestCase {
         try start(displays: screens.enumerated().map { i, f in Screen.fake(f, name: "Display \(i + 1)") }, config: config)
     }
 
-    func start(displays: [Screen], config: String = "") throws {
+    func start(displays: [Screen], config: String = "", store: MemoryStateStore = MemoryStateStore(),
+               bootTime: Double = 1_000) throws {
         Log.enabled = false
         // No gaps, padding or bar: frames are easy to check.
         Config.use(try Settings.parse("gap: 0\nmouse-follows-focus: off\nborder:\n  enabled: false\n" + config))
         sys = FakeWindowSystem()
         sys.displays = displays
+        sys.bootTime = bootTime
         clock = FakeClock()
-        wm = WindowManager(system: sys, clock: clock, headless: true)
+        wm = WindowManager(system: sys, clock: clock, store: store, headless: true)
         Self.keepAlive.append(wm)
         wm.managing = true
         wm.screensChanged()            // reads the displays like at launch

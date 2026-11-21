@@ -12,6 +12,7 @@ extension WindowManager {
         switch parts.first {
         case "version": return (true, "Kachel.app \(AppVersion.string)")
         case "dump": dumpState(); return (true, "written to ~/Library/Logs/Kachel.log")
+        case "settings": settingsWindow.show(); return (true, "")
         case "query":
             guard managing else { return (false, "Kachel isn't managing windows yet (Accessibility permission)") }
             guard let what = parts.dropFirst().first, let json = query(what) else {

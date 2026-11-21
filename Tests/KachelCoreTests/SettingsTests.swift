@@ -243,3 +243,24 @@ final class FloatingAndLoginSettingsTests: XCTestCase {
         XCTAssertThrowsError(try Settings.parse("start-at-login: soon"))
     }
 }
+
+final class WorkspaceLayoutsTests: XCTestCase {
+    func testParse() throws {
+        let s = try Settings.parse("layouts: [tall, full, three-column]\nworkspace-layouts: {\"1\": full, \"9\": three-column}\n")
+        XCTAssertEqual(s.configuredLayout(forWorkspace: 0), .full)
+        XCTAssertEqual(s.configuredLayout(forWorkspace: 8), .threeColumn)
+        XCTAssertNil(s.configuredLayout(forWorkspace: 1))
+        XCTAssertTrue(try Settings.parse(Settings.defaultYAML).workspaceLayouts.isEmpty)
+    }
+
+    func testByName() throws {
+        let s = try Settings.parse("workspaces: [web, code, mail]\nkeys: {}\nworkspace-layouts: {mail: full}\n")
+        XCTAssertEqual(s.configuredLayout(forWorkspace: 2), .full)
+    }
+
+    func testErrors() {
+        XCTAssertThrowsError(try Settings.parse("workspace-layouts: {\"12\": full}\n"))          // no such workspace
+        XCTAssertThrowsError(try Settings.parse("workspace-layouts: {\"1\": spiral}\n"))         // no such layout
+        XCTAssertThrowsError(try Settings.parse("layouts: [tall, full]\nworkspace-layouts: {\"1\": bsp}\n")) // not in layouts
+    }
+}

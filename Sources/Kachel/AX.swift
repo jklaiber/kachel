@@ -75,75 +75,189 @@ protocol AppWindow: AnyObject {
     func close()
 }
 
+/// Apps that don't answer Accessibility right now (busy, hung after sleep),
+/// and a queue per app for everything Kachel asks of it. A hung app then
+/// only holds up its own queue, never Kachel or other apps.
+final class AppResponsiveness {
+    static let shared = AppResponsiveness()
+    /// Longer than this, and an app counts as not answering.
+    static let slowCall: TimeInterval = 0.25
+
+    private let lock = NSLock()
+    private var slow: Set<pid_t> = []
+    /// An app answers again: what was asked of it meanwhile may be lost, so
+    /// WindowManager puts its windows in place once more. On the main thread.
+    var onAnswersAgain: ((pid_t) -> Void)?
+    private var queues: [pid_t: DispatchQueue] = [:]
+
+    func queue(for pid: pid_t) -> DispatchQueue {
+        lock.lock(); defer { lock.unlock() }
+        if let q = queues[pid] { return q }
+        let q = DispatchQueue(label: "kachel.app.\(pid)", qos: .userInitiated)
+        queues[pid] = q
+        return q
+    }
+
+    func isSlow(_ pid: pid_t) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return slow.contains(pid)
+    }
+
+    func set(_ pid: pid_t, slow isSlow: Bool) {
+        lock.lock()
+        let changed = isSlow ? slow.insert(pid).inserted : slow.remove(pid) != nil
+        lock.unlock()
+        guard changed else { return }
+        let name = NSRunningApplication(processIdentifier: pid)?.localizedName ?? "pid \(pid)"
+        Log.info(isSlow ? "\(name) isn't answering: not waiting for it" : "\(name) answers again")
+        if !isSlow {
+            DispatchQueue.main.async { self.onAnswersAgain?(pid) }
+        }
+    }
+
+    /// Time a read from an app; a slow one marks the app.
+    func timed<T>(_ pid: pid_t, _ read: () -> T) -> T {
+        let start = Date()
+        let v = read()
+        if Date().timeIntervalSince(start) > Self.slowCall { set(pid, slow: true) }
+        return v
+    }
+
+    func appQuit(_ pid: pid_t) {
+        lock.lock(); defer { lock.unlock() }
+        slow.remove(pid)
+        queues[pid] = nil
+    }
+
+    /// Wait (up to `timeout`) for what was asked of every app, e.g. before
+    /// quitting, so parked windows really are back on screen.
+    func flush(timeout: TimeInterval) {
+        lock.lock(); let all = Array(queues.values); lock.unlock()
+        let group = DispatchGroup()
+        for q in all { group.enter(); q.async { group.leave() } }
+        _ = group.wait(timeout: .now() + timeout)
+    }
+}
+
 final class AXWindow: AppWindow {
     let element: AXUIElement
     let id: WindowID
     let pid: pid_t
     let bundleID: String?
+    private let apps = AppResponsiveness.shared
+    /// Last known values, used while the app doesn't answer.
+    private var lastFrame: CGRect?
+    private var lastTitle = ""
+    private var lastFullscreenButton: Bool?
+    private var lastResizable: Bool?
 
     init(element: AXUIElement, id: WindowID, pid: pid_t, bundleID: String?) {
         self.element = element
         self.id = id
         self.pid = pid
         self.bundleID = bundleID
+        AXUIElementSetMessagingTimeout(element, 0.5)
     }
 
+    // MARK: reads: from the app, or what we last knew while it doesn't answer
+
     var frame: CGRect? {
-        guard let p = axPoint(element, kAXPositionAttribute),
-              let s = axSize(element, kAXSizeAttribute) else { return nil }
-        return CGRect(origin: p, size: s)
+        guard !apps.isSlow(pid) else { return lastFrame }
+        let f: CGRect? = apps.timed(pid) {
+            guard let p = axPoint(element, kAXPositionAttribute),
+                  let s = axSize(element, kAXSizeAttribute) else { return nil }
+            return CGRect(origin: p, size: s)
+        }
+        if let f { lastFrame = f }
+        return f ?? lastFrame
     }
 
     /// The green "full screen" button. Dialogs, panels and utility windows
     /// don't have one.
-    var hasFullscreenButton: Bool { axElement(element, "AXFullScreenButton") != nil }
+    var hasFullscreenButton: Bool {
+        guard !apps.isSlow(pid) else { return lastFullscreenButton ?? true }
+        let v = apps.timed(pid) { axElement(element, "AXFullScreenButton") != nil }
+        lastFullscreenButton = v
+        return v
+    }
 
     var isResizable: Bool {
-        var settable: DarwinBoolean = false
-        AXUIElementIsAttributeSettable(element, kAXSizeAttribute as CFString, &settable)
-        return settable.boolValue
+        guard !apps.isSlow(pid) else { return lastResizable ?? true }
+        let v: Bool = apps.timed(pid) {
+            var settable: DarwinBoolean = false
+            AXUIElementIsAttributeSettable(element, kAXSizeAttribute as CFString, &settable)
+            return settable.boolValue
+        }
+        lastResizable = v
+        return v
     }
+
+    var title: String {
+        guard !apps.isSlow(pid) else { return lastTitle }
+        if let t = apps.timed(pid, { axString(element, kAXTitleAttribute) }) { lastTitle = t }
+        return lastTitle
+    }
+
+    // MARK: writes: on the app's own queue, Kachel doesn't wait
 
     func setFrame(_ r: CGRect) {
         let r = r.integral
-        withoutEnhancedUI {
-            // size → position → size: the order Amethyst uses so windows
-            // moving between differently sized screens end up correct.
-            setSize(r.size)
-            setPosition(r.origin)
-            setSize(r.size)
-        }
-        if let f = frame, abs(f.minX - r.minX) > 2 || abs(f.minY - r.minY) > 2 {
-            Log.info("window \(id) (\(bundleID ?? "?")) asked for \(r), is at \(f)")
+        lastFrame = r
+        later { w in
+            w.withoutEnhancedUI {
+                // size → position → size: the order Amethyst uses so windows
+                // moving between differently sized screens end up correct.
+                w.setSize(r.size)
+                w.setPosition(r.origin)
+                w.setSize(r.size)
+            }
         }
     }
 
     func move(to p: CGPoint) {
-        withoutEnhancedUI { setPosition(p) }
+        lastFrame?.origin = p
+        later { w in w.withoutEnhancedUI { w.setPosition(p) } }
     }
 
     func setMinimized(_ on: Bool) {
-        AXUIElementSetAttributeValue(element, kAXMinimizedAttribute as CFString, on ? kCFBooleanTrue : kCFBooleanFalse)
+        later { w in
+            AXUIElementSetAttributeValue(w.element, kAXMinimizedAttribute as CFString, on ? kCFBooleanTrue : kCFBooleanFalse)
+        }
     }
 
     func raise() {
-        AXUIElementPerformAction(element, kAXRaiseAction as CFString)
+        later { w in AXUIElementPerformAction(w.element, kAXRaiseAction as CFString) }
     }
 
     func focus() {
-        let app = AXUIElementCreateApplication(pid)
-        AXUIElementSetAttributeValue(app, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
-        AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
-        AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
-        raise()
+        let pid = pid
+        later { w in
+            let app = AXUIElementCreateApplication(pid)
+            AXUIElementSetMessagingTimeout(app, 0.5)
+            AXUIElementSetAttributeValue(app, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+            AXUIElementSetAttributeValue(w.element, kAXMainAttribute as CFString, kCFBooleanTrue)
+            AXUIElementSetAttributeValue(w.element, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+            AXUIElementPerformAction(w.element, kAXRaiseAction as CFString)
+        }
+        // Activating the app goes through the window server, not the app: no waiting.
         NSRunningApplication(processIdentifier: pid)?.activate(options: [])
     }
 
-    var title: String { axString(element, kAXTitleAttribute) ?? "" }
-
     func close() {
-        if let button = axElement(element, kAXCloseButtonAttribute) {
-            AXUIElementPerformAction(button, kAXPressAction as CFString)
+        later { w in
+            if let button = axElement(w.element, kAXCloseButtonAttribute) {
+                AXUIElementPerformAction(button, kAXPressAction as CFString)
+            }
+        }
+    }
+
+    /// Run on the app's queue; slow calls there mark the app as not answering.
+    private func later(_ work: @escaping (AXWindow) -> Void) {
+        let pid = pid
+        apps.queue(for: pid).async { [self] in
+            let start = Date()
+            work(self)
+            if Date().timeIntervalSince(start) > 1.0 { AppResponsiveness.shared.set(pid, slow: true) }
         }
     }
 
@@ -166,6 +280,7 @@ final class AXWindow: AppWindow {
     /// Electron) makes resizes animate and lag. Turn it off while moving.
     private func withoutEnhancedUI(_ body: () -> Void) {
         let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.5)
         let key = "AXEnhancedUserInterface"
         let enabled = axBool(app, key) ?? false
         if enabled { AXUIElementSetAttributeValue(app, key as CFString, kCFBooleanFalse) }

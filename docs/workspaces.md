@@ -57,6 +57,37 @@ Kachel recognises displays by name, not by their position:
   last time it was connected (docking a laptop gives you back what you had).
 - Focus stays on the display it was on.
 
+## After a restart
+
+Kachel remembers which workspace every window is on. Quit and start Kachel
+again and they're all where they were. After a restart of the Mac, window IDs
+start over, so Kachel recognises windows by app and title as their apps open
+them again (for ten minutes after it starts):
+
+- the same title, or almost (`— Edited`, `•`, `(2)` don't count);
+- a window whose title changed (a browser showing another tab) goes where that
+  app's windows were, if they were all on one workspace;
+- anything else lands on the current workspace, like a new window.
+
+Layouts and sizes come back too. Titles are stored only as hashes, never as text.
+
+## Fullscreen
+
+There are two kinds:
+
+- **Kachel's own**, `mod-shift-f` (`toggle-fullscreen`): the workspace shows its
+  focused window in the Full layout until you press it again. The menu bar and
+  Kachel's bar stay, no Space of its own, switching stays instant.
+- **macOS's**, the green button or ⌃⌘F: the window moves to a Space of its own.
+  Kachel leaves it alone meanwhile. It stays on its workspace (the other windows
+  there take the room), isn't parked or moved, and when it leaves fullscreen it's
+  tiled in its old place again, also if its workspace isn't on screen then.
+
+To get to a macOS fullscreen window and back, use macOS: Mission Control, ⌘Tab,
+the Dock, or the swipe between Spaces. While you're in its Space, macOS doesn't
+show Kachel the windows of your desktop, so workspace keys pressed there take
+effect when you're back on the desktop.
+
 ## How hiding works
 
 Kachel doesn't use macOS Spaces. Every display keeps a single Space, and the

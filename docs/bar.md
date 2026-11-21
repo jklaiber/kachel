@@ -34,7 +34,7 @@ others, set under `title:`:
 
 `only-in-full: true` (the default) shows them only in the Full layout,
 including `toggle-fullscreen`; in the other layouts you see the windows anyway.
-**Settings → Bar → Window title** has the same choices, with a preview.
+**Settings → Bar** has the same choices under the `title` widget, with a preview.
 
 ## Widgets
 
@@ -54,6 +54,7 @@ bar:
   # The bar as a whole
   enabled: true
   height: auto                 # same as the menu bar, or a number
+  font-size: 13
   background: transparent      # or blur
   appearance: auto             # white or black text depending on the wallpaper
   make-way-for-dock: true      # fade out while a hidden Dock slides up
@@ -85,7 +86,8 @@ bar out on that screen while the Dock is there, and back in once it hides again.
 Set it to `false` to keep the bar in place.
 
 **Settings → Bar** shows the same: the appearance, then each side's widgets in
-order with their options beneath them. Right-click a widget to move it.
+order with their options beneath them. Drag a widget by its grip to reorder it,
+also to the other side, or right-click it.
 
 Right-click the bar for **Show in Bar** (switch widgets on and off), Settings,
 the shortcut overview, the welcome window, Reload Config, Edit Config, Show

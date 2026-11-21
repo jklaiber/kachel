@@ -6,7 +6,8 @@ as soon as you save. You can edit it by hand, use the settings window, or both.
 
 ## The settings window
 
-**Settings…** is in the bar's right-click menu (or the `settings` command). It
+**Settings…** is in the bar's right-click menu (or the `settings` command, also
+`kachel settings` in a terminal). It
 looks and works like System Settings: General, Bar, Focus Border, Trackpad,
 Shortcuts, App Rules and Scratchpads.
 
@@ -65,4 +66,9 @@ shortcut-overview: 0.8       # hold mod this long to see all shortcuts; 0 = off
 haptics: true
 float-dialogs: true
 float-small-windows: 0
+check-for-updates: true      # once a day, look up the latest release on GitHub
 ```
+
+With `check-for-updates`, a newer version shows up at the top of the bar's menu
+and in Settings → General, with the command to upgrade. It only asks GitHub which
+release is the latest; nothing about you or your Mac is sent.
