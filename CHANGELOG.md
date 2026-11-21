@@ -19,6 +19,8 @@ taken from its section here.
   name: the ones that stay keep their workspace.
 - A display plugged back in gets its workspace back (the one it showed before,
   or the one pinned to it with `workspace-screens`) instead of a random free one.
+- Several windows appearing at once (an app restoring its windows) were tiled
+  in random order; now in the order they were opened.
 - A native tab switch right after the window first appeared could put the new
   tab at the end of the stack instead of in the old tab's place.
 

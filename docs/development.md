@@ -40,6 +40,9 @@ swift test
   (`FakeWindowSystem.swift`): windows open, close, switch tabs, get new handles,
   vanish while the screen is locked; workspaces switch on one or two displays;
   made-up displays (any name, size and arrangement) are plugged in and out.
+  Time is made up too (`FakeClock`): `clock.advance(by: 61)` is a minute later
+  at once, and work Kachel schedules (the checks 0.3 s after tiling) runs on
+  the way, in order.
   It runs headless: no windows of its own, nothing moved on your screen, nothing
   written to your log or saved state. A scenario that broke in real use belongs here.
 

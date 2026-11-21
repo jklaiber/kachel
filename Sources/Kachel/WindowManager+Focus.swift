@@ -53,11 +53,11 @@ extension WindowManager {
     func systemFocusChanged() {
         guard !systemFocusPending else { return }
         systemFocusPending = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [unowned self] in
+        clock.after(0.25) { [unowned self] in
             self.systemFocusPending = false
             guard self.managing, !self.asleep, !self.locked else { return }
             self.refresh()
-            if Date().timeIntervalSince(self.lastWindowGone) < 1.0 {
+            if clock.now.timeIntervalSince(self.lastWindowGone) < 1.0 {
                 if let f = self.focusedSystemWindow(), f != self.ss.current.focused {
                     Log.info("not following focus to window \(f): macOS picked it after a window closed")
                     self.focusCurrent()
@@ -101,7 +101,7 @@ extension WindowManager {
     }
 
     func syncFocusFromSystem(followHidden: Bool) {
-        guard Date() > ignoreFocusEventsUntil,
+        guard clock.now > ignoreFocusEventsUntil,
               let id = focusedSystemWindow(),
               ss.workspaceIndex(of: id) != nil else { return }
         if ss.focus(id) {
@@ -121,10 +121,10 @@ extension WindowManager {
     func followHiddenFocus(_ id: WindowID) {
         guard !followPending else { return }
         followPending = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [unowned self] in
+        clock.after(0.25) { [unowned self] in
             self.followPending = false
             self.refresh()                                   // notices closed windows
-            if Date().timeIntervalSince(self.lastWindowGone) < 1.0 {
+            if clock.now.timeIntervalSince(self.lastWindowGone) < 1.0 {
                 Log.info("not following focus to window \(id): macOS activated it after a window closed")
                 self.focusCurrent()
                 return

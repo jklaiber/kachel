@@ -18,7 +18,7 @@ extension WindowManager {
     /// A new window that a scratchpad we just started is waiting for. Titles
     /// are often set a moment later, so only the app has to match.
     func startingScratchpad(for w: AppWindow) -> Scratchpad? {
-        for (name, started) in scratchPending where Date().timeIntervalSince(started) < 15 {
+        for (name, started) in scratchPending where clock.now.timeIntervalSince(started) < 15 {
             guard let sp = scratchpad(named: name), matches(w, sp, checkTitle: false) else { continue }
             // With a title, only the matching window counts: apps like TextEdit
             // reopen other documents at the same time. A window without a
@@ -47,7 +47,7 @@ extension WindowManager {
                 NSSound.beep(); return
             }
             Log.info("scratchpad \(name): starting \(run)")
-            scratchPending[name] = Date()
+            scratchPending[name] = clock.now
             spawn(run)
             return
         }

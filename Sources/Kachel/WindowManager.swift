@@ -14,16 +14,19 @@ let axCallback: AXObserverCallback = { _, element, notification, _ in
 /// moved back when their workspace is shown. That makes switching instant
 /// and lets workspaces move freely between monitors, like in xmonad.
 final class WindowManager {
-    static let shared = WindowManager(system: AXWindowSystem())
+    static let shared = WindowManager(system: AXWindowSystem(), clock: SystemClock())
 
     /// macOS's windows, or a fake in tests.
     let system: WindowSystem
     /// Tests: no bar, border or overlays, and nothing written to disk (log,
     /// saved state, the watchdog's list).
     let headless: Bool
+    /// The time, or a fake one in tests.
+    let clock: Clock
 
-    init(system: WindowSystem, headless: Bool = false) {
+    init(system: WindowSystem, clock: Clock, headless: Bool = false) {
         self.system = system
+        self.clock = clock
         self.headless = headless
     }
 

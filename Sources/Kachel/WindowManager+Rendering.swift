@@ -174,7 +174,7 @@ extension WindowManager {
     func scheduleVerify() {
         guard !verifyPending else { return }
         verifyPending = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [unowned self] in
+        clock.after(0.3) { [unowned self] in
             self.verifyPending = false
             guard NSEvent.pressedMouseButtons & 1 == 0 else { return }     // you're dragging
             // First pass: ask again for every window that isn't where we put it.
@@ -191,7 +191,7 @@ extension WindowManager {
             // Second look a bit later (apps that animate need the time). Whatever
             // is still bigger than asked is that window's minimum size: remember
             // it so the stack makes room instead of letting windows overlap.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [unowned self] in
+            clock.after(0.3) { [unowned self] in
                 var learned = false
                 for (id, r) in retried where self.expected[id] == r {
                     guard let w = self.windows[id], let g = w.frame,
@@ -215,7 +215,7 @@ extension WindowManager {
     func scheduleSave() {
         guard !savePending else { return }
         savePending = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [unowned self] in
+        clock.after(1) { [unowned self] in
             self.savePending = false
             self.saveSnapshot()
         }
@@ -232,7 +232,7 @@ extension WindowManager {
     func hide(_ id: WindowID) {
         guard !hidden.contains(id), let w = windows[id], let f = w.frame else { return }
         if rule(for: w)?.hide == .minimize, !scratchWindow.values.contains(id), let ws = ss.workspaceIndex(of: id) {
-            minimizedByUs[id] = (w, Date(), ss.workspaces[ws].focused == id)
+            minimizedByUs[id] = (w, clock.now, ss.workspaces[ws].focused == id)
             Log.info("minimizing window \(id) (\(appName(of: w))): its workspace \(ss.workspaces[ws].tag) is out of sight")
             w.setMinimized(true)
             return
@@ -316,7 +316,7 @@ extension WindowManager {
     }
 
     func focusCurrent() {
-        ignoreFocusEventsUntil = Date().addingTimeInterval(0.3)
+        ignoreFocusEventsUntil = clock.now.addingTimeInterval(0.3)
         ensureFocus()
         let ws = ss.current
         if let f = ws.focused, let w = windows[f] {

@@ -168,7 +168,7 @@ extension WindowManager {
                   n != ss.current.focused || focusedSystemWindow() != n else { return }
             ss.focus(n)
             touch(n)
-            ignoreFocusEventsUntil = Date().addingTimeInterval(0.3)
+            ignoreFocusEventsUntil = clock.now.addingTimeInterval(0.3)
             w.focus()
             updateBar()
             updateBorder()

@@ -109,12 +109,38 @@ extension Screen {
     }
 }
 
+/// Time that only moves when the test says so. Work Kachel schedules
+/// ("check again in 0.3 s") runs when the clock passes its time, in order.
+final class FakeClock: Clock {
+    private(set) var now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+    private var pending: [(at: Date, seq: Int, work: () -> Void)] = []
+    private var seq = 0
+
+    func after(_ seconds: TimeInterval, _ work: @escaping () -> Void) {
+        seq += 1
+        pending.append((now.addingTimeInterval(seconds), seq, work))
+    }
+
+    /// Move time forward, running everything that falls due on the way
+    /// (also work that this work schedules).
+    func advance(by seconds: TimeInterval) {
+        let end = now.addingTimeInterval(seconds)
+        while let next = pending.filter({ $0.at <= end }).min(by: { ($0.at, $0.seq) < ($1.at, $1.seq) }) {
+            pending.removeAll { $0.seq == next.seq }
+            now = next.at
+            next.work()
+        }
+        now = end
+    }
+}
+
 /// A WindowManager on fake screens, with nothing written to disk.
 class WindowManagerTestCase: XCTestCase {
     var sys: FakeWindowSystem!
     var wm: WindowManager!
-    /// Timers Kachel sets (verify, save) may fire after a test ended; the
-    /// managers must still be there then.
+    var clock: FakeClock!
+    /// Timers Kachel sets outside the clock (focus border) may fire after a
+    /// test ended; the managers must still be there then.
     private static var keepAlive: [WindowManager] = []
 
     static let screen1 = CGRect(x: 0, y: 0, width: 1200, height: 800)
@@ -135,7 +161,8 @@ class WindowManagerTestCase: XCTestCase {
         Config.use(try Settings.parse("gap: 0\nmouse-follows-focus: off\nborder:\n  enabled: false\n" + config))
         sys = FakeWindowSystem()
         sys.displays = displays
-        wm = WindowManager(system: sys, headless: true)
+        clock = FakeClock()
+        wm = WindowManager(system: sys, clock: clock, headless: true)
         Self.keepAlive.append(wm)
         wm.managing = true
         wm.screensChanged()            // reads the displays like at launch

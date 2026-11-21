@@ -32,7 +32,7 @@ extension WindowManager {
             return
         }
         if notification == kAXUIElementDestroyedNotification {
-            lastWindowGone = Date()
+            lastWindowGone = clock.now
         }
         if notification == kAXFocusedWindowChangedNotification {
             systemFocusChanged()
@@ -46,7 +46,7 @@ extension WindowManager {
     /// window and minute so we never fight an app.
     func correctAppMove(_ id: WindowID) {
         guard expected[id] != nil else { return }
-        let now = Date()
+        let now = clock.now
         var log = appMoves[id, default: []].filter { now.timeIntervalSince($0) < 60 }
         guard log.count < 4 else { return }
         log.append(now)
@@ -57,7 +57,7 @@ extension WindowManager {
     func scheduleRefresh() {
         guard !refreshPending else { return }
         refreshPending = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [unowned self] in
+        clock.after(0.05) { [unowned self] in
             self.refreshPending = false
             self.refresh()
         }
@@ -74,10 +74,10 @@ extension WindowManager {
         // window. Switching tabs hides one and shows another; closing a tab removes
         // one and shows another. Either way the window that appears in the very
         // spot of the app's window that just went away takes its place.
-        for (id, w) in found where ss.workspaceIndex(of: id) == nil && !missing.isEmpty {
+        for (id, w) in found.sorted(by: { $0.key < $1.key }) where ss.workspaceIndex(of: id) == nil && !missing.isEmpty {
             guard let f = w.frame, let old = missing.first(where: { o in
                 guard windows[o]?.pid == w.pid, let seen = lastSeen[o], let g = seen.frame,
-                      Date().timeIntervalSince(seen.time) < 3.5 else { return false }
+                      clock.now.timeIntervalSince(seen.time) < 3.5 else { return false }
                 return abs(g.minX - f.minX) < 8 && abs(g.minY - f.minY) < 8
                     && abs(g.width - f.width) < 8 && abs(g.height - f.height) < 8
             }), let wsIndex = ss.workspaceIndex(of: old) else { continue }
@@ -112,7 +112,7 @@ extension WindowManager {
                 // The welcome window's buttons open System Settings: closing it
                 // takes you back there, not to another window.
                 if windows[id]?.bundleID == "com.apple.systempreferences", welcomeWindow.isOpen {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [unowned self] in self.welcomeWindow.bringToFront() }
+                    clock.after(0.3) { [unowned self] in self.welcomeWindow.bringToFront() }
                 }
                 let wsOfClosed = ss.workspaceIndex(of: id)
                 let wasFocused = id == ss.current.focused
@@ -124,7 +124,7 @@ extension WindowManager {
                 scratchParked.remove(id)
                 scratchWindow = scratchWindow.filter { $0.value != id }
                 changed = true
-                lastWindowGone = Date()
+                lastWindowGone = clock.now
             }
         }
         // Windows coming back (after sleep, un-minimized, app answering again)
@@ -132,7 +132,9 @@ extension WindowManager {
         if found.keys.contains(where: { windows[$0] == nil && ss.workspaceIndex(of: $0) != nil }) {
             changed = true
         }
-        for (id, w) in found where ss.workspaceIndex(of: id) == nil {
+        // Several new at once (an app restoring its windows): in the order
+        // they were opened, which is the order of their IDs.
+        for (id, w) in found.sorted(by: { $0.key < $1.key }) where ss.workspaceIndex(of: id) == nil {
             if shouldFloat(w) {
                 ss.floating.insert(id)
                 if let f = w.frame, isOffscreen(f) { centerOnCurrentScreen(w, f.size) }
@@ -178,7 +180,7 @@ extension WindowManager {
             // clicked the app's small window or the Dock. Go there, like macOS
             // switches to the window's Space. (Shortly after we minimized it,
             // it can still look restored: that's the animation, not you.)
-            guard let m = minimizedByUs[id], Date().timeIntervalSince(m.at) > 1.0 else { continue }
+            guard let m = minimizedByUs[id], clock.now.timeIntervalSince(m.at) > 1.0 else { continue }
             minimizedByUs[id] = nil
             if let ws = ss.workspaceIndex(of: id), !ss.isVisible(workspace: ws) {
                 Log.info("window \(id) was restored from another workspace: showing workspace \(ss.workspaces[ws].tag)")
@@ -192,7 +194,7 @@ extension WindowManager {
         // Remember where every managed window is (tiled: where we put it).
         // After render, so a window tiled just now is known in its new place:
         // a tab switch right after it appeared must still be recognised.
-        let now = Date()
+        let now = clock.now
         for (id, w) in found where ss.workspaceIndex(of: id) != nil {
             lastSeen[id] = (now, expected[id] ?? (ss.floating.contains(id) ? w.frame : lastSeen[id]?.frame))
         }
@@ -225,7 +227,7 @@ extension WindowManager {
     /// a normal window after all and gets tiled.
     func recheckDialog(_ id: WindowID) {
         for delay in [0.5, 1.5] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [unowned self] in
+            clock.after(delay) { [unowned self] in
                 guard self.ss.floating.contains(id), let w = self.windows[id], w.hasFullscreenButton else { return }
                 Log.info("window \(id) (\(self.appName(of: w))) turned out to be a normal window: tiling it")
                 self.ss.floating.remove(id)
