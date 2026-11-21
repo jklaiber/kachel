@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.20] - 2026-11-21
+
+Workspaces come back after a restart of the Mac, a hung app can't freeze Kachel
+any more, and every workspace can start with its own layout.
+
 ### Added
 - Workspaces survive a restart of the Mac: windows go back to the workspace
   they were on, recognised by app and title (also when the title changed a
@@ -465,7 +470,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.19...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.20...HEAD
+[0.1.20]: https://github.com/jklaiber/kachel/compare/v0.1.19...v0.1.20
 [0.1.19]: https://github.com/jklaiber/kachel/compare/v0.1.18...v0.1.19
 [0.1.18]: https://github.com/jklaiber/kachel/compare/v0.1.17...v0.1.18
 [0.1.17]: https://github.com/jklaiber/kachel/compare/v0.1.16...v0.1.17
