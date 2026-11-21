@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting! Check [Troubleshooting](https://jklaiber.github.io/kachel/troubleshooting/) first: after an upgrade, Accessibility often needs to be granted again.
+        Thanks for reporting! Check [Troubleshooting](https://jklaiber.github.io/kachel/troubleshooting/) first: the Accessibility permission is the most common cause.
   - type: textarea
     id: what
     attributes:

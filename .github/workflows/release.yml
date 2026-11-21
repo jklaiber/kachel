@@ -17,11 +17,35 @@ jobs:
         # First, so a release without a changelog entry stops right here.
         run: ./scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > notes.md
       - run: swift test
+      - name: Signing certificate
+        # The self-signed "Kachel Signing" certificate: every release has the
+        # same signature, so macOS keeps the Accessibility grant on upgrade.
+        env:
+          P12: ${{ secrets.KACHEL_SIGNING_P12 }}
+          P12_PASSWORD: ${{ secrets.KACHEL_SIGNING_PASSWORD }}
+        run: |
+          if [[ -z "$P12" ]]; then
+            echo "::warning::No KACHEL_SIGNING_P12 secret: this release is ad-hoc signed, users must grant Accessibility again"
+            exit 0
+          fi
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KC_PASS="$(uuidgen)"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/kachel.p12"
+          security create-keychain -p "$KC_PASS" "$KC"
+          security set-keychain-settings -lut 3600 "$KC"
+          security unlock-keychain -p "$KC_PASS" "$KC"
+          security import "$RUNNER_TEMP/kachel.p12" -k "$KC" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASS" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/kachel.p12"
+          security find-identity -p codesigning "$KC" | grep "Kachel Signing"
+          echo "SIGN_IDENTITY=Kachel Signing" >> "$GITHUB_ENV"
       - name: Build universal Kachel.app
         run: |
           V="${GITHUB_REF_NAME#v}"
           VERSION="$V" UNIVERSAL=1 ./scripts/bundle.sh
           lipo -archs build/Kachel.app/Contents/MacOS/Kachel
+          codesign -d -r- build/Kachel.app
           ditto -c -k --sequesterRsrc --keepParent build/Kachel.app "Kachel-$V.zip"
           echo "V=$V" >> "$GITHUB_ENV"
           echo "SHA=$(shasum -a 256 "Kachel-$V.zip" | cut -d' ' -f1)" >> "$GITHUB_ENV"

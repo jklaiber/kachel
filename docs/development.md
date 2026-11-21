@@ -8,8 +8,12 @@ swift test                    # the model: workspaces, layouts, config parsing a
 open build/Kachel.app
 ```
 
-Every rebuild is a new ad-hoc signature, so macOS asks for Accessibility again
-(`bundle.sh` removes the stale entry). Sign with a certificate to keep it:
+macOS ties the Accessibility permission to the app's signature. Releases are
+signed with the project's own self-signed "Kachel Signing" certificate, so
+upgrades keep the permission. Locally, `bundle.sh` signs with it too when it's
+in your keychain. Without it, each build gets a new ad-hoc signature and macOS
+asks for Accessibility again (`bundle.sh` removes the stale entry). To keep
+the permission across your own rebuilds, use any certificate of yours:
 `SIGN_IDENTITY="Apple Development: …" ./scripts/bundle.sh`.
 
 ## Layout of the code

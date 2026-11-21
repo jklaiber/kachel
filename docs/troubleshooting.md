@@ -6,9 +6,10 @@ Almost always the **Accessibility** permission. Kachel shows it in the bar in
 orange, and the welcome window (right-click the bar → *Welcome and Setup
 Check…*) has a button for it.
 
-After an **upgrade or a rebuild**, macOS treats Kachel as a new app: the old
-entry in System Settings → Privacy & Security → Accessibility may look switched
-on but no longer count. Remove it with **–** and add Kachel again.
+Since 0.1.18, upgrades keep the permission. Coming from an older version, or
+after a rebuild without a signing certificate, macOS treats Kachel as a new
+app: the old entry in System Settings → Privacy & Security → Accessibility may
+look switched on but no longer count. Remove it with **–** and add Kachel again.
 
 ## A shortcut doesn't work
 

@@ -28,7 +28,7 @@ swift test                          # the model: workspaces, layouts, config
 ./scripts/bundle.sh && open build/Kachel.app
 ```
 
-Every rebuild asks for Accessibility again (ad-hoc signature). The
+Without a signing certificate, every rebuild asks for Accessibility again. The
 [Development page](https://jklaiber.github.io/kachel/development/) explains the
 code layout and how to sign builds so the permission sticks.
 

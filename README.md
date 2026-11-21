@@ -34,8 +34,7 @@ brew install --cask jklaiber/tap/kachel
 
 Open Kachel and grant Accessibility; the welcome window walks you through it and
 checks the macOS settings that get in the way. Quit Amethyst, yabai or AeroSpace
-first. Releases are ad-hoc signed, so macOS asks for Accessibility again after
-each upgrade.
+first. Upgrades keep the permission.
 
 ## What it does
 

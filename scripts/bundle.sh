@@ -39,16 +39,22 @@ PLIST
 
 # macOS ties the Accessibility grant to the code signature. An ad-hoc
 # signature changes with every build, which silently invalidates the grant.
-# Set SIGN_IDENTITY to a real certificate (e.g. "Apple Development: …", see
-# `security find-identity -v -p codesigning`) to keep it across rebuilds.
-if [[ -n "${SIGN_IDENTITY:-}" ]]; then
+# Signed with the same certificate every time, the grant stays. Releases use
+# the self-signed "Kachel Signing" certificate (from the KACHEL_SIGNING_P12
+# secret); locally it's used when it's in your keychain. SIGN_IDENTITY
+# overrides, SIGN_IDENTITY=- forces ad-hoc.
+if [[ -z "${SIGN_IDENTITY:-}" ]] && security find-identity -p codesigning 2>/dev/null | grep -q '"Kachel Signing"'; then
+    SIGN_IDENTITY="Kachel Signing"
+fi
+if [[ -n "${SIGN_IDENTITY:-}" && "$SIGN_IDENTITY" != "-" ]]; then
     codesign --force --sign "$SIGN_IDENTITY" "$APP"
+    echo "Signed with \"$SIGN_IDENTITY\": the Accessibility grant survives rebuilds."
 else
     codesign --force --sign - "$APP"
     # Drop the now-stale grant so macOS prompts again instead of showing the
     # toggle as "on" while AXIsProcessTrusted() returns false.
     tccutil reset Accessibility io.github.jklaiber.kachel >/dev/null 2>&1 || true
-    echo "Ad-hoc signed: re-grant Accessibility after launching (set SIGN_IDENTITY to avoid this)."
+    echo "Ad-hoc signed: re-grant Accessibility after launching (see docs/development.md)."
 fi
 echo "Built $APP"
 echo "Run:   open $APP"

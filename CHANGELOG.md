@@ -21,6 +21,11 @@ taken from its section here.
   the menu shows when a newer one is out. Turn it off with
   `check-for-updates: false` or in Settings → General.
 
+### Changed
+- Releases are signed with Kachel's own certificate, the same every time, so
+  macOS keeps the Accessibility permission on upgrade. Upgrading to this
+  version asks one last time.
+
 ### Removed
 - `scripts/kachel-ctl` no longer sends commands as a system-wide notification
   that any app could post; it's now a wrapper around the `kachel` command.
