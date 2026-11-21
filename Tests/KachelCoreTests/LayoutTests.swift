@@ -29,7 +29,8 @@ final class LayoutTests: XCTestCase {
         let r = tile(.twoPane, 4)
         XCTAssertEqual(r[0], CGRect(x: 0, y: 0, width: 500, height: 600))
         // The rest share the second pane, on top of each other.
-        XCTAssertEqual(Set(r[1...]), [CGRect(x: 500, y: 0, width: 500, height: 600)])
+        // (No Set of CGRect: that needs macOS 15, Kachel runs from 13.)
+        XCTAssertTrue(r[1...].allSatisfy { $0 == CGRect(x: 500, y: 0, width: 500, height: 600) })
         XCTAssertEqual(tile(.twoPane, 1), [screen])
     }
 
