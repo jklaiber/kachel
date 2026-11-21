@@ -45,7 +45,7 @@ body:
     id: log
     attributes:
       label: Log
-      description: The lines from `~/Library/Logs/Kachel.log` around the time it happened (bar → right-click → Show Log).
+      description: The lines from `~/Library/Logs/Kachel.log` around the time it happened (bar → right-click → Show Log). Window titles and your user name aren't in it.
       render: text
   - type: textarea
     id: config

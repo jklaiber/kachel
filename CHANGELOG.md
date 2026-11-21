@@ -7,6 +7,17 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- The log says more, so a problem can be traced from it: size and position of
+  new, closed and returning windows and why a window floats, every display
+  (name, size, position) when displays change, windows Accessibility stops
+  listing, and focus changes macOS makes.
+
+### Changed
+- The log no longer contains window titles or your user name: a title is
+  written as a tag (`title #3fa2 (23 chars)`), your home folder as `~`, and the
+  wallpaper's file name is left out. `kachel dump` follows the same rules.
+
 ## [0.1.19] - 2026-11-21
 
 Plugging displays in and out keeps your workspaces where they were, and

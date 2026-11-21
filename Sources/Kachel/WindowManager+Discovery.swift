@@ -100,7 +100,11 @@ extension WindowManager {
                     // Still there, just not showing (closed but kept by its app,
                     // minimized, asleep): keep its workspace, but tile without it
                     // and don't leave focus on it.
-                    if windows[id] != nil { changed = true }
+                    if windows[id] != nil {
+                        changed = true
+                        Log.info("window \(id) (\(windows[id].map(appName) ?? "?")) not listed by Accessibility, but it still exists: "
+                                 + "keeping it on workspace \(ss.workspaceIndex(of: id).map { ss.workspaces[$0].tag } ?? "?")")
+                    }
                     if id == ss.current.focused, let w = ss.workspaceIndex(of: id) {
                         refocus(afterLosing: id, in: w, gone: gone)
                     } else {
@@ -108,7 +112,7 @@ extension WindowManager {
                     }
                     continue
                 }
-                Log.info("window \(id) closed (was on workspace \(ss.workspaceIndex(of: id).map { ss.workspaces[$0].tag } ?? "?"))")
+                Log.info("window \(id) (\(windows[id].map(appName) ?? "?")) closed (was on workspace \(ss.workspaceIndex(of: id).map { ss.workspaces[$0].tag } ?? "?"))")
                 // The welcome window's buttons open System Settings: closing it
                 // takes you back there, not to another window.
                 if windows[id]?.bundleID == "com.apple.systempreferences", welcomeWindow.isOpen {
@@ -129,7 +133,8 @@ extension WindowManager {
         }
         // Windows coming back (after sleep, un-minimized, app answering again)
         // keep their workspace; just put them in place.
-        if found.keys.contains(where: { windows[$0] == nil && ss.workspaceIndex(of: $0) != nil }) {
+        for (id, w) in found.sorted(by: { $0.key < $1.key }) where windows[id] == nil && ss.workspaceIndex(of: id) != nil {
+            Log.info("window \(id) (\(appName(of: w))) is back on workspace \(ss.workspaces[ss.workspaceIndex(of: id)!].tag), \(Log.frame(w.frame))")
             changed = true
         }
         // Several new at once (an app restoring its windows): in the order
@@ -140,7 +145,8 @@ extension WindowManager {
                 if let f = w.frame, isOffscreen(f) { centerOnCurrentScreen(w, f.size) }
                 if floatsOnlyAsDialog(w) { recheckDialog(id) }
             }
-            Log.info("new window \(id): \(appName(of: w)) \"\(w.title.prefix(40))\"")
+            Log.info("new window \(id): \(appName(of: w)) (\(w.bundleID ?? "?")) \(Log.title(w.title)), \(Log.frame(w.frame))"
+                     + (ss.floating.contains(id) ? ", floats (\(floatReason(w)))" : ""))
             if let sp = startingScratchpad(for: w) {
                 scratchPending[sp.name] = nil
                 scratchWindow[sp.name] = id
@@ -211,6 +217,14 @@ extension WindowManager {
         if cfg.floatSmallWindows > 0, let f = w.frame,
            f.width < CGFloat(cfg.floatSmallWindows), f.height < CGFloat(cfg.floatSmallWindows) { return true }
         return false
+    }
+
+    /// Why a new window floats, for the log.
+    func floatReason(_ w: AppWindow) -> String {
+        if rule(for: w)?.float == true { return "rule" }
+        if !w.isResizable { return "not resizable" }
+        if !w.hasFullscreenButton { return "no fullscreen button: a dialog" }
+        return "small"
     }
 
     /// Floats only because it has no fullscreen button yet; some apps (often

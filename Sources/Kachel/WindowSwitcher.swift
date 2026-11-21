@@ -157,7 +157,7 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
     private func pick(_ index: Int, bring: Bool) {
         guard let e = list.item(at: index) else { return }
         close(cancelled: false)
-        Log.info("window search: \(bring ? "bring" : "go to") \(e.app) \"\(e.title.prefix(40))\" on workspace \(e.tag)")
+        Log.info("window search: \(bring ? "bring" : "go to") \(e.app) \(Log.title(e.title)) on workspace \(e.tag)")
         if bring { onBring?(e.id) } else { onGo?(e.id) }
     }
 

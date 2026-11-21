@@ -24,6 +24,7 @@ extension WindowManager {
         // At launch there's nothing to keep (the saved state comes later).
         guard !old.isEmpty else {
             ss.setScreenCount(screens.count)
+            Log.info("displays: " + screens.map(Self.describe).joined(separator: "; "))
             return
         }
         let oldKeys = Self.displayKeys(old), newKeys = Self.displayKeys(screens)
@@ -46,10 +47,15 @@ extension WindowManager {
         }
         let current = oldKeys.indices.contains(oldCurrent) ? newKeys.firstIndex(of: oldKeys[oldCurrent]) : nil
         ss.setScreens(shown.compactMap { $0 }, current: current ?? 0)
-        if oldKeys != newKeys {
-            Log.info("displays changed: " + zip(screens, ss.screenWorkspace).map { "\($0.name) shows \(ss.workspaces[$1].tag)" }
-                .joined(separator: ", "))
+        if oldKeys != newKeys || old.map(\.frame) != screens.map(\.frame) {
+            Log.info("displays changed: " + zip(screens, ss.screenWorkspace).map { "\(Self.describe($0)) shows \(ss.workspaces[$1].tag)" }
+                .joined(separator: "; "))
         }
+    }
+
+    /// "DELL U2720Q 2560×1440 at (1512, 0)", plus built-in / main.
+    static func describe(_ s: Screen) -> String {
+        s.name + " " + Log.frame(s.frame) + (s.builtin ? ", built-in" : "") + (s.main ? ", main" : "")
     }
 
     /// A key per display: its name, plus "#2", "#3" for further displays of

@@ -347,7 +347,7 @@ final class WindowManager {
             let list = ws.windows.map { id -> String in
                 let w = windows[id]
                 let tag = (ss.floating.contains(id) ? "F" : "") + (hidden.contains(id) ? "H" : "")
-                return "\(id)\(tag.isEmpty ? "" : "[\(tag)]") \(w?.bundleID ?? "?") \"\(w?.title.prefix(30) ?? "")\" \(w?.frame.map { "\($0)" } ?? "noframe")"
+                return "\(id)\(tag.isEmpty ? "" : "[\(tag)]") \(w?.bundleID ?? "?") \(Log.title(w?.title ?? "")) \(Log.frame(w?.frame))"
             }
             Log.info("  ws \(ws.tag) \(ws.layout.rawValue) focused=\(ws.focused.map(String.init) ?? "-"):")
             list.forEach { Log.info("    \($0)") }

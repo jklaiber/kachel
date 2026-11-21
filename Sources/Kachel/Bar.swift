@@ -686,7 +686,7 @@ enum Wallpaper {
         }
         lum /= 16
         let dark = lum < 0.6
-        Log.info("wallpaper \(url.lastPathComponent): brightness behind bar \(String(format: "%.2f", lum)) → \(dark ? "white" : "black") text")
+        Log.info("wallpaper: brightness behind bar \(String(format: "%.2f", lum)) → \(dark ? "white" : "black") text")
         cache[key] = dark
         return dark
     }

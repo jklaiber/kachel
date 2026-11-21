@@ -104,7 +104,11 @@ extension WindowManager {
         guard clock.now > ignoreFocusEventsUntil,
               let id = focusedSystemWindow(),
               ss.workspaceIndex(of: id) != nil else { return }
+        let before = ss.current.focused
         if ss.focus(id) {
+            if before != id {
+                Log.info("macOS focused window \(id) (\(windows[id].map(appName) ?? "?")): following it")
+            }
             touch(id)
             updateBar()
             updateBorder()

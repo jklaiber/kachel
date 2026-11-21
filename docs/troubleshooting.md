@@ -35,8 +35,14 @@ look switched on but no longer count. Remove it with **–** and add Kachel agai
 ## The log
 
 Everything Kachel does is logged to `~/Library/Logs/Kachel.log` (also *Show Log*
-in the bar's menu): commands, new and closed windows, moves that didn't work,
-config errors.
+in the bar's menu): commands, new, closed and returning windows with their size
+and position, displays coming and going, focus changes from macOS, sleep and
+lock, moves that didn't work, config errors.
+
+It's written so you can attach it to a bug report: **no window titles** (a
+window shows as `title #3fa2 (23 chars)`, the same tag for the same title while
+Kachel runs) and **no user name** (your home folder is written as `~`). App
+names, display names and your config's commands are in it.
 
 ## The kachel command
 
