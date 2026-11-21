@@ -176,6 +176,7 @@ final class AXWindow: AppWindow {
 
 // MARK: - screens
 
+/// A display, as plain data: the tests make up their own (see FakeWindowSystem).
 struct Screen {
     /// Whole display, AX coordinates (top-left origin, y down).
     let frame: CGRect
@@ -183,12 +184,14 @@ struct Screen {
     let visible: CGRect
     /// Without menu bar and Dock, Cocoa coordinates (bottom-left origin). The bar goes here.
     let nsVisible: NSRect
-    let ns: NSScreen
+    /// The display's name, as in System Settings → Displays ("DELL U2720Q").
+    let name: String
     /// The laptop's own display (for workspace-screens: builtin / external).
-    var builtin: Bool {
-        guard let id = ns.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return false }
-        return CGDisplayIsBuiltin(id.uint32Value) != 0
-    }
+    let builtin: Bool
+    /// The one with the menu bar.
+    let main: Bool
+    /// The real display; nil for made-up ones in tests.
+    var ns: NSScreen? = nil
 
     /// Screens ordered left-to-right (then top-to-bottom), like xmonad's
     /// physical screen order for mod-w / mod-e / mod-r.
@@ -203,7 +206,10 @@ struct Screen {
                 var usable = ns.visibleFrame
                 usable.origin.y += reserveBottom
                 usable.size.height -= reserveBottom
-                return Screen(frame: toAX(ns.frame), visible: toAX(usable), nsVisible: ns.visibleFrame, ns: ns)
+                let id = (ns.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+                return Screen(frame: toAX(ns.frame), visible: toAX(usable), nsVisible: ns.visibleFrame,
+                              name: ns.localizedName, builtin: id.map { CGDisplayIsBuiltin($0) != 0 } ?? false,
+                              main: ns == primary, ns: ns)
             }
             .sorted { ($0.frame.minX, $0.frame.minY) < ($1.frame.minX, $1.frame.minY) }
     }

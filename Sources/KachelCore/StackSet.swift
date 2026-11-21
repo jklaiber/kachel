@@ -124,6 +124,15 @@ public struct StackSet {
         currentScreen = min(currentScreen, n - 1)
     }
 
+    /// Displays changed: which workspace each display shows now, and which
+    /// display has focus. Duplicates and unknown workspaces are dropped.
+    public mutating func setScreens(_ shown: [Int], current: Int) {
+        var seen = Set<Int>()
+        screenWorkspace = shown.filter { workspaces.indices.contains($0) && seen.insert($0).inserted }
+        if screenWorkspace.isEmpty { screenWorkspace = [0] }
+        currentScreen = min(max(0, current), screenWorkspace.count - 1)
+    }
+
     public mutating func focusScreen(_ s: Int) {
         guard screenWorkspace.indices.contains(s) else { return }
         currentScreen = s

@@ -14,6 +14,54 @@ extension WindowManager {
         if managing { refresh() }
     }
 
+    /// Displays were plugged in or out (or rearranged): which workspace each
+    /// one shows now. Displays are told apart by name, not by position:
+    ///  - one that stays keeps its workspace (also when one to its left goes);
+    ///  - one that comes gets its pinned workspace (workspace-screens), else
+    ///    the one it showed when it was last connected, else a free one;
+    ///  - focus stays on the display it was on.
+    func assignWorkspaces(after old: [Screen]) {
+        // At launch there's nothing to keep (the saved state comes later).
+        guard !old.isEmpty else {
+            ss.setScreenCount(screens.count)
+            return
+        }
+        let oldKeys = Self.displayKeys(old), newKeys = Self.displayKeys(screens)
+        let oldShown = ss.screenWorkspace, oldCurrent = ss.currentScreen
+        for (s, key) in oldKeys.enumerated() where s < oldShown.count { lastShownOnDisplay[key] = oldShown[s] }
+
+        var shown = [Int?](repeating: nil, count: screens.count)
+        var used = Set<Int>()
+        func take(_ s: Int, _ w: Int) { shown[s] = w; used.insert(w) }
+        for (s, key) in newKeys.enumerated() {
+            if let o = oldKeys.firstIndex(of: key), o < oldShown.count, !used.contains(oldShown[o]) { take(s, oldShown[o]) }
+        }
+        for s in screens.indices where shown[s] == nil {
+            let pinned = ss.workspaces.indices.first { !used.contains($0) && assignedScreen(of: $0) == s }
+            let before = lastShownOnDisplay[newKeys[s]].flatMap { used.contains($0) || !ss.workspaces.indices.contains($0) ? nil : $0 }
+            if let w = pinned ?? before { take(s, w) }
+        }
+        for s in screens.indices where shown[s] == nil {
+            if let w = ss.workspaces.indices.first(where: { !used.contains($0) }) { take(s, w) }
+        }
+        let current = oldKeys.indices.contains(oldCurrent) ? newKeys.firstIndex(of: oldKeys[oldCurrent]) : nil
+        ss.setScreens(shown.compactMap { $0 }, current: current ?? 0)
+        if oldKeys != newKeys {
+            Log.info("displays changed: " + zip(screens, ss.screenWorkspace).map { "\($0.name) shows \(ss.workspaces[$1].tag)" }
+                .joined(separator: ", "))
+        }
+    }
+
+    /// A key per display: its name, plus "#2", "#3" for further displays of
+    /// the same model (left to right).
+    static func displayKeys(_ list: [Screen]) -> [String] {
+        var count: [String: Int] = [:]
+        return list.map { s in
+            count[s.name, default: 0] += 1
+            return count[s.name]! == 1 ? s.name : "\(s.name)#\(count[s.name]!)"
+        }
+    }
+
     func screenIndex(containing p: CGPoint) -> Int? {
         screens.firstIndex { $0.frame.contains(p) }
     }

@@ -14,6 +14,11 @@ taken from its section here.
   Teams meetings on two displays). No change in behaviour.
 
 ### Fixed
+- Unplugging a display to the left of another made the remaining one switch
+  workspaces, hiding what you were looking at. Displays are now recognised by
+  name: the ones that stay keep their workspace.
+- A display plugged back in gets its workspace back (the one it showed before,
+  or the one pinned to it with `workspace-screens`) instead of a random free one.
 - A native tab switch right after the window first appeared could put the new
   tab at the end of the stack instead of in the old tab's place.
 

@@ -203,3 +203,18 @@ final class MinimumSizeTests: XCTestCase {
         XCTAssertLessThanOrEqual(rects[3].maxY, 906)                           // still on screen
     }
 }
+
+final class SetScreensTests: XCTestCase {
+    func testSetScreens() {
+        var ss = StackSet(tags: ["1", "2", "3", "4"], screenCount: 2, ratio: 0.5)
+        ss.setScreens([2, 0], current: 1)
+        XCTAssertEqual(ss.screenWorkspace, [2, 0])
+        XCTAssertEqual(ss.currentScreen, 1)
+        XCTAssertEqual(ss.currentWorkspaceIndex, 0)
+        ss.setScreens([3, 3, 9], current: 5)       // duplicate and unknown dropped
+        XCTAssertEqual(ss.screenWorkspace, [3])
+        XCTAssertEqual(ss.currentScreen, 0)
+        ss.setScreens([], current: 0)
+        XCTAssertEqual(ss.screenWorkspace, [0])
+    }
+}

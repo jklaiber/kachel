@@ -15,6 +15,8 @@ protocol WindowSystem: AnyObject {
     func focusedWindow() -> WindowID?
     /// An app quit: forget what we kept for it.
     func appQuit(_ pid: pid_t)
+    /// The displays, left to right; `reserveBottom` is kept free for the bar.
+    func screens(reserveBottom: CGFloat) -> [Screen]
 }
 
 /// The real one: Accessibility and the window server.
@@ -84,6 +86,8 @@ final class AXWindowSystem: WindowSystem {
         let appEl = AXUIElementCreateApplication(app.processIdentifier)
         return axElement(appEl, kAXFocusedWindowAttribute).flatMap(axWindowID)
     }
+
+    func screens(reserveBottom: CGFloat) -> [Screen] { Screen.all(reserveBottom: reserveBottom) }
 
     func appQuit(_ pid: pid_t) {
         guard let obs = observers.removeValue(forKey: pid) else { return }

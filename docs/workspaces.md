@@ -47,6 +47,16 @@ A pinned workspace always shows on its display while that display is connected:
 `mod-8` brings it up there and moves focus over. Without that display it's an
 ordinary workspace. Trackpad swipes skip workspaces pinned to another display.
 
+## Plugging displays in and out
+
+Kachel recognises displays by name, not by their position:
+
+- A display that stays keeps its workspace, also when one to its left is unplugged.
+- Windows of a display you unplug stay on their workspaces, out of sight until you show them.
+- A display you plug in shows its pinned workspace, otherwise the one it showed
+  last time it was connected (docking a laptop gives you back what you had).
+- Focus stays on the display it was on.
+
 ## How hiding works
 
 Kachel doesn't use macOS Spaces. Every display keeps a single Space, and the

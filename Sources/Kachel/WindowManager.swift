@@ -105,6 +105,9 @@ final class WindowManager {
     var pollTimer: Timer?
     var pollTick = 0
 
+    /// The workspace each display showed when it was last connected, by
+    /// display (see displayKeys), to give it back when it's plugged in again.
+    var lastShownOnDisplay: [String: Int] = [:]
     var hoverTimer: Timer?
     var systemFocusPending = false
 
@@ -278,25 +281,28 @@ final class WindowManager {
     /// (Re)apply Config.current: hotkeys, workspaces, bar, screen geometry.
     func applySettings(rebindKeys: Bool = true) {
         let cfg = Config.current
-        if rebindKeys {
+        if rebindKeys, !headless {
             hotkeyProblems = HotKeys.shared.bind(cfg.keys, sides: cfg.modSides) { [unowned self] cmd in self.perform(cmd) }
         }
         ss.setTags(cfg.workspaces)
         ss.insertPosition = cfg.newWindows
         ss.setLayoutIfUnlisted(cfg.layouts)
-        menuBarItem.setVisible(cfg.menubarIcon)
-        UpdateCheck.shared.apply(enabled: cfg.checkForUpdates)
-        LoginItem.apply(cfg.startAtLogin)
-        updateGestures()
-        bar.menuBarIconShown = cfg.menubarIcon
-        screens = Screen.all(reserveBottom: cfg.bar.enabled ? Bar.height(for: cfg.bar) : 0)
-        ss.setScreenCount(screens.count)
-        bar.place(on: screens, settings: cfg.bar)
+        if !headless {
+            menuBarItem.setVisible(cfg.menubarIcon)
+            UpdateCheck.shared.apply(enabled: cfg.checkForUpdates)
+            LoginItem.apply(cfg.startAtLogin)
+            updateGestures()
+            bar.menuBarIconShown = cfg.menubarIcon
+        }
+        let old = screens
+        screens = system.screens(reserveBottom: cfg.bar.enabled && !headless ? Bar.height(for: cfg.bar) : 0)
+        assignWorkspaces(after: old)
+        if !headless { bar.place(on: screens, settings: cfg.bar) }
         if managing {
             hidden.removeAll()       // geometry may have changed: re-park from scratch
             // While you're in one of Kachel's own windows (Settings, the welcome
             // window, About), a reload mustn't hand focus to another app's window.
-            render(refocus: !NSApp.isActive)
+            render(refocus: headless || !NSApp.isActive)
         } else {
             updateBar()
         }

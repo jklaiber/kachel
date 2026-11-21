@@ -38,7 +38,8 @@ swift test
 - `Tests/KachelCoreTests`: the model, layouts, config parsing and editing.
 - `Tests/KachelTests`: the real `WindowManager` driven by a fake window system
   (`FakeWindowSystem.swift`): windows open, close, switch tabs, get new handles,
-  vanish while the screen is locked; workspaces switch on one or two displays.
+  vanish while the screen is locked; workspaces switch on one or two displays;
+  made-up displays (any name, size and arrangement) are plugged in and out.
   It runs headless: no windows of its own, nothing moved on your screen, nothing
   written to your log or saved state. A scenario that broke in real use belongs here.
 

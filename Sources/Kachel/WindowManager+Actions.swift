@@ -121,8 +121,7 @@ extension WindowManager {
         let cfg = Config.current
         guard ss.workspaces.indices.contains(i),
               let pattern = cfg.workspaceScreens[ss.workspaces[i].tag] ?? cfg.workspaceScreens["\(i + 1)"] else { return nil }
-        let main = NSScreen.screens.first
-        let infos = screens.map { ScreenInfo(name: $0.ns.localizedName, builtin: $0.builtin, main: $0.ns == main) }
+        let infos = screens.map { ScreenInfo(name: $0.name, builtin: $0.builtin, main: $0.main) }
         return ScreenMatcher.index(for: pattern, in: infos)
     }
     func view(_ i: Int)       { syncFocusFromSystem(followHidden: false); ss.view(i); render() }

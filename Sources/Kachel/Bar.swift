@@ -162,7 +162,7 @@ final class Bar {
                     // The wallpaper behind the bar; if we can't read it (a
                     // protected folder), the colour macOS gives the menu bar,
                     // which follows the wallpaper too.
-                    dark = Wallpaper.isDark(behind: p.frame, on: s.ns)
+                    dark = s.ns.flatMap { Wallpaper.isDark(behind: p.frame, on: $0) }
                         ?? MenuBarLook.shared.isDark { [weak self] in self?.updateAppearance() }
                         ?? (NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua)
                 }

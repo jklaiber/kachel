@@ -37,7 +37,7 @@ final class FakeWindow: AppWindow {
     }
     func move(to p: CGPoint) {
         frame?.origin = p
-        if let s = system, !s.screens.contains(where: { $0.insetBy(dx: 2, dy: 2).contains(frame!) }) { timesParked += 1 }
+        if let s = system, !s.displays.contains(where: { $0.frame.insetBy(dx: 2, dy: 2).contains(frame!) }) { timesParked += 1 }
     }
     func setMinimized(_ on: Bool) {
         if on { timesMinimized += 1 }
@@ -56,7 +56,9 @@ final class FakeWindowSystem: WindowSystem {
     /// (an app busy, the screen locked, a closed window an app keeps).
     var axHidden: Set<WindowID> = []
     var focused: WindowID?
-    var screens: [CGRect] = []
+    /// The connected displays; change it and call `screensChanged()` to plug
+    /// one in or out.
+    var displays: [Screen] = []
     private var nextID: WindowID = 100
 
     @discardableResult
@@ -93,6 +95,18 @@ final class FakeWindowSystem: WindowSystem {
     func windowServerIDs() -> Set<WindowID> { Set(all.keys) }
     func focusedWindow() -> WindowID? { focused }
     func appQuit(_ pid: pid_t) {}
+    func screens(reserveBottom: CGFloat) -> [Screen] {
+        displays.sorted { ($0.frame.minX, $0.frame.minY) < ($1.frame.minX, $1.frame.minY) }
+    }
+}
+
+extension Screen {
+    /// A made-up display; `menuBar` points at the top are taken (only the main one has it).
+    static func fake(_ frame: CGRect, name: String, builtin: Bool = false, main: Bool = false) -> Screen {
+        let menuBar: CGFloat = main ? 30 : 0
+        let visible = CGRect(x: frame.minX, y: frame.minY + menuBar, width: frame.width, height: frame.height - menuBar)
+        return Screen(frame: frame, visible: visible, nsVisible: visible, name: name, builtin: builtin, main: main)
+    }
 }
 
 /// A WindowManager on fake screens, with nothing written to disk.
@@ -105,22 +119,37 @@ class WindowManagerTestCase: XCTestCase {
 
     static let screen1 = CGRect(x: 0, y: 0, width: 1200, height: 800)
     static let screen2 = CGRect(x: 1200, y: 0, width: 1000, height: 800)
+    /// A laptop and an external display to its right.
+    static let laptop = Screen.fake(CGRect(x: 0, y: 0, width: 1512, height: 982), name: "Built-in Retina Display",
+                                    builtin: true, main: true)
+    static let dell = Screen.fake(CGRect(x: 1512, y: 0, width: 2560, height: 1440), name: "DELL U2720Q")
 
     /// - config: YAML on top of the defaults (e.g. rules).
     func start(screens: [CGRect] = [screen1], config: String = "") throws {
+        try start(displays: screens.enumerated().map { i, f in Screen.fake(f, name: "Display \(i + 1)") }, config: config)
+    }
+
+    func start(displays: [Screen], config: String = "") throws {
         Log.enabled = false
-        guard let ns = NSScreen.screens.first else { throw XCTSkip("needs a display") }
         // No gaps, padding or bar: frames are easy to check.
         Config.use(try Settings.parse("gap: 0\nmouse-follows-focus: off\nborder:\n  enabled: false\n" + config))
         sys = FakeWindowSystem()
-        sys.screens = screens
+        sys.displays = displays
         wm = WindowManager(system: sys, headless: true)
         Self.keepAlive.append(wm)
-        wm.screens = screens.map { f in
-            Screen(frame: f, visible: f, nsVisible: NSRect(x: f.minX, y: 0, width: f.width, height: f.height), ns: ns)
-        }
-        wm.ss = StackSet(tags: Config.current.workspaces, screenCount: screens.count, ratio: 0.5)
         wm.managing = true
+        wm.screensChanged()            // reads the displays like at launch
+    }
+
+    /// Plug displays in or out, as macOS reports it.
+    func connect(_ displays: [Screen]) {
+        sys.displays = displays
+        wm.screensChanged()
+    }
+
+    func display(of w: FakeWindow) -> String? {
+        guard let f = w.frame else { return nil }
+        return sys.displays.first { $0.frame.contains(CGPoint(x: f.midX, y: f.midY)) }?.name
     }
 
     /// What happens after macOS reports a change.

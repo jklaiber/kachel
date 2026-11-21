@@ -55,7 +55,7 @@ extension WindowManager {
         case "windows": value = ss.workspaces.flatMap(\.windows).map(window)
         case "screens":
             value = screens.enumerated().map { i, s -> [String: Any] in
-                ["index": i + 1, "name": s.ns.localizedName, "builtin": s.builtin, "focused": ss.currentScreen == i,
+                ["index": i + 1, "name": s.name, "builtin": s.builtin, "focused": ss.currentScreen == i,
                  "workspace": ss.screenWorkspace.indices.contains(i) ? ss.workspaces[ss.screenWorkspace[i]].tag : NSNull(),
                  "frame": ["x": s.frame.minX, "y": s.frame.minY, "width": s.frame.width, "height": s.frame.height]]
             }
