@@ -21,6 +21,15 @@ jobs:
           if grep -E "only available in macOS|is unavailable in macOS" build.log; then
             echo "::error::uses an API that's newer than Kachel's minimum macOS"; exit 1
           fi
-      - run: swift test
+      # GitHub's Intel Macs are virtual and have no usable graphics: windows with
+      # Liquid Glass and alerts hang there. Drawing is the same on both, so the
+      # UI tests and the app start run on Apple Silicon; Intel builds and runs
+      # all the other tests.
+      - name: Tests
+        run: |
+          if [ "${{ matrix.os }}" = "macos-26-intel" ]; then swift test --skip UITests
+          else swift test; fi
       - run: ./scripts/bundle.sh
-      - run: ./scripts/smoke-test.sh
+      - name: Start the app
+        if: matrix.os != 'macos-26-intel'
+        run: ./scripts/smoke-test.sh

@@ -61,8 +61,10 @@ swift test
   comparison is skipped). Checks that hold on every version run anyway, e.g. that
   the crash alert's text isn't cut off.
 
-Kachel supports macOS 26 and newer: it's built around Liquid Glass. CI runs all
-of this on GitHub's macOS 26 machines:
+Kachel supports macOS 26 and newer: it's built around Liquid Glass. CI runs on
+GitHub's macOS 26 machines, Apple Silicon and Intel. GitHub's Intel Macs are
+virtual without usable graphics, so the UI tests and the app start run on Apple
+Silicon only; Intel builds and runs everything else. On Apple Silicon CI runs:
 the build (an API newer than Kachel's minimum macOS fails it), `swift test`, and
 `scripts/smoke-test.sh`, which starts the built app and checks that it runs,
 answers the `kachel` command, opens Settings, quits cleanly and draws the
