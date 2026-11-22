@@ -25,7 +25,7 @@ final class SettingsWindow {
             window = w
         }
         model.reload()
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
     }
 }
@@ -384,7 +384,7 @@ struct GeneralPane: View {
                     HStack {
                         Text(AppVersion.string).textSelection(.enabled)
                         if let r = UpdateCheck.shared.available {
-                            Button("\(r.version) available…") { UpdateCheck.shared.showDetails() }
+                            Button("\(r.version.description) available…") { UpdateCheck.shared.showDetails() }
                         }
                         Button("About Kachel") { AppVersion.showAbout() }
                     }
@@ -1296,7 +1296,7 @@ private struct CommitOnLeave: ViewModifier {
         content
             .focused($focused)
             .onSubmit(commit)
-            .onChange(of: focused) { isFocused in if !isFocused { commit() } }
+            .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
             .onDisappear(perform: commit)
     }
 }

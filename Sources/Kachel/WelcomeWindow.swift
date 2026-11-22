@@ -24,7 +24,7 @@ final class WelcomeWindow {
         model.refresh()
         model.startWatching()
         window?.center()
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
     }
 
@@ -37,7 +37,7 @@ final class WelcomeWindow {
         // macOS may not let a background app activate itself; the window comes
         // to the front either way.
         window.orderFrontRegardless()
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         window.makeKeyAndOrderFront(nil)
     }
 
@@ -316,15 +316,15 @@ struct CheckRow: View {
     }
 }
 
-/// Liquid Glass rows on macOS 26, a soft fill before.
+/// Liquid Glass rows.
 struct RowBackground: ViewModifier {
-    /// Offscreen renders (README images) can't draw glass.
+    /// Offscreen renders (README images, UI tests) can't draw glass: a soft fill there.
     static var plain = false
     func body(content: Content) -> some View {
-        if #available(macOS 26.0, *), !Self.plain {
-            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16))
+        if Self.plain {
+            content.background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16))
         } else {
-            content.background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16))
         }
     }
 }

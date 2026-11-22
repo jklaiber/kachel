@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "Kachel",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS("26.0")],   // Liquid Glass; CI tests it (see .github/workflows/ci.yml)
     dependencies: [
         .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2"),
     ],

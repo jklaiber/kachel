@@ -1,6 +1,6 @@
 # Development
 
-Requires macOS 13+ and the Xcode Command Line Tools (`xcode-select --install`).
+Requires macOS 26+ and Xcode 26 (or its Command Line Tools) (`xcode-select --install`).
 
 ```bash
 swift test                    # the model, and the window manager against made-up windows and displays
@@ -60,6 +60,14 @@ swift test
   On a macOS version without references, the first run records them (in CI the
   comparison is skipped). Checks that hold on every version run anyway, e.g. that
   the crash alert's text isn't cut off.
+
+Kachel supports macOS 26 and newer: it's built around Liquid Glass. CI runs all
+of this on GitHub's macOS 26 machines:
+the build (an API newer than Kachel's minimum macOS fails it), `swift test`, and
+`scripts/smoke-test.sh`, which starts the built app and checks that it runs,
+answers the `kachel` command, opens Settings, quits cleanly and draws the
+documentation images. Accessibility can't be granted there, so moving real
+windows is covered by the fake window system, not by CI.
 
 After changing the default config:
 

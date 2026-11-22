@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-latest
+    runs-on: macos-26          # Liquid Glass: macOS 26 SDK (Xcode 26)
     env:
       TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
     steps:

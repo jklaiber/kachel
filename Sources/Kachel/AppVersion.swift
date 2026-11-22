@@ -23,7 +23,7 @@ enum AppVersion {
         let centered = NSMutableParagraphStyle()
         centered.alignment = .center
         credits.addAttribute(.paragraphStyle, value: centered, range: NSRange(location: 0, length: credits.length))
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationVersion: "Version \(string)",
             .version: "",                                   // no build number in brackets
