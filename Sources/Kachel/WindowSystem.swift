@@ -19,6 +19,10 @@ protocol WindowSystem: AnyObject {
     func screens(reserveBottom: CGFloat) -> [Screen]
     /// When the Mac started: window IDs start over after a restart.
     var bootTime: Double { get }
+    /// Run a shell command (`run:` of a scratchpad, `spawn`, the terminal).
+    /// `done` gets its exit status and the start of what it printed to
+    /// stderr, on the main thread.
+    func run(_ command: String, done: @escaping (Int32, String) -> Void)
 }
 
 /// Where Kachel keeps its state between runs (a file; in tests, memory).
@@ -173,6 +177,20 @@ final class AXWindowSystem: WindowSystem {
     }
 
     func screens(reserveBottom: CGFloat) -> [Screen] { Screen.all(reserveBottom: reserveBottom) }
+
+    func run(_ command: String, done: @escaping (Int32, String) -> Void) {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        p.arguments = ["-c", command]
+        let err = Pipe()
+        p.standardError = err
+        p.standardOutput = FileHandle.nullDevice
+        p.terminationHandler = { proc in
+            let text = String(decoding: err.fileHandleForReading.availableData.prefix(300), as: UTF8.self)
+            DispatchQueue.main.async { done(proc.terminationStatus, text) }
+        }
+        do { try p.run() } catch { done(127, "\(error)") }
+    }
 
     let bootTime: Double = {
         var tv = timeval()

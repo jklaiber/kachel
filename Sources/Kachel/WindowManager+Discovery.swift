@@ -157,6 +157,7 @@ extension WindowManager {
                      + (ss.floating.contains(id) ? ", floats (\(floatReason(w)))" : ""))
             if let sp = startingScratchpad(for: w) {
                 scratchPending[sp.name] = nil
+                scratchProblems[sp.name] = nil
                 scratchWindow[sp.name] = id
                 ss.floating.insert(id)
                 ss.insert(id)

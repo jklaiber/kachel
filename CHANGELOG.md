@@ -7,6 +7,15 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Fixed
+- A scratchpad whose window didn't match its `app` / `title` started its app
+  again on every key press, with nothing saying why
+  ([#7](https://github.com/jklaiber/kachel/issues/7)). Now it isn't started
+  again while it's starting (15 s), the bar says when no matching window
+  appeared (and when the app's window is there but its title doesn't fit), and
+  a failing `run` command is reported. The docs explain that `run` is a shell
+  command and how `title` matches.
+
 ### Changed
 - Kachel now requires **macOS 26 (Tahoe)**: it's built around Liquid Glass, and
   only what CI can test is supported. Homebrew keeps older Macs on 0.1.20.

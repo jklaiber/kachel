@@ -106,6 +106,13 @@ final class FakeWindowSystem: WindowSystem {
     func appQuit(_ pid: pid_t) {}
     /// Change it to simulate a restart of the Mac.
     var bootTime: Double = 1_000
+    /// Commands Kachel ran (nothing is really started), and what they report.
+    var ran: [String] = []
+    var runResult: (Int32, String) = (0, "")
+    func run(_ command: String, done: @escaping (Int32, String) -> Void) {
+        ran.append(command)
+        done(runResult.0, runResult.1)
+    }
     func screens(reserveBottom: CGFloat) -> [Screen] {
         displays.sorted { ($0.frame.minX, $0.frame.minY) < ($1.frame.minX, $1.frame.minY) }
     }

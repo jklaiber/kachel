@@ -58,6 +58,16 @@ Window* fills in the details.
 ## Good to know
 
 - Use `title` whenever the app has other windows, so the scratchpad only takes
-  its own.
+  its own. It's a case-insensitive *contains* match on the window title: use a
+  short part that stays the same, like the file name. Apps often show more in
+  the title (the folder, the app name, "— Edited"), and not always the path the
+  way you wrote it.
+- `run` is a shell command (`/bin/sh -c`): quote paths with spaces, as in
+  `run: open -a TextEdit "$HOME/My Docs/notes.txt"`, or the shell splits them.
+  Use `$HOME` inside quotes: `~` isn't expanded there.
+- After `run`, Kachel waits 15 seconds for a window that fits `app` and
+  `title`, and doesn't start the app again meanwhile. If none comes, the bar
+  says so, and when a window of the app is there but its title doesn't fit, it
+  says that too. If `run` itself fails, the bar shows the error.
 - On another workspace or display, the key brings the scratchpad over there.
 - The app keeps running while the scratchpad is put away, so nothing is lost.

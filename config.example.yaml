@@ -109,7 +109,10 @@ gestures:
 # floating over whatever workspace you're on, the same key hides it again.
 # If it isn't open yet, `run` starts it.
 #   name      used by the command: scratchpad <name>
-#   app       bundle ID or app name of its window; title (optional) narrows it down
+#   app       bundle ID or app name of its window; title (optional) narrows it down:
+#             a case-insensitive "contains", so use a short, stable part (the file name)
+#   run       a shell command (/bin/sh): quote paths with spaces, "$HOME/My Docs/notes.txt"
+#             (~ isn't expanded inside quotes)
 #   size      [width, height] as shares of the screen; position: center or top
 scratchpads:
   - name: term

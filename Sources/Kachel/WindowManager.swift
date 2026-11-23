@@ -95,6 +95,9 @@ final class WindowManager {
     var scratchWindow: [String: WindowID] = [:]
     var scratchParked: Set<WindowID> = []
     var scratchPending: [String: Date] = [:]
+    /// What went wrong the last time a scratchpad was started (shown in the
+    /// bar until it works).
+    var scratchProblems: [String: String] = [:]
     /// Minimum sizes learned from windows that refused to get smaller.
     var minSize: [WindowID: CGSize] = [:]
     var savePending = false
@@ -311,6 +314,8 @@ final class WindowManager {
             hotkeyProblems = HotKeys.shared.bind(cfg.keys, sides: cfg.modSides) { [unowned self] cmd in self.perform(cmd) }
         }
         ss.setTags(cfg.workspaces)
+        // A changed config may have fixed a scratchpad: try again before warning.
+        scratchProblems = [:]
         ss.insertPosition = cfg.newWindows
         ss.setLayoutIfUnlisted(cfg.layouts)
         applyWorkspaceLayouts()

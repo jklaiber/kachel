@@ -175,11 +175,15 @@ extension WindowManager {
         screensChanged()
     }
 
-    func spawn(_ command: String) {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/sh")
-        p.arguments = ["-c", command]
-        try? p.run()
+    /// Run a shell command; if it fails, the log (and `onFailure`) says how.
+    func spawn(_ command: String, onFailure: ((String) -> Void)? = nil) {
+        system.run(command) { status, stderr in
+            guard status != 0 else { return }
+            let first = stderr.split(separator: "\n").first.map(String.init) ?? ""
+            let what = "exited with \(status)" + (first.isEmpty ? "" : ": \(first)")
+            Log.info("command failed (\(what)): \(command)")
+            onFailure?(what)
+        }
     }
 
     /// Windows of the current workspace that aren't on screen: kept after

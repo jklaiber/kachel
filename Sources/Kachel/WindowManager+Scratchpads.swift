@@ -29,6 +29,28 @@ extension WindowManager {
         return nil
     }
 
+    /// How long a started scratchpad has to show its window.
+    static let scratchWait: TimeInterval = 15
+
+    /// `run` started, but no window fit `app` and `title` in time: say so,
+    /// with the likely reason (a window of the app is there, with another title).
+    func scratchpadDidntAppear(_ name: String) {
+        guard scratchPending[name] != nil, scratchWindow[name].flatMap({ windows[$0] }) == nil,
+              let sp = scratchpad(named: name) else { return }
+        scratchPending[name] = nil
+        let ofApp = windows.values.filter { matches($0, sp, checkTitle: false) }
+        var why = "no window of \(sp.app) appeared"
+        if let t = sp.title, !t.isEmpty, !ofApp.isEmpty {
+            why = "\(sp.app) has \(ofApp.count) window(s), but no title contains \"\(t)\" (use a short part, like the file name)"
+            Log.info("scratchpad \(name): window titles of \(sp.app): " + ofApp.map { Log.title($0.title) }.joined(separator: ", "))
+        }
+        scratchProblems[name] = "scratchpad \(name): started, but \(why)"
+        Log.info("scratchpad \(name): started \(Int(Self.scratchWait)) s ago, but \(why)")
+        updateBar()
+    }
+
+    private func beep() { if !headless { NSSound.beep() } }
+
     /// Show it here if it's away (or on another workspace), put it away if
     /// it's showing here; start it if it isn't open.
     func toggleScratchpad(_ name: String) {
@@ -39,16 +61,31 @@ extension WindowManager {
             // Adopt an open window that fits (e.g. after a restart).
             let taken = Set(scratchWindow.values)
             id = windows.first { !taken.contains($0.key) && matches($0.value, sp) }?.key
-            if let id { scratchWindow[name] = id }
+            if let id {
+                scratchWindow[name] = id
+                scratchPending[name] = nil
+                scratchProblems[name] = nil
+            }
         }
         guard let id else {
             guard let run = sp.run else {
                 Log.info("scratchpad \(name): no window and nothing to run")
-                NSSound.beep(); return
+                beep(); return
+            }
+            // Started a moment ago and its window isn't there yet: don't start
+            // it again (each press would open another copy).
+            if let started = scratchPending[name], clock.now.timeIntervalSince(started) < Self.scratchWait {
+                Log.info("scratchpad \(name): still starting (\(Int(clock.now.timeIntervalSince(started))) s ago), not starting it again")
+                beep(); return
             }
             Log.info("scratchpad \(name): starting \(run)")
             scratchPending[name] = clock.now
-            spawn(run)
+            scratchProblems[name] = nil
+            spawn(run) { [weak self] failure in
+                self?.scratchProblems[name] = "scratchpad \(name): run \(failure)"
+                self?.updateBar()
+            }
+            clock.after(Self.scratchWait) { [weak self] in self?.scratchpadDidntAppear(name) }
             return
         }
         let here = ss.currentWorkspaceIndex
