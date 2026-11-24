@@ -5,9 +5,13 @@ import XCTest
 /// Pictures of Kachel's own UI, compared with reference images.
 ///
 /// Fonts and controls look a little different on every macOS version, so the
-/// references are kept per version (`__Snapshots__/macOS-26.5/…`). Without a
-/// reference for this version, the test records one and is skipped; in CI it
-/// only skips (other versions are compared on the Mac they were recorded on). With
+/// references are kept per version (`__Snapshots__/macOS-26.7/…`). Without a
+/// reference for this version, the test records one and is skipped.
+///
+/// Pictures are only compared on the developer's Mac: another Mac (CI's
+/// virtual one) smooths text slightly differently, so pixels never match
+/// across machines. In CI the checks that hold everywhere still run (the
+/// picture isn't blank, plus each test's own checks). With
 /// one, a change shows as a failure, and the actual image and a picture of
 /// the differences are written next to it (`….actual.png`, `….diff.png`).
 ///
@@ -30,7 +34,11 @@ enum Snapshot {
         window.contentView = view
         view.layoutSubtreeIfNeeded()
         window.displayIfNeeded()
-        let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)!
+        // Always 2× (a Retina screen), whatever screen this Mac has.
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(view.bounds.width * 2), pixelsHigh: Int(view.bounds.height * 2),
+                                   bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                   colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        rep.size = view.bounds.size
         // Colours like labelColor are resolved while drawing: with the window's appearance.
         view.effectiveAppearance.performAsCurrentDrawingAppearance { view.cacheDisplay(in: view.bounds, to: rep) }
         window.contentView = nil
@@ -63,11 +71,11 @@ enum Snapshot {
     static func check(_ rep: NSBitmapImageRep, _ name: String, tolerance: Double = 0.0001,
                       file: StaticString = #filePath, line: UInt = #line) throws {
         XCTAssertGreaterThan(distinctColours(rep), 3, "\(name): the image is (nearly) blank", file: file, line: line)
+        if ProcessInfo.processInfo.environment["CI"] != nil {
+            throw XCTSkip("\(name): pictures are compared on the developer's Mac only")
+        }
         let ref = folder.appendingPathComponent("\(name).png")
         guard !recording, let data = try? Data(contentsOf: ref), let expected = NSBitmapImageRep(data: data) else {
-            if ProcessInfo.processInfo.environment["CI"] != nil {
-                throw XCTSkip("\(name): no reference for this macOS version")
-            }
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             try png(rep).write(to: ref)
             throw XCTSkip("\(name): recorded a new reference for this macOS version at \(ref.path)")

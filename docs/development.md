@@ -57,9 +57,11 @@ swift test
   KACHEL_RECORD_SNAPSHOTS=1 swift test --filter UITests
   ```
 
-  On a macOS version without references, the first run records them (in CI the
-  comparison is skipped). Checks that hold on every version run anyway, e.g. that
-  the crash alert's text isn't cut off.
+  On a macOS version without references, the first run records them. Pictures
+  are compared on your Mac only: another Mac (CI's virtual one) smooths text a
+  little differently, so pixels never match across machines. CI still runs the
+  checks that hold everywhere: the pictures aren't blank, the crash alert's
+  text isn't cut off, the config warnings show.
 
 Kachel supports macOS 26 and newer: it's built around Liquid Glass. CI runs on
 GitHub's macOS 26 machines, Apple Silicon and Intel. GitHub's Intel Macs are
