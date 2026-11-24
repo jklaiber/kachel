@@ -26,6 +26,10 @@ mouse-follows-focus: window   # pointer to the focused window's centre; screen =
 focus-follows-mouse: false    # true: the window under the pointer gets focus when the pointer rests
 workspace-back-and-forth: false   # true: the key of the workspace you're on goes back to the previous one
 follow-moved-windows: false   # true: sending a window to another workspace takes you there too
+# A window on a hidden workspace gets focus (a link opens in it, cmd-tab, the
+# Dock): Kachel shows that workspace on this screen (current), or on the
+# screen that showed it last (last; this screen keeps its workspace).
+follow-focus-screen: current
 new-windows: end              # where new windows go: end (last in the stack), below / above the
                               # focused window, or master (xmonad's default is above)
 haptics: true                 # a light trackpad tap when a swipe triggers or a window snaps in

@@ -67,6 +67,10 @@ final class WindowManager {
     }
     /// Restored by us; focus them again once they're back.
     var refocusWhenBack: Set<WindowID> = []
+    /// Your last key press or click (not Kachel's own shortcuts).
+    var lastUserInput = Date.distantPast
+    /// The window focusCurrent last focused, so the log names each change once.
+    var lastFocusedByUs: WindowID?
     /// Floating window frames relative to their screen's visible origin, saved on hide.
     var floatRel: [WindowID: CGRect] = [:]
     /// workspace index -> screen it was on at the last render (to detect swaps).
@@ -119,6 +123,8 @@ final class WindowManager {
     /// The workspace each display showed when it was last connected, by
     /// display (see displayKeys), to give it back when it's plugged in again.
     var lastShownOnDisplay: [String: Int] = [:]
+    /// The display (see displayKeys) each workspace was last shown on.
+    var lastDisplayOfWorkspace: [Int: String] = [:]
     /// Where windows were (by app and title), saved with the state for after
     /// a restart. Captured at quit, sleep, lock and every few minutes, not on
     /// every save: reading titles asks every app.
@@ -248,6 +254,7 @@ final class WindowManager {
         }
         ws.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [unowned self] _ in
             self.systemFocusChanged()
+            self.keepBorderAbove()           // the app may raise its window over the frame
         }
         ws.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [unowned self] _ in
             self.scheduleRefresh()

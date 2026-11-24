@@ -7,7 +7,21 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- `follow-focus-screen: last`: when a window on a hidden workspace gets focus
+  (a link opens in it, ⌘Tab, the Dock), its workspace shows up on the display
+  it was last on, and yours keeps its workspace
+  ([#10](https://github.com/jklaiber/kachel/issues/10)). Also in Settings →
+  General → Workspaces; the default stays as before.
+
 ### Fixed
+- A window restored from minimized (`hide: minimize`, e.g. a Teams meeting) could
+  end up behind another app when its workspace came back: Kachel now checks
+  that it stays in front and focuses it again unless you clicked or typed
+  meanwhile ([#8](https://github.com/jklaiber/kachel/issues/8)).
+- The focus border could end up behind the focused window when the app brought
+  its window forward after Kachel placed the frame: it's put back on top of it
+  shortly after every focus change ([#9](https://github.com/jklaiber/kachel/issues/9)).
 - A scratchpad whose window didn't match its `app` / `title` started its app
   again on every key press, with nothing saying why
   ([#7](https://github.com/jklaiber/kachel/issues/7)). Now it isn't started

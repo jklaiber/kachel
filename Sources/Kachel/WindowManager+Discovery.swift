@@ -190,6 +190,7 @@ extension WindowManager {
             if refocusWhenBack.remove(id) != nil, let ws = ss.workspaceIndex(of: id), ss.isVisible(workspace: ws) {
                 ss.focus(id)
                 changed = true
+                makeSureItGetsFocus(id)
             }
             // Restored while its workspace is out of sight, and not by us: you
             // clicked the app's small window or the Dock. Go there, like macOS

@@ -166,6 +166,10 @@ public struct Settings {
     public var windowLimit = 0
     /// Sending a window to another workspace takes you there too.
     public var followMovedWindows = false
+    /// Where a hidden workspace shows when Kachel follows focus to it by itself
+    /// (a link opens, cmd-tab, the Dock): on this screen, or where it was last.
+    public var followFocusScreen: FollowFocusScreen = .current
+    public enum FollowFocusScreen: String { case current, last }
 
     /// All layouts, in the order the settings window lists them.
     public static let layoutOrder: [LayoutKind] = [.tall, .tallRight, .mirrorTall, .widescreenTall, .threeColumn,
@@ -229,7 +233,7 @@ public struct Settings {
                                   "scratchpads", "border", "focus-follows-mouse",
                                   "workspace-back-and-forth", "workspace-screens", "workspace-layouts", "new-windows",
                                   "haptics", "shortcut-overview", "padding", "builtin-display-padding",
-                                  "smart-gaps", "window-limit", "follow-moved-windows"]
+                                  "smart-gaps", "window-limit", "follow-moved-windows", "follow-focus-screen"]
         s.warnings = []
         for bad in dict.keys.sorted() where !known.contains(bad) {
             s.warnings.append(unknown(bad, known))
@@ -248,6 +252,12 @@ public struct Settings {
         if let v = dict["smart-gaps"] { s.smartGaps = try bool(v, "smart-gaps") }
         if let v = dict["window-limit"] { s.windowLimit = max(0, Int(try number(v, "window-limit"))) }
         if let v = dict["follow-moved-windows"] { s.followMovedWindows = try bool(v, "follow-moved-windows") }
+        if let v = dict["follow-focus-screen"] {
+            guard let f = FollowFocusScreen(rawValue: "\(v)") else {
+                throw SettingsError("follow-focus-screen must be current or last")
+            }
+            s.followFocusScreen = f
+        }
         if let v = dict["ratio"] { s.ratio = min(0.9, max(0.1, try number(v, "ratio"))) }
         if let v = dict["ratio-step"] { s.ratioStep = try number(v, "ratio-step") }
         if let v = dict["mouse-follows-focus"] {
@@ -774,6 +784,10 @@ mouse-follows-focus: window   # pointer to the focused window's centre; screen =
 focus-follows-mouse: false    # true: the window under the pointer gets focus when the pointer rests
 workspace-back-and-forth: false   # true: the key of the workspace you're on goes back to the previous one
 follow-moved-windows: false   # true: sending a window to another workspace takes you there too
+# A window on a hidden workspace gets focus (a link opens in it, cmd-tab, the
+# Dock): Kachel shows that workspace on this screen (current), or on the
+# screen that showed it last (last; this screen keeps its workspace).
+follow-focus-screen: current
 new-windows: end              # where new windows go: end (last in the stack), below / above the
                               # focused window, or master (xmonad's default is above)
 haptics: true                 # a light trackpad tap when a swipe triggers or a window snaps in

@@ -6,6 +6,10 @@ extension WindowManager {
     // MARK: - shortcut overview
 
     func modifierEvent(_ e: NSEvent) {
+        // A key or click of yours: focus changes after it are your doing.
+        if e.type == .keyDown || e.type == .leftMouseDown || e.type == .rightMouseDown {
+            lastUserInput = clock.now
+        }
         let delay = Config.current.shortcutOverview
         if e.type == .flagsChanged {
             let mods = e.modifierFlags.intersection([.command, .option, .control, .shift])
@@ -49,6 +53,20 @@ extension WindowManager {
     }
 
     // MARK: - focus border
+
+    /// After a focus change, check twice that the frame is still on top of
+    /// its window (the app may bring the window forward after we placed it).
+    func keepBorderAbove() {
+        guard !headless else { return }
+        for delay in [0.15, 0.5] {
+            clock.after(delay) { [weak self] in
+                guard let self, let id = self.border.window, id == self.ss.current.focused else { return }
+                if self.border.keepAbove() {
+                    Log.info("focus border was behind window \(id): put it back on top")
+                }
+            }
+        }
+    }
 
     /// Frame the focused window (if it's on screen and the border is wanted).
     func updateBorder() {

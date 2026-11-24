@@ -34,9 +34,37 @@ final class FocusBorder {
         view.needsDisplay = true
         // Right above the focused window, not above everything.
         panel.order(.above, relativeTo: Int(window))
+        self.window = window
     }
 
-    func hide() { panel.orderOut(nil) }
+    func hide() {
+        panel.orderOut(nil)
+        window = nil
+    }
+
+    /// The window the frame is around, while it's shown.
+    private(set) var window: WindowID?
+
+    /// Apps bring their windows forward on their own, sometimes after we
+    /// placed the frame (activation is asynchronous, Electron reorders its
+    /// windows): then the window covers its own frame. Put it back on top of
+    /// it. Returns whether it had to.
+    @discardableResult
+    func keepAbove() -> Bool {
+        guard let window, panel.isVisible, isBelow(window) else { return false }
+        panel.order(.above, relativeTo: Int(window))
+        return true
+    }
+
+    /// Is the frame behind its window? (The window server lists windows
+    /// front to back.)
+    private func isBelow(_ window: WindowID) -> Bool {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else { return false }
+        let order = list.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value }
+        guard let mine = order.firstIndex(of: UInt32(panel.windowNumber)),
+              let its = order.firstIndex(of: window) else { return false }
+        return mine > its
+    }
 }
 
 private final class BorderView: NSView {

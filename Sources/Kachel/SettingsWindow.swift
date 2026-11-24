@@ -280,6 +280,13 @@ struct GeneralPane: View {
                 Text("Separated by spaces.").font(.caption).foregroundStyle(.secondary)
                 Toggle("Go along when you move a window to another workspace",
                        isOn: m.binding({ $0.followMovedWindows }, { m.top("follow-moved-windows", SettingsModel.yaml($0)) }))
+                Picker(selection: m.binding({ $0.followFocusScreen }, { m.top("follow-focus-screen", $0.rawValue) })) {
+                    Text("On this display").tag(KSettings.FollowFocusScreen.current)
+                    Text("On the display it was last on").tag(KSettings.FollowFocusScreen.last)
+                } label: {
+                    Text("A window on a hidden workspace gets focus")
+                    Text("A link opens in it, ⌘Tab, the Dock: where its workspace shows up.")
+                }
                 Toggle("The key of the current workspace goes back to the previous one",
                        isOn: m.binding({ $0.workspaceBackAndForth }, { m.top("workspace-back-and-forth", SettingsModel.yaml($0)) }))
                 DisclosureGroup("Pin workspaces to displays", isExpanded: $pinsOpen) {

@@ -169,4 +169,61 @@ final class DisplayTests: WindowManagerTestCase {
         connect([left, right])
         XCTAssertEqual(wm.ss.screenWorkspace.map { wm.ss.workspaces[$0].tag }, ["3", "4"])
     }
+
+    // MARK: follow-focus-screen (issue #10)
+
+    private func tag(_ screen: Int) -> String { wm.ss.workspaces[wm.ss.screenWorkspace[screen]].tag }
+
+    /// Chrome is on workspace 1, last shown on the laptop, now hidden. You work
+    /// on the DELL (workspace 9) and a link opens in Chrome.
+    private func linkOpensInChrome(config: String = "", displays: [Screen] = [laptop, dell]) throws -> FakeWindow {
+        try start(displays: [Self.laptop, Self.dell], config: config)
+        let chrome = sys.open("com.google.Chrome", title: "Inbox")
+        refresh()                                       // on 1, the laptop
+        try run("workspace 5")                          // the laptop moves on
+        try run("focus-next-screen")
+        try run("workspace 9")                          // you, on the DELL
+        if displays.count != 2 { connect(displays) }
+        clock.advance(by: 1)                            // a moment later (Kachel ignores macOS right after its own focus)
+        sys.focused = chrome.id                         // the link: macOS activates Chrome
+        wm.syncFocusFromSystem(followHidden: true)
+        clock.advance(by: 0.3)
+        return chrome
+    }
+
+    func testFollowFocusOnThisScreenByDefault() throws {
+        let chrome = try linkOpensInChrome()
+        XCTAssertEqual(tag(1), "1", "pulled onto the DELL, as before")
+        XCTAssertEqual(display(of: chrome), "DELL U2720Q")
+    }
+
+    func testFollowFocusToTheScreenItWasLastOn() throws {
+        let chrome = try linkOpensInChrome(config: "follow-focus-screen: last\n")
+        XCTAssertEqual(tag(0), "1", "back on the laptop")
+        XCTAssertEqual(tag(1), "9", "the DELL keeps 9")
+        XCTAssertEqual(wm.ss.currentScreen, 0, "focus moves to the laptop")
+        XCTAssertEqual(display(of: chrome), "Built-in Retina Display")
+        XCTAssertEqual(wm.ss.current.focused, chrome.id)
+    }
+
+    /// A pin still decides: workspace 1 pinned to the DELL goes there.
+    func testPinWinsOverLast() throws {
+        let chrome = try linkOpensInChrome(config: "follow-focus-screen: last\nworkspace-screens: {\"1\": DELL}\n")
+        XCTAssertEqual(display(of: chrome), "DELL U2720Q")
+    }
+
+    /// The screen it was on is gone: like `current`.
+    func testLastScreenGoneFallsBack() throws {
+        let chrome = try linkOpensInChrome(config: "follow-focus-screen: last\n", displays: [Self.dell])
+        XCTAssertEqual(display(of: chrome), "DELL U2720Q")
+    }
+
+    /// Workspace keys aren't affected: mod-1 still brings 1 here.
+    func testKeysUnaffected() throws {
+        try start(displays: [Self.laptop, Self.dell], config: "follow-focus-screen: last\n")
+        try run("workspace 5")
+        try run("focus-next-screen")
+        try run("workspace 1")
+        XCTAssertEqual(tag(1), "1")
+    }
 }

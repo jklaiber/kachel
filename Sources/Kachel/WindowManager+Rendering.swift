@@ -181,6 +181,8 @@ extension WindowManager {
 
         lastScreen = [:]
         for (s, wsIndex) in ss.screenWorkspace.enumerated() { lastScreen[wsIndex] = s }
+        let keys = Self.displayKeys(screens)
+        for (s, wsIndex) in ss.screenWorkspace.enumerated() where s < keys.count { lastDisplayOfWorkspace[wsIndex] = keys[s] }
         // Only tiled, visible windows have a place to be checked against.
         expected = expected.filter { placed.contains($0.key) }
 
@@ -349,8 +351,13 @@ extension WindowManager {
         let ws = ss.current
         if let f = ws.focused, let w = windows[f] {
             touch(f)
+            if lastFocusedByUs != f {
+                Log.info("focusing window \(f) (\(appName(of: w)))")
+                lastFocusedByUs = f
+            }
             w.focus()
             DispatchQueue.main.async { self.updateBorder() }
+            keepBorderAbove()
         } else if !headless {
             border.hide()
             // Empty workspace: take focus ourselves so keystrokes don't go

@@ -29,6 +29,26 @@ extension WindowManager {
 
     func focusedSystemWindow() -> WindowID? { system.focusedWindow() }
 
+    /// A window we restored (un-minimized) should end up in front. The first
+    /// focus can come too early (the window still animating, its app not
+    /// answering), and macOS then activates whatever was in front before. Look
+    /// again a little later and focus it once more, unless you typed or
+    /// clicked meanwhile: then it's your choice.
+    func makeSureItGetsFocus(_ id: WindowID) {
+        let since = clock.now
+        for delay in [0.5, 1.5] {
+            clock.after(delay) { [weak self] in
+                guard let self, self.lastUserInput < since, let w = self.windows[id],
+                      let ws = self.ss.workspaceIndex(of: id), self.ss.currentWorkspaceIndex == ws,
+                      self.focusedSystemWindow() != id else { return }
+                Log.info("window \(id) (\(self.appName(of: w))) didn't stay in front after it was restored: focusing it again")
+                self.ss.focus(id)
+                self.focusCurrent()
+                self.updateBar()
+            }
+        }
+    }
+
     /// Pull the real focus into the model. If the user cmd-tabbed to a
     /// window on a hidden workspace, bring that workspace here.
     /// The focused window went away: stay on its screen and focus the window
@@ -122,6 +142,15 @@ extension WindowManager {
     /// xmonad does. If macOS did it because the window you were using just
     /// closed, we stay put. The close notification can arrive a little after
     /// the activation, so decide after a short pause.
+    /// With follow-focus-screen: last, the screen that last showed workspace
+    /// `ws`, if it's still connected. Pinned workspaces go by their pin
+    /// (show() does that), so: nil for them, and nil for `current`.
+    func screenForFollowing(_ ws: Int) -> Int? {
+        guard Config.current.followFocusScreen == .last, assignedScreen(of: ws) == nil,
+              let key = lastDisplayOfWorkspace[ws] else { return nil }
+        return Self.displayKeys(screens).firstIndex(of: key)
+    }
+
     func followHiddenFocus(_ id: WindowID) {
         guard !followPending else { return }
         followPending = true
@@ -135,8 +164,15 @@ extension WindowManager {
             }
             guard self.focusedSystemWindow() == id, let ws = self.ss.workspaceIndex(of: id),
                   !self.ss.isVisible(workspace: ws) else { return }
-            Log.info("following focus to window \(id) on workspace \(self.ss.workspaces[ws].tag)")
-            self.show(ws)
+            if let s = self.screenForFollowing(ws), s != self.ss.currentScreen {
+                // follow-focus-screen: last: where it was shown last; this screen keeps its workspace.
+                Log.info("following focus to window \(id) on workspace \(self.ss.workspaces[ws].tag), on the screen it was last on (\(self.screens[s].name))")
+                self.ss.focusScreen(s)
+                self.ss.greedyView(ws)
+            } else {
+                Log.info("following focus to window \(id) on workspace \(self.ss.workspaces[ws].tag)")
+                self.show(ws)
+            }
             self.ss.focus(id)
             self.render()
         }

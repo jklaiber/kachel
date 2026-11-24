@@ -145,3 +145,56 @@ final class TimeTests: WindowManagerTestCase {
         XCTAssertEqual(wm.ss.current.tag, "2")
     }
 }
+
+/// Issue #8: a window restored from minimized must end up in front.
+final class RestoreFocusTests: WindowManagerTestCase {
+    private let teams = "rules:\n  - app: com.microsoft.teams2\n    hide: minimize\n"
+
+    /// Teams on 1 with Alacritty; Teams focused, sent away and brought back.
+    private func setUpMeeting() throws -> (meeting: FakeWindow, terminal: FakeWindow) {
+        try start(config: teams)
+        let terminal = sys.open("org.alacritty", title: "zsh", pid: 6000)
+        let meeting = sys.open("com.microsoft.teams2", title: "Weekly sync", pid: 6001)
+        refresh()
+        wm.ss.focus(meeting.id)
+        try run("workspace 2")
+        XCTAssertTrue(meeting.minimized)
+        try run("workspace 1")                    // un-minimized
+        refresh()                                 // it's back: focus it
+        return (meeting, terminal)
+    }
+
+    /// macOS activates the app that was in front before: Kachel focuses the
+    /// meeting again a moment later.
+    func testFocusStolenAfterRestoreIsTakenBack() throws {
+        let (meeting, terminal) = try setUpMeeting()
+        XCTAssertEqual(sys.focused, meeting.id)
+        sys.focused = terminal.id                 // macOS, not you
+        wm.syncFocusFromSystem(followHidden: true)
+        clock.advance(by: 0.6)
+        XCTAssertEqual(sys.focused, meeting.id, "in front again")
+        XCTAssertEqual(wm.ss.current.focused, meeting.id)
+    }
+
+    /// You clicked the terminal yourself right after: that stays.
+    func testYourClickWins() throws {
+        let (_, terminal) = try setUpMeeting()
+        clock.advance(by: 0.2)
+        wm.lastUserInput = clock.now              // your click
+        sys.focused = terminal.id
+        wm.syncFocusFromSystem(followHidden: true)
+        clock.advance(by: 2)
+        XCTAssertEqual(sys.focused, terminal.id)
+    }
+
+    /// The app didn't answer the first time (Teams after sleep): the second
+    /// look, later, still gets it in front.
+    func testSecondLookLater() throws {
+        let (meeting, terminal) = try setUpMeeting()
+        sys.focused = terminal.id
+        clock.advance(by: 0.6)                    // first look: focused again
+        sys.focused = terminal.id                 // and lost again
+        clock.advance(by: 1.0)                    // second look
+        XCTAssertEqual(sys.focused, meeting.id)
+    }
+}

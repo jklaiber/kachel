@@ -35,6 +35,22 @@ Displays are numbered from left to right.
 With `mouse-follows-focus: window` the pointer follows when focus changes
 display. When a window closes, focus stays on its display.
 
+## Following focus to a hidden workspace
+
+When a window on a hidden workspace gets focus without a Kachel key (a link
+opens in it, ⌘Tab, the Dock, a notification), Kachel shows its workspace. Where:
+
+```yaml
+follow-focus-screen: current   # on the display you're on (default)
+# follow-focus-screen: last    # on the display that showed it last; yours keeps its workspace
+```
+
+With `last`, a link from Slack on one display opens Chrome's workspace on the
+other display, where you had it, instead of replacing what you're working on.
+If that display isn't connected any more, it's `current`. Pinned workspaces
+(below) always go to their display, and the workspace keys aren't affected.
+Settings → General → Workspaces has the same choice.
+
 ## Pinning workspaces to a display
 
 ```yaml
