@@ -7,12 +7,27 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-11-24
+
+Kachel now requires macOS 26 (Tahoe). Restored meeting windows keep focus, the
+focus border stays on top, and a workspace can follow focus to the display it
+was last on.
+
 ### Added
 - `follow-focus-screen: last`: when a window on a hidden workspace gets focus
   (a link opens in it, ⌘Tab, the Dock), its workspace shows up on the display
   it was last on, and yours keeps its workspace
   ([#10](https://github.com/jklaiber/kachel/issues/10)). Also in Settings →
   General → Workspaces; the default stays as before.
+
+### Changed
+- Kachel now requires **macOS 26 (Tahoe)**: it's built around Liquid Glass, and
+  only what CI can test is supported. Homebrew keeps older Macs on 0.1.20.
+- An unknown setting in `config.yaml` (a typo, or a setting from a newer Kachel)
+  no longer stops the whole file from loading: it's ignored, with a note in the
+  bar and at the top of Settings, and a suggestion when it looks like a typo
+  ("unknown setting 'gapp' ignored (did you mean 'gap'?)"). Values that don't
+  fit are still errors.
 
 ### Fixed
 - A window restored from minimized (`hide: minimize`, e.g. a Teams meeting) could
@@ -29,15 +44,6 @@ taken from its section here.
   appeared (and when the app's window is there but its title doesn't fit), and
   a failing `run` command is reported. The docs explain that `run` is a shell
   command and how `title` matches.
-
-### Changed
-- Kachel now requires **macOS 26 (Tahoe)**: it's built around Liquid Glass, and
-  only what CI can test is supported. Homebrew keeps older Macs on 0.1.20.
-- An unknown setting in `config.yaml` (a typo, or a setting from a newer Kachel)
-  no longer stops the whole file from loading: it's ignored, with a note in the
-  bar and at the top of Settings, and a suggestion when it looks like a typo
-  ("unknown setting 'gapp' ignored (did you mean 'gap'?)"). Values that don't
-  fit are still errors.
 
 ## [0.1.20] - 2026-11-21
 
@@ -502,7 +508,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.20...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.21...HEAD
+[0.1.21]: https://github.com/jklaiber/kachel/compare/v0.1.20...v0.1.21
 [0.1.20]: https://github.com/jklaiber/kachel/compare/v0.1.19...v0.1.20
 [0.1.19]: https://github.com/jklaiber/kachel/compare/v0.1.18...v0.1.19
 [0.1.18]: https://github.com/jklaiber/kachel/compare/v0.1.17...v0.1.18
