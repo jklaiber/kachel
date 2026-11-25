@@ -7,6 +7,21 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Fixed
+- Switching to an empty workspace could bounce back to the previous one a
+  moment later, because the app left in front kept focus and Kachel followed
+  it ([#15](https://github.com/jklaiber/kachel/issues/15)). Kachel takes focus
+  on an empty workspace forcefully again (0.1.21 had made it a request macOS can
+  ignore), and doesn't follow focus back to the workspace you just left unless
+  you clicked or typed.
+- The focus border could still end up behind a window after clicking it while it
+  was already focused: clicks now check it too
+  ([#13](https://github.com/jklaiber/kachel/issues/13)).
+- With a one-sided `mod` (`left-alt`), shortcuts stopped working without a word
+  when an app turned on secure input (Terminal's Secure Keyboard Entry, password
+  prompts): the bar and the log now say so and name the app
+  ([#12](https://github.com/jklaiber/kachel/issues/12)).
+
 ## [0.1.21] - 2026-11-24
 
 Kachel now requires macOS 26 (Tahoe). Restored meeting windows keep focus, the

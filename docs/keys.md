@@ -17,10 +17,14 @@ mod: left-alt        # left Option is mod; right Option types as before
 and **Settings → General → Which keys** sets the same. Keys pressed with the
 other side go straight to the app, untouched.
 
-!!! note
-    One-sided shortcuts read the keyboard through Accessibility. Like every
-    such tool, they pause while you type in a password field, where macOS hides
-    key presses from other apps.
+!!! note "Secure input"
+    One-sided shortcuts read the keyboard through Accessibility. When an app
+    turns on **secure input**, macOS hides key presses from such tools, so
+    these shortcuts stop working until that app lets go: Terminal with
+    *Terminal ▸ Secure Keyboard Entry* on (for as long as Terminal runs), a
+    password prompt (`sudo`, `ssh`), a password manager. Kachel says so in the
+    bar and the log, with the app's name ("Secure input is on (Terminal) …").
+    Turn the option off in that app, or use a `mod` that isn't one-sided.
 
 ## Default keys
 

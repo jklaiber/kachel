@@ -10,6 +10,15 @@ extension WindowManager {
         if e.type == .keyDown || e.type == .leftMouseDown || e.type == .rightMouseDown {
             lastUserInput = clock.now
         }
+        // A click raises the clicked window, also one that's focused already
+        // (no focus change, no app activation): check the frame stays on top (#13).
+        if e.type == .leftMouseDown { keepBorderAbove() }
+        // ⌘Tab: the switcher swallows the Tab, but pressing ⌘ shows up here.
+        // A modifier that isn't part of mod counts (releasing mod doesn't).
+        if e.type == .flagsChanged {
+            let pressed = e.modifierFlags.intersection([.command, .option, .control, .shift])
+            if !pressed.subtracting(Self.flags(Config.current.mod)).isEmpty { lastUserInput = clock.now }
+        }
         let delay = Config.current.shortcutOverview
         if e.type == .flagsChanged {
             let mods = e.modifierFlags.intersection([.command, .option, .control, .shift])

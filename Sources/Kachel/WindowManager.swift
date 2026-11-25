@@ -69,6 +69,12 @@ final class WindowManager {
     var refocusWhenBack: Set<WindowID> = []
     /// Your last key press or click (not Kachel's own shortcuts).
     var lastUserInput = Date.distantPast
+    /// The workspace you were on before the last switch, and when you left it
+    /// (so macOS keeping an app of it in front doesn't drag you back).
+    var shownWorkspace: Int?
+    var leftWorkspace: (index: Int, at: Date)?
+    /// The app holding secure input while it blocks one-sided shortcuts (#12).
+    var secureInputHolder: String?
     /// The window focusCurrent last focused, so the log names each change once.
     var lastFocusedByUs: WindowID?
     /// Floating window frames relative to their screen's visible origin, saved on hide.
@@ -195,6 +201,7 @@ final class WindowManager {
             self.pollTick += 1
             if self.managing, self.pollTick % 2 == 0 { self.refresh(); self.updateBar() }
             if self.managing, !self.locked, !self.asleep, self.pollTick % 300 == 0 { self.rememberWindows() }
+            self.checkSecureInput()
         }
     }
 
@@ -358,6 +365,20 @@ final class WindowManager {
             }
             appliedLayouts[i] = want
         }
+    }
+
+    /// Secure input blocks the one-sided shortcuts (they go through an event
+    /// tap): say so, and who holds it, instead of shortcuts silently failing.
+    func checkSecureInput() {
+        let holder = HotKeys.shared.usesTap ? SecureInput.holder() : nil
+        guard holder != secureInputHolder else { return }
+        secureInputHolder = holder
+        if let holder {
+            Log.info("secure input is on (\(holder)): one-sided shortcuts are blocked until it's off")
+        } else {
+            Log.info("secure input is off: shortcuts work again")
+        }
+        updateBar()
     }
 
     func reload() {

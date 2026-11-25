@@ -186,6 +186,10 @@ extension WindowManager {
         // Only tiled, visible windows have a place to be checked against.
         expected = expected.filter { placed.contains($0.key) }
 
+        if shownWorkspace != ss.currentWorkspaceIndex {
+            if let old = shownWorkspace { leftWorkspace = (old, clock.now) }
+            shownWorkspace = ss.currentWorkspaceIndex
+        }
         if refocus { focusCurrent() }
         updateBar()
         scheduleVerify()
@@ -307,6 +311,8 @@ extension WindowManager {
             warning = "Kachel needs Accessibility permission. Right-click → Open Accessibility Settings, then switch Kachel on."
         } else if let e = Config.error {
             warning = "config: \(e)"
+        } else if let h = secureInputHolder {
+            warning = "Secure input is on (\(h)): shortcuts with \(KSettings.modText(Config.current.mod, sides: Config.current.modSides)) are blocked until it's off"
         } else if let p = hotkeyProblems.first {
             warning = p + (hotkeyProblems.count > 1 ? " (+\(hotkeyProblems.count - 1) more, see log)" : "")
         } else if let p = scratchProblems.values.sorted().first {
@@ -361,8 +367,15 @@ extension WindowManager {
         } else if !headless {
             border.hide()
             // Empty workspace: take focus ourselves so keystrokes don't go
-            // to a window that's parked in a corner.
-            NSApp.activate()
+            // to a window that's parked in a corner. The forceful (deprecated)
+            // call on purpose: the cooperative activate() can be ignored, and
+            // the app left in front then drags you back (#15).
+            NSApp.activate(ignoringOtherApps: true)
+            clock.after(0.3) { [weak self] in
+                guard let self, self.ss.current.windows.isEmpty,
+                      let front = NSWorkspace.shared.frontmostApplication, front != .current else { return }
+                Log.info("empty workspace \(self.ss.current.tag): couldn't take focus, \(front.localizedName ?? "?") stays in front")
+            }
         }
         guard !headless else { return }       // tests never move your pointer
         // Pointer follows focus, unless it's already there (so clicks and

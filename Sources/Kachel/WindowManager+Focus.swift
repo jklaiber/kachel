@@ -164,6 +164,15 @@ extension WindowManager {
             }
             guard self.focusedSystemWindow() == id, let ws = self.ss.workspaceIndex(of: id),
                   !self.ss.isVisible(workspace: ws) else { return }
+            // The workspace you just left, and you didn't click or type since:
+            // macOS merely kept its app in front (#15). Stay.
+            if let left = self.leftWorkspace, left.index == ws, clock.now.timeIntervalSince(left.at) < 3,
+               self.lastUserInput < left.at {
+                let front = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+                Log.info("not following focus back to workspace \(self.ss.workspaces[ws].tag): you just left it, \(front) only stayed in front")
+                self.focusCurrent()
+                return
+            }
             if let s = self.screenForFollowing(ws), s != self.ss.currentScreen {
                 // follow-focus-screen: last: where it was shown last; this screen keeps its workspace.
                 Log.info("following focus to window \(id) on workspace \(self.ss.workspaces[ws].tag), on the screen it was last on (\(self.screens[s].name))")

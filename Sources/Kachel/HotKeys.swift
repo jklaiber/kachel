@@ -95,6 +95,9 @@ final class HotKeys {
     }
 
     private var tapped: [TapChord] = []
+    /// Some shortcuts go through the event tap (one-sided modifiers), which
+    /// secure input blocks.
+    var usesTap: Bool { !tapped.isEmpty }
     private var tap: CFMachPort?
     private var tapSource: CFRunLoopSource?
     /// Keys whose press we swallowed: their release goes too.

@@ -19,6 +19,10 @@ look switched on but no longer count. Remove it with **–** and add Kachel agai
 - Two window managers at once (Amethyst, AeroSpace, yabai) fight over keys and
   windows. Quit the others.
 
+- **All shortcuts stop working after opening Terminal** (or another app), with
+  `mod: left-alt` or another one-sided `mod`: that app holds *secure input*. The
+  bar says which app; see [Keys](keys.md#only-the-left-or-right-key).
+
 ## Windows and workspaces
 
 - **After sleep, a crash or a restart of Kachel**, windows keep their workspaces:

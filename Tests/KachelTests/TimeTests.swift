@@ -198,3 +198,56 @@ final class RestoreFocusTests: WindowManagerTestCase {
         XCTAssertEqual(sys.focused, meeting.id)
     }
 }
+
+/// Issue #15: switching to an empty workspace must not bounce back because
+/// macOS kept the previous workspace's app in front.
+final class EmptyWorkspaceTests: WindowManagerTestCase {
+    private var current: String { wm.ss.current.tag }
+
+    /// Slack on 9, focused; you switch to the empty 8.
+    private func switchToEmpty() throws -> FakeWindow {
+        try start()
+        try run("workspace 9")
+        let slack = sys.open("com.tinyspeck.slackmacgap", title: "Slack", pid: 7000)
+        refresh()
+        XCTAssertEqual(sys.focused, slack.id)
+        try run("workspace 8")                    // empty: Slack stays in front
+        return slack
+    }
+
+    /// macOS reports Slack's window as focused a moment later.
+    private func macOSReportsFocus() {
+        clock.advance(by: 0.5)
+        wm.syncFocusFromSystem(followHidden: true)
+        clock.advance(by: 0.3)
+    }
+
+    func testStaysOnTheEmptyWorkspace() throws {
+        _ = try switchToEmpty()
+        macOSReportsFocus()
+        XCTAssertEqual(current, "8", "no bounce back to 9")
+    }
+
+    /// You clicked Slack (or used ⌘Tab) after switching: that's a real wish.
+    func testYourClickStillFollows() throws {
+        _ = try switchToEmpty()
+        clock.advance(by: 0.2)
+        wm.lastUserInput = clock.now
+        macOSReportsFocus()
+        XCTAssertEqual(current, "9")
+    }
+
+    /// Only the workspace you just left is protected: a window on another
+    /// hidden workspace that gets focus is still followed (link, Dock).
+    func testOtherHiddenWorkspacesStillFollow() throws {
+        try start()
+        let chrome = sys.open("com.google.Chrome", title: "Inbox", pid: 7001)
+        refresh()
+        try run("shift 4")
+        try run("workspace 9")
+        try run("workspace 8")
+        sys.focused = chrome.id                   // a link opens in Chrome
+        macOSReportsFocus()
+        XCTAssertEqual(current, "4")
+    }
+}
