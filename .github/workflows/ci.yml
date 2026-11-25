@@ -27,7 +27,7 @@ jobs:
       # all the other tests.
       - name: Tests
         run: |
-          if [ "${{ matrix.os }}" = "macos-26-intel" ]; then swift test --skip UITests
+          if [ "${{ matrix.os }}" = "macos-26-intel" ]; then swift test --skip UITests --skip BarWidgetTests
           else swift test; fi
       - run: ./scripts/bundle.sh
       - name: Start the app
