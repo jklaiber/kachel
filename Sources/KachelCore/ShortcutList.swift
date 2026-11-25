@@ -74,6 +74,7 @@ public enum ShortcutList {
         case .swapDirection(let d): return ("Swap with window \(d.rawValue)", "Windows")
         case .toggleFloat: return ("Float / tile window", "Windows")
         case .close: return ("Close window", "Windows")
+        case .sendKey(let c): return ("Send \(glyphs(c.modifiers))\(c.key.uppercased())", "Tools")
         case .nextLayout: return ("Next layout", "Layout")
         case .toggleFullscreen: return ("Toggle fullscreen", "Layout")
         case .shrink: return ("Narrower master", "Layout")
@@ -160,6 +161,7 @@ extension Command {
         case .focusDirection(let d): return "focus \(d.rawValue)"
         case .swapDirection(let d): return "swap \(d.rawValue)"
         case .scratchpad(let n): return "scratchpad \(n)"
+        case .sendKey(let c): return "send-key \(c.description)"
         case .spawn(let cmd): return "spawn \(cmd)"
         case .setLayout(let k): return "layout \(k.configName)"
         default:

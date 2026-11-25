@@ -75,7 +75,7 @@ final class BarConfigTests: XCTestCase {
         let b = try Settings.parse(Settings.defaultYAML).bar
         XCTAssertNil(b.height)
         XCTAssertEqual(b.left, [.workspaces, .layout, .title])
-        XCTAssertEqual(b.right, [.network, .cpu, .memory, .battery, .date, .clock])
+        XCTAssertEqual(b.right, [.badges, .network, .cpu, .memory, .battery, .date, .clock])
     }
 
     func testHeightAndClockBlock() throws {
@@ -296,5 +296,69 @@ final class UnknownSettingsTests: XCTestCase {
         XCTAssertEqual(Settings.editDistance("gap", ""), 3)
         XCTAssertEqual(Settings.editDistance("kitten", "sitting"), 3)
         XCTAssertEqual(Settings.editDistance("titel", "title"), 1, "swapped neighbours: one typo")
+    }
+}
+
+/// Issue #11: send-key, like skhd --key.
+final class SendKeyTests: XCTestCase {
+    func testParse() throws {
+        let c = try Settings.parseCommand("send-key cmd-w", workspaceCount: 9, context: "t")
+        XCTAssertEqual(c, .sendKey(KeyChord(modifiers: [.cmd], key: "w")))
+        XCTAssertEqual(try Settings.parseCommand("send-key cmd+shift+t", workspaceCount: 9, context: "t"),
+                       .sendKey(KeyChord(modifiers: [.cmd, .shift], key: "t")))
+        XCTAssertEqual(c.configText, "send-key cmd-w")
+        XCTAssertEqual(ShortcutList.describe(c).label, "Send ⌘W")
+    }
+
+    func testErrors() {
+        XCTAssertThrowsError(try Settings.parseCommand("send-key", workspaceCount: 9, context: "t"))
+        XCTAssertThrowsError(try Settings.parseCommand("send-key mod-w", workspaceCount: 9, context: "t"), "mod isn't a real key")
+        XCTAssertThrowsError(try Settings.parseCommand("send-key hyper-w", workspaceCount: 9, context: "t"))
+    }
+
+    /// In a config: left-alt + q sends ⌘W.
+    func testInConfig() throws {
+        let s = try Settings.parse("mod: left-alt\nkeys:\n  mod-q: send-key cmd-w\n")
+        XCTAssertEqual(s.keys[KeyChord(modifiers: [.alt], key: "q")], .sendKey(KeyChord(modifiers: [.cmd], key: "w")))
+    }
+
+    /// Sending one of Kachel's own shortcuts would trigger it (and could loop).
+    func testSendingOwnShortcutIsRejected() {
+        XCTAssertThrowsError(try Settings.parse("keys:\n  mod-q: send-key alt-1\n  mod-1: workspace 1\n")) { e in
+            XCTAssertTrue("\(e)".contains("itself a Kachel shortcut"), "\(e)")
+        }
+    }
+}
+
+/// Issue #14: badges and your own bar widgets.
+final class BarWidgetsConfigTests: XCTestCase {
+    func testBadgesApps() throws {
+        let s = try Settings.parse("bar:\n  badges:\n    apps: [com.tinyspeck.slackmacgap, Microsoft Outlook]\n")
+        XCTAssertEqual(s.bar.badgeApps, ["com.tinyspeck.slackmacgap", "Microsoft Outlook"])
+        XCTAssertTrue(try Settings.parse(Settings.defaultYAML).bar.badgeApps.isEmpty)
+    }
+
+    func testCustomWidget() throws {
+        let s = try Settings.parse("""
+        bar:
+          right: [vpn, clock]
+          widgets:
+            vpn: {run: "scutil --nc status Work | head -1", interval: 1, icon: lock.fill, click: "open -a 'Cisco Secure Client'"}
+        """)
+        XCTAssertEqual(s.bar.right.map(\.rawValue), ["vpn", "clock"])
+        let w = try XCTUnwrap(s.bar.custom["vpn"])
+        XCTAssertEqual(w.interval, 2, "at least 2 s")
+        XCTAssertEqual(w.icon, "lock.fill")
+        XCTAssertEqual(w.click, "open -a 'Cisco Secure Client'")
+        XCTAssertFalse(BarWidget(rawValue: "vpn")!.isBuiltIn)
+    }
+
+    func testErrors() {
+        // A name in left/right that's neither built in nor defined.
+        XCTAssertThrowsError(try Settings.parse("bar:\n  right: [vpn]\n")) { e in
+            XCTAssertTrue("\(e)".contains("define it under bar.widgets"), "\(e)")
+        }
+        XCTAssertThrowsError(try Settings.parse("bar:\n  widgets:\n    vpn: {interval: 5}\n"), "run is needed")
+        XCTAssertThrowsError(try Settings.parse("bar:\n  widgets:\n    clock: {run: date}\n"), "built-in name")
     }
 }

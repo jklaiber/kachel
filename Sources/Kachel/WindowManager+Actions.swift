@@ -89,6 +89,7 @@ extension WindowManager {
         case .refresh: refreshNow()
         case .close: closeFocused()
         case .terminal: spawn(Config.current.terminal)
+        case .sendKey(let c): KeySender.send(c)
         case .spawn(let c): spawn(c)
         case .reload: reload()
         case .quit: quit()

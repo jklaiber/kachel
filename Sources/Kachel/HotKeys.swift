@@ -118,6 +118,8 @@ final class HotKeys {
 
     /// nil = swallow the event.
     private func handle(_ type: CGEventType, _ event: CGEvent) -> CGEvent? {
+        // Kachel's own send-key presses are never one of its shortcuts.
+        if event.getIntegerValueField(.eventSourceUserData) == KeySender.marker { return event }
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }

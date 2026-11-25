@@ -43,6 +43,12 @@ final class Bar {
 
     let stats = Stats()
     let battery: Battery
+    /// Dock badges, read every few seconds while the badges widget is shown.
+    var badges: [DockBadges.Badge] = []
+    private var badgeTimer: Timer?
+    private var appIcons: [String: NSImage] = [:]
+    /// Your own widgets (bar.widgets).
+    let custom = CustomWidgetRunner()
     /// Screenshots use a fixed time; nil = now.
     var fixedNow: Date?
     private var panels: [BarPanel] = []
@@ -63,6 +69,7 @@ final class Bar {
         battery = Battery(watch: !demo)
         if demo { return }
         battery.onChange = { [weak self] in self?.redraw() }
+        custom.onChange = { [weak self] in self?.redraw() }
         // Follow wallpaper, Space and light/dark changes, like the menu bar does.
         DistributedNotificationCenter.default().addObserver(forName: .init("com.apple.desktop"), object: "BackgroundChanged",
                                                             queue: .main) { [weak self] _ in self?.updateAppearance() }
@@ -123,6 +130,15 @@ final class Bar {
         makeWay(for: dock?.shownOn)
         updateAppearance()
 
+        // Dock badges and your widgets: only while they're in the bar.
+        badgeTimer?.invalidate()
+        badgeTimer = nil
+        if settings.shows(.badges), !isDemo {
+            readBadges()
+            badgeTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.readBadges() }
+        }
+        if !isDemo { custom.apply(settings.custom, shown: Set((settings.left + settings.right).map(\.rawValue))) }
+
         statsTimer?.invalidate()
         let needStats = settings.shows(.cpu) || settings.shows(.memory) || settings.shows(.network)
         if needStats {
@@ -133,6 +149,26 @@ final class Bar {
             }
         }
         redraw()
+    }
+
+    private func readBadges() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let found = DockBadges.read()
+            DispatchQueue.main.async {
+                guard let self, found != self.badges else { return }
+                self.badges = found
+                self.redraw()
+            }
+        }
+    }
+
+    /// An app's icon for the badges widget (cached).
+    func appIcon(_ b: DockBadges.Badge) -> NSImage? {
+        guard let url = b.appURL else { return nil }
+        if let i = appIcons[url.path] { return i }
+        let i = NSWorkspace.shared.icon(forFile: url.path)
+        appIcons[url.path] = i
+        return i
     }
 
     /// Fade out the bar on the screen the Dock slid up on, back in once it's gone.
@@ -234,6 +270,8 @@ extension BarWidget {
         case .date: return "Date"
         case .clock: return "Clock"
         case .battery: return "Battery"
+        case .badges: return "App Badges"
+        default: return rawValue          // one of yours (bar.widgets)
         }
     }
 }
@@ -293,12 +331,14 @@ private final class BarPanel: NSPanel {
 
 /// One clickable thing in the bar.
 private struct Segment {
-    enum Action { case workspace(Int), open(String), window(UInt32), url(String) }
+    enum Action { case workspace(Int), open(String), window(UInt32), url(String), shell(String) }
     var parts: [(icon: String?, text: String)]
     var dots: (count: Int, focused: Int)? = nil  // one dot per window
     var tab: Bool? = nil                // a window tab; true = the focused one
     var tag: Bar.Tag? = nil             // workspaces only
     var color: NSColor = .labelColor
+    /// An app's icon in front (badges).
+    var appIcon: NSImage? = nil
     var bold = false
     var flexible = false                // takes the leftover width (title, warnings)
     var action: Action? = nil
@@ -399,6 +439,16 @@ private final class BarView: NSView {
             case .clock:
                 dateFmt.dateFormat = s.clockFormat
                 out.append(Segment(parts: [(nil, dateFmt.string(from: bar.fixedNow ?? Date()))], action: .open("com.apple.iCal")))
+            case .badges:
+                // Nothing unread: nothing shown.
+                for b in DockBadges.pick(bar.badges, apps: s.badgeApps) {
+                    out.append(Segment(parts: [(nil, b.label)], appIcon: bar.appIcon(b),
+                                       action: b.bundleID.map { .open($0) }))
+                }
+            default:
+                // One of yours: the first line its command printed (nothing until then).
+                guard let def = s.custom[w.rawValue], let text = bar.custom.text[w.rawValue] else { continue }
+                out.append(Segment(parts: [(def.icon, text)], action: def.click.map { .shell($0) }))
             }
         }
         // Without a title widget, problems still need to be visible.
@@ -432,6 +482,7 @@ private final class BarView: NSView {
         return NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(cfg)
     }
 
+    private var appIconSize: CGFloat { CGFloat(bar.settings.fontSize) + 3 }
     private var dotSize: CGFloat { max(5, CGFloat(bar.settings.fontSize) * 0.45) }
     private var countFont: NSFont { NSFont.monospacedDigitSystemFont(ofSize: max(8, CGFloat(bar.settings.fontSize) * 0.65), weight: .medium) }
 
@@ -445,7 +496,7 @@ private final class BarView: NSView {
             return ceil(CGFloat(d.count) * dotSize + CGFloat(d.count - 1) * dotSize * 0.7) + 2 * pad
         }
         let f = font(seg.bold)
-        var w: CGFloat = 0
+        var w: CGFloat = seg.appIcon == nil ? 0 : appIconSize + iconGap
         for (i, p) in seg.parts.enumerated() {
             if i > 0 { w += partGap }
             if let n = p.icon, let img = icon(n, color: seg.color) { w += img.size.width + (p.text.isEmpty ? 0 : iconGap) }
@@ -533,6 +584,10 @@ private final class BarView: NSView {
             }
         }
         let maxX = rect.maxX - pad
+        if let img = seg.appIcon {
+            img.draw(in: NSRect(x: x, y: (h - appIconSize) / 2, width: appIconSize, height: appIconSize))
+            x += appIconSize + iconGap
+        }
         for (i, p) in seg.parts.enumerated() {
             if i > 0 { x += partGap }
             if let n = p.icon, let img = icon(n, color: color) {
@@ -597,6 +652,8 @@ private final class BarView: NSView {
             bar.onClickWindow?(index, id)
         case .url(let s):
             if let u = URL(string: s) { NSWorkspace.shared.open(u) }
+        case .shell(let command):
+            CustomWidgetRunner.click(command)
         case .open(let bundleID):
             if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
                 NSWorkspace.shared.openApplication(at: url, configuration: .init())
@@ -698,8 +755,11 @@ extension Bar {
     /// made-up content, not attached to any screen.
     static func demoView(width: CGFloat, height: CGFloat, settings: BarSettings, content: Content,
                          now: Date, cpu: Double, memory: UInt64, down: Double, up: Double,
-                         battery: Battery.State? = Battery.State(percent: 82, charging: false, onPower: false)) -> NSView {
+                         battery: Battery.State? = Battery.State(percent: 82, charging: false, onPower: false),
+                         badges: [DockBadges.Badge] = [], custom: [String: String] = [:]) -> NSView {
         let bar = Bar(demo: true)
+        bar.badges = badges
+        for (name, line) in custom { bar.custom.setDemo(name, line) }
         bar.battery.setDemo(battery)
         bar.settings = settings
         bar.fixedNow = now

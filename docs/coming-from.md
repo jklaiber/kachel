@@ -1,4 +1,4 @@
-# Coming from xmonad or Amethyst
+# Coming from xmonad, Amethyst, skhd or AeroSpace
 
 Kachel's workspace model is xmonad's; its default keys follow Amethyst
 (`mod1` = Option, `mod2` = Option+Shift).
@@ -58,6 +58,23 @@ Not there (yet): tabbed layouts, dynamic workspaces, `CopyWindow`.
 The big difference: Amethyst tiles each macOS Space separately, so a Space
 stays on its display. Kachel's workspaces aren't Spaces and can show on any
 display.
+
+## From skhd
+
+Kachel's `keys:` cover what skhd does for a window manager: any key
+combination runs a command, `spawn` runs a shell command. A combination can be
+one-sided like skhd's `lalt`: `mod: left-alt` ([Keys](keys.md#only-the-left-or-right-key)).
+
+| skhd | Kachel |
+|---|---|
+| `lalt - j : …` | `mod: left-alt`, then `mod-j: …` |
+| `cmd - return : open -na Alacritty` | `cmd-return: spawn open -na Alacritty` |
+| `lalt - q : skhd --key "cmd - w"` | `mod-q: send-key cmd-w` |
+
+`send-key` presses the combination in the front app with exactly the modifiers
+you give: the Option you still hold for the shortcut doesn't get in, so
+`send-key cmd-w` closes a tab and not all windows. It can't send one of
+Kachel's own shortcuts (that would trigger itself).
 
 ## From AeroSpace
 

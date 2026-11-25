@@ -7,6 +7,22 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- Settings explain themselves: the settings that aren't obvious (focus and
+  pointer, workspaces, tiling, swipes, call rules, scratchpads) have a line of
+  explanation under them, and the trickier ones an ⓘ with an example and a
+  link to the docs.
+- `send-key cmd-w`: a shortcut presses a key combination in the front app, like
+  `skhd --key`, with exactly the modifiers given, so the Option you hold for the
+  shortcut doesn't get in ([#11](https://github.com/jklaiber/kachel/issues/11)).
+  Also in Settings → Shortcuts.
+- `badges` in the bar: unread counts from the Dock icons (Slack, Mail,
+  Outlook, …) with the app's icon, only while there's a number
+  ([#14](https://github.com/jklaiber/kachel/issues/14)). New in the default bar.
+- Your own bar widgets: the first line of a shell command, every few seconds,
+  with an optional icon and click command (`bar.widgets`, or Settings → Bar →
+  Your Widgets) ([#14](https://github.com/jklaiber/kachel/issues/14)).
+
 ### Fixed
 - Switching to an empty workspace could bounce back to the previous one a
   moment later, because the app left in front kept focus and Kachel followed

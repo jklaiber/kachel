@@ -221,3 +221,38 @@ final class ModifierSideTests: XCTestCase {
         }
     }
 }
+
+/// Settings → Bar → Your Widgets writes bar.widgets as a whole.
+final class BarWidgetsEditTests: XCTestCase {
+    private func vpn() -> CustomWidget {
+        var w = CustomWidget(run: "scutil --nc status 'Work VPN' | head -1")
+        w.interval = 10; w.icon = "lock.fill"; w.click = "open -a 'Cisco Secure Client'"
+        return w
+    }
+
+    func testDefaultConfigRoundTrip() throws {
+        let t = Settings.setBarWidgets(Settings.defaultYAML, ["vpn": vpn()])
+        let s = try Settings.parse(t)
+        XCTAssertEqual(s.bar.custom["vpn"], vpn())
+        XCTAssertTrue(t.contains("#   vpn: {run:"), "the commented example stays")
+        XCTAssertEqual(s.bar.right, BarSettings().right, "nothing else changed")
+        // And removing it again.
+        let back = try Settings.parse(Settings.setBarWidgets(t, [:]))
+        XCTAssertTrue(back.bar.custom.isEmpty)
+    }
+
+    func testReplacesAndKeepsOtherBarKeys() throws {
+        let t0 = "bar:\n  right: [vpn, clock]\n  widgets:\n    vpn:\n      run: old\n  height: 30\n"
+        let t = Settings.setBarWidgets(t0, ["vpn": vpn()])
+        let s = try Settings.parse(t)
+        XCTAssertEqual(s.bar.custom["vpn"]?.run, vpn().run)
+        XCTAssertEqual(s.bar.height, 30, "keys after the block stay")
+        XCTAssertFalse(t.contains("run: old"))
+    }
+
+    func testNoBarSectionYet() throws {
+        let s = try Settings.parse(Settings.setBarWidgets("gap: 4\n", ["vpn": vpn()]))
+        XCTAssertEqual(s.bar.custom.count, 1)
+        XCTAssertEqual(s.gap, 4)
+    }
+}

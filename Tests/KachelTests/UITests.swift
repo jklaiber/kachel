@@ -38,10 +38,7 @@ final class UITests: XCTestCase {
         return back
     }
 
-    /// Draws itself (a layer's background wouldn't be in the picture).
-    private final class Wallpaper: NSView {
-        override func draw(_ dirtyRect: NSRect) { Screenshots.wallpaper(bounds) }
-    }
+
 
     func testBar() throws {
         var s = BarSettings()
@@ -150,5 +147,73 @@ final class UITests: XCTestCase {
 
     private static func all<T: NSView>(_ type: T.Type, in v: NSView) -> [T] {
         ((v as? T).map { [$0] } ?? []) + v.subviews.flatMap { all(type, in: $0) }
+    }
+}
+
+/// Draws the docs' wallpaper itself (a layer's background wouldn't be in the picture).
+final class Wallpaper: NSView {
+    override func draw(_ dirtyRect: NSRect) { Screenshots.wallpaper(bounds) }
+}
+
+/// Issue #14: badges and your own widgets.
+@MainActor
+final class BarWidgetTests: XCTestCase {
+    private let slack = DockBadges.Badge(bundleID: "com.tinyspeck.slackmacgap", name: "Slack", label: "3", appURL: nil)
+    private let outlook = DockBadges.Badge(bundleID: "com.microsoft.Outlook", name: "Microsoft Outlook", label: "12", appURL: nil)
+    // For the picture: apps every Mac has, so their icons are drawn.
+    private let mail = DockBadges.Badge(bundleID: "com.apple.mail", name: "Mail", label: "12",
+                                        appURL: URL(fileURLWithPath: "/System/Applications/Mail.app"))
+    private let messages = DockBadges.Badge(bundleID: "com.apple.MobileSMS", name: "Messages", label: "3",
+                                            appURL: URL(fileURLWithPath: "/System/Applications/Messages.app"))
+
+    func testPickBadges() {
+        XCTAssertEqual(DockBadges.pick([slack, outlook], apps: []), [slack, outlook], "all of them")
+        XCTAssertEqual(DockBadges.pick([slack, outlook], apps: ["microsoft outlook", "com.tinyspeck.slackmacgap"]),
+                       [outlook, slack], "by name or bundle ID, in the order asked")
+        XCTAssertEqual(DockBadges.pick([slack], apps: ["Mail"]), [], "Mail has none now")
+    }
+
+    func testFirstLine() {
+        XCTAssertEqual(CustomWidgetRunner.firstLine(of: "printf 'Connected\\nmore\\n'"), "Connected")
+        XCTAssertNil(CustomWidgetRunner.firstLine(of: "true"), "nothing printed: nothing shown")
+        let long = CustomWidgetRunner.firstLine(of: "printf '%060d' 0")
+        XCTAssertEqual(long?.count, CustomWidgetRunner.maxLength)
+        XCTAssertTrue(long?.hasSuffix("…") == true)
+    }
+
+    /// A hanging command is stopped after the timeout instead of blocking.
+    func testSlowCommandIsStopped() {
+        Log.enabled = false
+        let start = Date()
+        XCTAssertNil(CustomWidgetRunner.firstLine(of: "sleep 10; echo late"))
+        XCTAssertLessThan(Date().timeIntervalSince(start), CustomWidgetRunner.timeout + 1)
+    }
+
+    /// Settings → Bar with two widgets of yours: one in the bar, one not.
+    func testSettingsYourWidgets() throws {
+        _ = NSApplication.shared
+        AppVersion.override = "0.1.21"
+        Config.use(try Settings.parse("""
+        bar:
+          right: [vpn, clock]
+          widgets:
+            vpn: {run: "scutil --nc status 'Work VPN' | head -1", interval: 10, icon: lock.fill}
+            weather: {run: "curl -s wttr.in/?format=3", interval: 600, icon: cloud.sun}
+        """))
+        let m = SettingsModel()
+        let view = BarPane(m: m).formStyle(.grouped).background(Color(nsColor: .windowBackgroundColor))
+        try Snapshot.check(Snapshot.image(of: view, size: CGSize(width: 620, height: 1700)), "settings-your-widgets")
+    }
+
+    func testBarWithBadgesAndAWidget() throws {
+        _ = NSApplication.shared
+        var s = BarSettings()
+        s.right = [.badges, BarWidget(rawValue: "vpn")!, .clock]
+        s.custom = ["vpn": { var w = CustomWidget(run: "true"); w.icon = "lock.fill"; return w }()]
+        let v = Bar.demoView(width: 700, height: 30, settings: s, content: Screenshots.demoContent(), now: Screenshots.demoNow,
+                             cpu: 0, memory: 0, down: 0, up: 0, badges: [messages, mail], custom: ["vpn": "Work VPN"])
+        let back = Wallpaper(frame: v.frame)
+        back.addSubview(v)
+        try Snapshot.check(Snapshot.image(of: back), "bar-badges-widget")
     }
 }

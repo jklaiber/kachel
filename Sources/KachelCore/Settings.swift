@@ -46,12 +46,42 @@ public enum Command: Equatable {
     case focusDirection(Direction), swapDirection(Direction)
     case scratchpad(String)
     case spawn(String)
+    case sendKey(KeyChord)          // send-key cmd-w: post that key combination to the front app
     case setLayout(LayoutKind)          // layout <name>: straight to that layout
     case prevLayout, toggleTiling, toggleFocusFollowsMouse, increaseWindowLimit, decreaseWindowLimit
 }
 
-public enum BarWidget: String, CaseIterable {
-    case workspaces, layout, title, cpu, memory, network, battery, date, clock
+/// A widget in the bar: one of the built-in ones, or one of yours, defined
+/// under `bar.widgets` and named in `left:` / `right:` like the others.
+public struct BarWidget: RawRepresentable, Hashable, CaseIterable {
+    public let rawValue: String
+    public init?(rawValue: String) {
+        guard !rawValue.isEmpty else { return nil }
+        self.rawValue = rawValue
+    }
+    private init(_ name: String) { rawValue = name }
+
+    public static let workspaces = BarWidget("workspaces"), layout = BarWidget("layout"), title = BarWidget("title")
+    public static let cpu = BarWidget("cpu"), memory = BarWidget("memory"), network = BarWidget("network")
+    public static let battery = BarWidget("battery"), date = BarWidget("date"), clock = BarWidget("clock")
+    /// Unread counts from the Dock badges of running apps.
+    public static let badges = BarWidget("badges")
+
+    /// The built-in widgets.
+    public static let allCases: [BarWidget] = [workspaces, layout, title, cpu, memory, network, battery, badges, date, clock]
+    public var isBuiltIn: Bool { Self.allCases.contains(self) }
+}
+
+/// A widget of yours: the first line a shell command prints, every few seconds.
+public struct CustomWidget: Equatable {
+    public var run: String
+    /// Seconds between runs (at least 2).
+    public var interval: Double = 10
+    /// An SF Symbol in front of the text ("lock.fill").
+    public var icon: String?
+    /// A shell command run when you click it.
+    public var click: String?
+    public init(run: String) { self.run = run }
 }
 
 public struct BarSettings: Equatable {
@@ -60,7 +90,11 @@ public struct BarSettings: Equatable {
     public var height: Double?
     public var fontSize: Double = 13
     public var left: [BarWidget] = [.workspaces, .layout, .title]
-    public var right: [BarWidget] = [.network, .cpu, .memory, .battery, .date, .clock]
+    public var right: [BarWidget] = [.badges, .network, .cpu, .memory, .battery, .date, .clock]
+    /// Which apps' badges to show (bundle IDs or names); empty: every app with one.
+    public var badgeApps: [String] = []
+    /// Your own widgets, by name.
+    public var custom: [String: CustomWidget] = [:]
     public var hideEmptyWorkspaces = false
     public var clockFormat = "HH:mm"
     public var dateFormat = "EEE d MMM"
@@ -419,6 +453,7 @@ public struct Settings {
         if let v = dict["menubar-icon"] { s.menubarIcon = try bool(v, "menubar-icon") }
         if let v = dict["bar"] {
             guard let b = v as? [String: Any] else { throw SettingsError("bar must be a mapping") }
+            var sides: [(String, Any)] = []          // left / right: once all widgets are known
             for (k, v) in b {
                 switch k {
                 case "enabled": s.bar.enabled = try bool(v, "bar.enabled")
@@ -426,8 +461,14 @@ public struct Settings {
                     if let t = v as? String, t == "auto" { s.bar.height = nil }
                     else { s.bar.height = try number(v, "bar.height") }
                 case "font-size": s.bar.fontSize = try number(v, "bar.font-size")
-                case "left": s.bar.left = try widgets(v, "bar.left")
-                case "right": s.bar.right = try widgets(v, "bar.right")
+                case "left", "right": sides.append((k, v))
+                case "badges":
+                    for (_, v2) in try block(v, "bar.badges", keys: ["apps"], warnings: &s.warnings) {
+                        guard let list = v2 as? [Any] else { throw SettingsError("bar.badges.apps must be a list of apps") }
+                        s.bar.badgeApps = list.map { "\($0)" }
+                    }
+                case "widgets":
+                    s.bar.custom = try customWidgets(v, warnings: &s.warnings)
                 // Each widget's own options, in a block named after it.
                 case "workspaces":
                     for (k2, v2) in try block(v, "bar.workspaces", keys: ["hide-empty", "window-counts"], warnings: &s.warnings) {
@@ -476,6 +517,10 @@ public struct Settings {
                 default: s.warnings.append(unknown("bar.\(k)", BarKeys.all, last: k))
                 }
             }
+            for (k, v) in sides {
+                let list = try widgets(v, "bar.\(k)", custom: Set(s.bar.custom.keys))
+                if k == "left" { s.bar.left = list } else { s.bar.right = list }
+            }
         }
 
         // `keys:` replaces the whole default keymap; leave it out to keep the defaults.
@@ -484,6 +529,12 @@ public struct Settings {
             s.keys = try parseKeys(k, mod: s.mod, workspaceCount: s.workspaces.count)
         } else {
             s.keys = try parseKeys(try defaultKeyMap(), mod: s.mod, workspaceCount: s.workspaces.count)
+        }
+        // send-key must not send one of Kachel's own shortcuts: it would trigger itself.
+        for (chord, cmd) in s.keys {
+            if case .sendKey(let target) = cmd, s.keys[target] != nil {
+                throw SettingsError("\(chord): send-key \(target) is itself a Kachel shortcut, it would trigger that")
+            }
         }
         // Every `scratchpad NAME` must name a scratchpad.
         let names = Set(s.scratchpads.map(\.name))
@@ -642,6 +693,13 @@ public struct Settings {
         case "spawn":
             guard !arg.isEmpty else { throw SettingsError("\(context): 'spawn' needs a shell command") }
             return .spawn(arg)
+        case "send-key":
+            guard !arg.isEmpty else { throw SettingsError("\(context): 'send-key' needs keys, e.g. send-key cmd-w") }
+            let parts = arg.lowercased().split(whereSeparator: { $0 == "-" || $0 == "+" })
+            guard !parts.dropLast().contains("mod") else {
+                throw SettingsError("\(context): send-key takes real modifiers (cmd, ctrl, alt, shift), not mod")
+            }
+            return .sendKey(try parseChord(arg, mod: []))
         case "focus", "swap":
             // focus left / swap right … (focus-down / swap-down without a space
             // are the stack's next/previous and stay as they are)
@@ -681,16 +739,37 @@ public struct Settings {
         return lines.joined(separator: "\n")
     }
 
-    private static func widgets(_ v: Any, _ k: String) throws -> [BarWidget] {
+    private static func widgets(_ v: Any, _ k: String, custom: Set<String>) throws -> [BarWidget] {
         if v is NSNull { return [] }
         guard let list = v as? [Any] else { throw SettingsError("\(k) must be a list, e.g. [cpu, clock]") }
         return try list.map {
-            guard let w = BarWidget(rawValue: "\($0)") else {
+            guard let w = BarWidget(rawValue: "\($0)"), w.isBuiltIn || custom.contains(w.rawValue) else {
                 let all = BarWidget.allCases.map(\.rawValue).joined(separator: ", ")
-                throw SettingsError("\(k): unknown widget '\($0)' (use \(all))")
+                throw SettingsError("\(k): unknown widget '\($0)' (use \(all), or define it under bar.widgets)")
             }
             return w
         }
+    }
+
+    /// bar.widgets: name → {run, interval, icon, click}.
+    private static func customWidgets(_ v: Any, warnings: inout [String]) throws -> [String: CustomWidget] {
+        if v is NSNull { return [:] }
+        guard let m = v as? [String: Any] else {
+            throw SettingsError("bar.widgets must map names to widgets, e.g. vpn: {run: \"…\"}")
+        }
+        var out: [String: CustomWidget] = [:]
+        for (name, def) in m {
+            let ctx = "bar.widgets.\(name)"
+            guard BarWidget(rawValue: name)?.isBuiltIn != true else { throw SettingsError("\(ctx): \(name) is a built-in widget, pick another name") }
+            let d = try block(def, ctx, keys: ["run", "interval", "icon", "click"], warnings: &warnings)
+            guard let run = d["run"].map({ "\($0)" }), !run.isEmpty else { throw SettingsError("\(ctx) needs run: (a shell command)") }
+            var w = CustomWidget(run: run)
+            if let i = d["interval"] { w.interval = max(2, try number(i, "\(ctx).interval")) }
+            if let i = d["icon"] { w.icon = "\(i)" }
+            if let c = d["click"] { w.click = "\(c)" }
+            out[name] = w
+        }
+        return out
     }
 
     private static func string(_ v: Any, _ k: String) throws -> String {
@@ -715,7 +794,7 @@ public struct Settings {
 
     enum BorderKeys { static let all = ["enabled", "width", "radius", "smart", "color"] }
     enum GesturesKeys { static let all = ["enabled", "fingers", "skip-empty", "direction", "swipe-left", "swipe-right", "swipe-up", "swipe-down"] }
-    enum BarKeys { static let all = ["enabled", "height", "font-size", "left", "right", "workspaces", "title", "stats", "battery", "date", "clock", "background", "appearance", "make-way-for-dock"] }
+    enum BarKeys { static let all = ["badges", "widgets", "enabled", "height", "font-size", "left", "right", "workspaces", "title", "stats", "battery", "date", "clock", "background", "appearance", "make-way-for-dock"] }
 
     /// "unknown setting 'gapp' ignored (did you mean 'gap'?)"
     static func unknown<C: Collection>(_ path: String, _ allowed: C, last: String? = nil) -> String where C.Element == String {
@@ -833,9 +912,10 @@ bar:
   make-way-for-dock: true # an auto-hidden Dock slides up: the bar fades out until it hides again
 
   # Which widgets, in order, on the left and the right. Leave one out to hide it.
-  # Widgets: workspaces, layout, title, cpu, memory, network, battery, date, clock.
+  # Widgets: workspaces, layout, title, cpu, memory, network, battery, badges, date,
+  # clock, and your own (widgets: below).
   left: [workspaces, layout, title]
-  right: [network, cpu, memory, battery, date, clock]
+  right: [badges, network, cpu, memory, battery, date, clock]
 
   # Each widget's own options
   workspaces:
@@ -853,6 +933,14 @@ bar:
     format: "EEE d MMM"   # Unicode date patterns
   clock:
     format: "HH:mm"
+  badges:
+    apps: []                  # unread counts from Dock icons: bundle IDs or names; [] = every app with one
+
+  # Your own widgets: the first line a shell command prints (every interval
+  # seconds, at least 2; cut off after 2 s and 40 characters). Put the name in
+  # left or right like the others. icon: an SF Symbol; click: a shell command.
+  widgets: {}
+  #   vpn: {run: "scutil --nc status Work | head -1", interval: 10, icon: lock.fill}
 
 # Trackpad swipes switch workspaces on the screen under the pointer. Turn
 # macOS's own swipe off first: System Settings → Trackpad → More Gestures →
@@ -952,6 +1040,7 @@ rules:
 #   shortcuts              show all shortcuts (also: hold mod alone, see shortcut-overview)
 #   refresh  close  terminal  reload  restart  quit
 #   spawn <shell command>
+#   send-key <keys>        press keys in the front app, e.g. send-key cmd-w (like skhd --key)
 # A key mapped to ~ is unbound. This section replaces the defaults as a whole.
 #
 # Amethyst-style: mod is Amethyst's mod1 (Option), mod-shift its mod2 (Option+Shift).

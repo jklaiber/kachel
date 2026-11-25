@@ -48,6 +48,8 @@ including `toggle-fullscreen`; in the other layouts you see the windows anyway.
 | `memory` | memory used | Activity Monitor |
 | `battery` | battery level, like the menu bar's icon; a bolt while plugged in, red below 10 %. `battery: {percentage: false}` shows the icon only. Not shown on Macs without a battery | Battery settings |
 | `date`, `clock` | in the format of `date: {format: …}`, `clock: {format: …}` | Calendar |
+| `badges` | unread counts from the Dock icons (Slack, Mail, Outlook, …), with the app's icon; only while there's a number | the app |
+| your own | the first line of a command (see below) | its `click` command |
 
 ```yaml
 bar:
@@ -61,7 +63,7 @@ bar:
 
   # Which widgets, in order
   left: [workspaces, layout, title]
-  right: [network, cpu, memory, battery, date, clock]
+  right: [badges, network, cpu, memory, battery, date, clock]
 
   # Each widget's own options (leave a block out for its defaults)
   workspaces:
@@ -78,7 +80,47 @@ bar:
     format: "EEE d MMM"
   clock:
     format: "HH:mm"
+  badges:
+    apps: []                   # bundle IDs or names; [] = every app with a badge
 ```
+
+## Unread counts
+
+`badges` shows the red numbers of the Dock icons in the bar, with the app's
+icon: unread messages in Slack, mails in Mail or Outlook, and so on. Kachel
+reads them from the Dock every few seconds, so it works for any app that shows
+a badge, without scripts. Nothing unread, nothing shown. Click one to go to
+that app. To show only some apps, in that order:
+
+```yaml
+bar:
+  badges:
+    apps: [com.tinyspeck.slackmacgap, Microsoft Outlook]
+```
+
+## Your own widgets
+
+A widget of yours shows the first line a shell command prints, in the bar's
+style. **Settings → Bar → Your Widgets** adds and edits them (name, command,
+interval, icon, click), and they're placed like the built-in widgets. In the
+file, define it under `widgets:` and put its name in `left` or `right`:
+
+```yaml
+bar:
+  right: [vpn, badges, cpu, clock]
+  widgets:
+    vpn:
+      run: "scutil --nc status 'Work VPN' | head -1"   # a shell command
+      interval: 10                                        # seconds, at least 2
+      icon: lock.fill                                     # an SF Symbol, optional
+      click: "open -a 'Cisco Secure Client'"              # optional
+```
+
+- The command runs with `/bin/sh`; tools from Homebrew or Nix need your login
+  shell: `run: "zsh -lc 'mytool status'"`.
+- It's stopped after 2 seconds, and only the first 40 characters of its first
+  line are shown. Nothing printed: nothing shown.
+- It only runs while the widget is in the bar.
 
 With the Dock set to hide automatically (recommended), it slides up over the
 bar when you move the pointer to the bottom edge. `make-way-for-dock` fades the

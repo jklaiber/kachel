@@ -75,9 +75,10 @@ bar:
   make-way-for-dock: true # an auto-hidden Dock slides up: the bar fades out until it hides again
 
   # Which widgets, in order, on the left and the right. Leave one out to hide it.
-  # Widgets: workspaces, layout, title, cpu, memory, network, battery, date, clock.
+  # Widgets: workspaces, layout, title, cpu, memory, network, battery, badges, date,
+  # clock, and your own (widgets: below).
   left: [workspaces, layout, title]
-  right: [network, cpu, memory, battery, date, clock]
+  right: [badges, network, cpu, memory, battery, date, clock]
 
   # Each widget's own options
   workspaces:
@@ -95,6 +96,14 @@ bar:
     format: "EEE d MMM"   # Unicode date patterns
   clock:
     format: "HH:mm"
+  badges:
+    apps: []                  # unread counts from Dock icons: bundle IDs or names; [] = every app with one
+
+  # Your own widgets: the first line a shell command prints (every interval
+  # seconds, at least 2; cut off after 2 s and 40 characters). Put the name in
+  # left or right like the others. icon: an SF Symbol; click: a shell command.
+  widgets: {}
+  #   vpn: {run: "scutil --nc status Work | head -1", interval: 10, icon: lock.fill}
 
 # Trackpad swipes switch workspaces on the screen under the pointer. Turn
 # macOS's own swipe off first: System Settings → Trackpad → More Gestures →
@@ -194,6 +203,7 @@ rules:
 #   shortcuts              show all shortcuts (also: hold mod alone, see shortcut-overview)
 #   refresh  close  terminal  reload  restart  quit
 #   spawn <shell command>
+#   send-key <keys>        press keys in the front app, e.g. send-key cmd-w (like skhd --key)
 # A key mapped to ~ is unbound. This section replaces the defaults as a whole.
 #
 # Amethyst-style: mod is Amethyst's mod1 (Option), mod-shift its mod2 (Option+Shift).

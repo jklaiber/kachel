@@ -243,7 +243,7 @@ struct GeneralPane: View {
     var body: some View {
         Form {
             Section("Keyboard") {
-                Picker("Modifier (mod)", selection: m.binding({ modName($0.mod) }, { name in
+                Picker(selection: m.binding({ modName($0.mod) }, { name in
                     // Keep "left only" / "right only" when the modifier changes.
                     let mods = (try? KSettings.parseMod(name).0) ?? m.s.mod
                     let side = m.s.modSides.values.first
@@ -253,6 +253,8 @@ struct GeneralPane: View {
                     if !Self.mods.contains(where: { $0.0 == modName(m.s.mod) }) {
                         Text(ShortcutList.glyphs(m.s.mod)).tag(modName(m.s.mod))
                     }
+                } label: {
+                    explained("Modifier (mod)", "The key you hold for every Kachel shortcut. Option on its own is easiest; add Control if Option types characters you need.")
                 }
                 Picker(selection: m.binding({ $0.modSides.values.first?.rawValue ?? "both" }, { side in
                     let s = ModifierSide(rawValue: side)
@@ -267,29 +269,38 @@ struct GeneralPane: View {
                 }
                 Slider(value: m.binding({ $0.shortcutOverview }, { m.top("shortcut-overview", SettingsModel.yaml(($0 * 10).rounded() / 10)) }),
                        in: 0...2, step: 0.1) {
-                    Text(m.s.shortcutOverview == 0 ? "Shortcut overview: off"
-                         : "Shortcut overview after holding mod: \(SettingsModel.yaml(m.s.shortcutOverview)) s")
+                    explained(m.s.shortcutOverview == 0 ? "Shortcut overview: off"
+                              : "Shortcut overview after holding mod: \(SettingsModel.yaml(m.s.shortcutOverview)) s",
+                              "Hold the modifier on its own this long to see every shortcut.")
                 } minimumValueLabel: { Text("Off") } maximumValueLabel: { Text("2 s") }
             }
             Section("Workspaces") {
-                TextField("Names", text: $workspacesText, prompt: Text("1 2 3 4 5 6 7 8 9"))
+                TextField(text: $workspacesText, prompt: Text("1 2 3 4 5 6 7 8 9")) {
+                    explained("Names", "Separated by spaces. In the bar, and for the keys: ⌥1 shows the first, ⌥2 the second …")
+                }
                     .commitOnLeave {
                         let names = workspacesText.split(separator: " ").map(String.init)
                         if !names.isEmpty, names != m.s.workspaces { m.top("workspaces", KSettings.flowList(names)) }
                     }
-                Text("Separated by spaces.").font(.caption).foregroundStyle(.secondary)
-                Toggle("Go along when you move a window to another workspace",
-                       isOn: m.binding({ $0.followMovedWindows }, { m.top("follow-moved-windows", SettingsModel.yaml($0)) }))
+                Toggle(isOn: m.binding({ $0.followMovedWindows }, { m.top("follow-moved-windows", SettingsModel.yaml($0)) })) {
+                    explained("Go along when you move a window to another workspace",
+                              "On: ⌥⇧3 sends the window to 3 and takes you there too. Off: you stay where you are.")
+                }
                 Picker(selection: m.binding({ $0.followFocusScreen }, { m.top("follow-focus-screen", $0.rawValue) })) {
                     Text("On this display").tag(KSettings.FollowFocusScreen.current)
                     Text("On the display it was last on").tag(KSettings.FollowFocusScreen.last)
                 } label: {
-                    Text("A window on a hidden workspace gets focus")
-                    Text("A link opens in it, ⌘Tab, the Dock: where its workspace shows up.")
+                    explained("A window on a hidden workspace gets focus", "A link opens in it, ⌘Tab, the Dock: where its workspace shows up.",
+                              info: Info(text: "Example with two displays: you're on workspace 9 on the right display, and a link in Slack opens Chrome, which is on workspace 1. \"On this display\": 1 replaces your 9. \"On the display it was last on\": 1 shows up on the left display again, and your 9 stays where it is.",
+                                         docs: "workspaces/#following-focus-to-a-hidden-workspace"))
                 }
-                Toggle("The key of the current workspace goes back to the previous one",
-                       isOn: m.binding({ $0.workspaceBackAndForth }, { m.top("workspace-back-and-forth", SettingsModel.yaml($0)) }))
-                DisclosureGroup("Pin workspaces to displays", isExpanded: $pinsOpen) {
+                Toggle(isOn: m.binding({ $0.workspaceBackAndForth }, { m.top("workspace-back-and-forth", SettingsModel.yaml($0)) })) {
+                    explained("The key of the current workspace goes back to the previous one",
+                              "Press ⌥3 while you're on 3 to go back to where you came from.",
+                              info: Info(text: "One key switches between two workspaces, like ⌘Tab for workspaces: on 1, ⌥3 takes you to 3; ⌥3 again takes you back to 1. (xmonad: toggleWS)",
+                                         docs: "workspaces/#the-model"))
+                }
+                DisclosureGroup(isExpanded: $pinsOpen) {
                 ForEach(m.s.workspaces, id: \.self) { tag in
                     Picker("Workspace \(tag) always on", selection: m.binding({ $0.workspaceScreens[tag] ?? "" }, { pin(tag, $0) })) {
                         Text("Any display").tag("")
@@ -302,6 +313,15 @@ struct GeneralPane: View {
                         }
                     }
                 }
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text("Pin workspaces to displays")
+                            InfoButton(info: Info(text: "Example: pin 8 to \"External display\". ⌥8 then always shows 8 on the external display and moves focus there, even when you're on the laptop. Without that display connected, 8 is a normal workspace.",
+                                                  docs: "workspaces/#pinning-workspaces-to-a-display"))
+                        }
+                        Text("A pinned workspace always shows on its display.").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 DisclosureGroup("Starting layout per workspace", isExpanded: $layoutsOpen) {
                     ForEach(Array(m.s.workspaces.enumerated()), id: \.element) { i, tag in
@@ -316,42 +336,56 @@ struct GeneralPane: View {
                 }
             }
             Section("Windows") {
-                Picker("New windows", selection: m.binding({ $0.newWindows }, { m.top("new-windows", $0.rawValue) })) {
+                Picker(selection: m.binding({ $0.newWindows }, { m.top("new-windows", $0.rawValue) })) {
                     Text("At the end of the stack").tag(InsertPosition.end)
                     Text("Below the focused window").tag(InsertPosition.below)
                     Text("Above the focused window (xmonad)").tag(InsertPosition.above)
                     Text("As the new master").tag(InsertPosition.master)
+                } label: {
+                    explained("New windows", "Where a new window joins the stack. \"At the end\" leaves the master where it is; \"As the new master\" puts it in the big spot.")
                 }
-                Toggle("Float dialogs (windows without a fullscreen button)",
-                       isOn: m.binding({ $0.floatDialogs }, { m.top("float-dialogs", SettingsModel.yaml($0)) }))
+                Toggle(isOn: m.binding({ $0.floatDialogs }, { m.top("float-dialogs", SettingsModel.yaml($0)) })) {
+                    explained("Float dialogs", "Dialogs, settings and progress windows stay where they are instead of being tiled. Recognised by their missing green fullscreen button.")
+                }
                 Stepper(value: m.binding({ $0.floatSmallWindows }, { m.top("float-small-windows", String($0)) }), in: 0...1000, step: 50) {
-                    Text(m.s.floatSmallWindows == 0 ? "Float small windows: off" : "Float windows smaller than \(m.s.floatSmallWindows) pt")
+                    explained(m.s.floatSmallWindows == 0 ? "Float small windows: off" : "Float windows smaller than \(m.s.floatSmallWindows) pt",
+                              "Windows smaller than this, in both directions, aren't tiled.")
                 }
             }
             Section("Tiling") {
                 Stepper(value: m.binding({ $0.gap }, { m.top("gap", SettingsModel.yaml($0)) }), in: 0...40) {
                     Text("Gap between windows: \(Int(m.s.gap)) pt")
                 }
-                Toggle("Same space at the screen edges", isOn: m.binding({ $0.padding == nil }, {
+                Toggle(isOn: m.binding({ $0.padding == nil }, {
                     m.top("padding", $0 ? "auto" : SettingsModel.yaml(m.s.gap))
-                }))
+                })) {
+                    explained("Same space at the screen edges", "Off: set the space at the screen edges separately.")
+                }
                 if let p = m.s.padding {
                     Stepper(value: m.binding({ _ in p }, { m.top("padding", SettingsModel.yaml($0)) }), in: 0...80) {
                         Text("Space at the screen edges: \(Int(p)) pt")
                     }
                 }
-                Toggle("Space at the edges on the built-in display", isOn: m.binding({ $0.builtinPadding }, {
+                Toggle(isOn: m.binding({ $0.builtinPadding }, {
                     m.top("builtin-display-padding", SettingsModel.yaml($0))
-                }))
-                Toggle("No gaps when a window is alone on its display", isOn: m.binding({ $0.smartGaps }, {
+                })) {
+                    explained("Space at the edges on the built-in display", "Off: no space at the edges on the MacBook's own screen, where every pixel counts.")
+                }
+                Toggle(isOn: m.binding({ $0.smartGaps }, {
                     m.top("smart-gaps", SettingsModel.yaml($0))
-                }))
+                })) {
+                    explained("No gaps when a window is alone on its display", "A single window uses the whole screen, with no gap around it.")
+                }
                 Slider(value: m.binding({ $0.ratio }, { m.top("ratio", SettingsModel.yaml(($0 * 100).rounded() / 100)) }), in: 0.2...0.8) {
-                    Text("Master size for new workspaces: \(Int(m.s.ratio * 100)) %")
+                    explained("Master size for new workspaces: \(Int(m.s.ratio * 100)) %",
+                              "How much room the main window gets. ⌥H / ⌥L change it per workspace.",
+                              info: Info(text: "In the Tall layout, the master is the big window on the left and the others are stacked on the right. This is its share when a workspace starts; ⌥H and ⌥L make it narrower or wider on the workspace you're on.",
+                                         docs: "layouts/#sizes"))
                 }
                 Stepper(value: m.binding({ $0.windowLimit }, { m.top("window-limit", String($0)) }), in: 0...20) {
-                    Text(m.s.windowLimit == 0 ? "Tiled windows per workspace: no limit"
-                         : "Tile at most \(m.s.windowLimit) windows per workspace; others float")
+                    explained(m.s.windowLimit == 0 ? "Tiled windows per workspace: no limit"
+                              : "Tile at most \(m.s.windowLimit) windows per workspace; others float",
+                              "More than this, and the extra windows float. \"No limit\" tiles them all.")
                 }
             }
             Section {
@@ -370,17 +404,27 @@ struct GeneralPane: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Mouse") {
-                Picker("Pointer follows focus", selection: m.binding({ $0.mouseFollowsFocus }, { m.top("mouse-follows-focus", $0.rawValue) })) {
+                Picker(selection: m.binding({ $0.mouseFollowsFocus }, { m.top("mouse-follows-focus", $0.rawValue) })) {
                     Text("To the focused window").tag(KSettings.MouseFollows.window)
                     Text("Only between displays").tag(KSettings.MouseFollows.screen)
                     Text("Never").tag(KSettings.MouseFollows.off)
+                } label: {
+                    explained("Pointer follows focus", "Moves the pointer to the window you switch to with a key.",
+                              info: Info(text: "\"To the focused window\": the pointer jumps to the centre of the window you switch to. \"Only between displays\": only when focus moves to another display, so you never lose the pointer. \"Never\": the pointer stays where it is.",
+                                         docs: "mouse-and-trackpad/#mouse"))
                 }
-                Toggle("Focus follows the pointer", isOn: m.binding({ $0.focusFollowsMouse }, { m.top("focus-follows-mouse", SettingsModel.yaml($0)) }))
+                Toggle(isOn: m.binding({ $0.focusFollowsMouse }, { m.top("focus-follows-mouse", SettingsModel.yaml($0)) })) {
+                    explained("Focus follows the pointer", "The window under the pointer gets focus when the pointer rests on it, without a click.",
+                              info: Info(text: "Like many Linux desktops: what you type goes to the window under the pointer. It takes getting used to, so it's off at first.",
+                                         docs: "mouse-and-trackpad/#mouse"))
+                }
             }
             Section("Kachel") {
                 Toggle("Start at login", isOn: m.binding({ $0.startAtLogin }, { m.top("start-at-login", SettingsModel.yaml($0)) }))
                 Toggle("Icon in the menu bar", isOn: m.binding({ $0.menubarIcon }, { m.top("menubar-icon", SettingsModel.yaml($0)) }))
-                TextField("Terminal command", text: $terminalText).commitOnLeave {
+                TextField(text: $terminalText) {
+                    explained("Terminal command", "What the Terminal command starts (give it a key under Shortcuts), e.g. open -na Ghostty.")
+                }.commitOnLeave {
                     if !terminalText.isEmpty, terminalText != m.s.terminal { m.top("terminal", KSettings.yamlScalar(terminalText)) }
                 }
                 Toggle(isOn: m.binding({ $0.checkForUpdates }, { m.top("check-for-updates", SettingsModel.yaml($0)) })) {
@@ -438,6 +482,7 @@ struct BarPane: View {
     @ObservedObject var m: SettingsModel
     @State private var date = ""
     @State private var clock = ""
+    @State private var badgeApps = ""
 
     private static let stats: Set<BarWidget> = [.cpu, .memory, .network]
 
@@ -472,13 +517,28 @@ struct BarPane: View {
             }
             side("Left Side", key: "left", m.s.bar.left)
             side("Right Side", key: "right", m.s.bar.right)
-            let hidden = BarWidget.allCases.filter { !m.s.bar.shows($0) }
+            // Built-in widgets and yours that aren't in the bar now.
+            let yours = m.s.bar.custom.keys.sorted().compactMap { BarWidget(rawValue: $0) }
+            let hidden = (BarWidget.allCases + yours).filter { !m.s.bar.shows($0) }
             if !hidden.isEmpty {
                 Section {
                     ForEach(hidden, id: \.self) { w in row(w) }
                 } header: {
                     Text("Not in the Bar")
                 }
+            }
+            Section {
+                ForEach(m.s.bar.custom.keys.sorted(), id: \.self) { name in
+                    CustomWidgetEditor(name: name, widget: m.s.bar.custom[name]!, taken: Set(m.s.bar.custom.keys),
+                                       onSave: { new, w in saveWidget(old: name, new: new, w) },
+                                       onDelete: { deleteWidget(name) })
+                }
+                Button("Add a Widget") { addWidget() }
+            } header: {
+                Text("Your Widgets")
+            } footer: {
+                Text("A widget shows the first line a shell command prints, every few seconds (stopped after 2 s, at most 40 characters). Place it above like the others.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .onAppear { date = m.s.bar.dateFormat; clock = m.s.bar.clockFormat }
@@ -539,14 +599,66 @@ struct BarPane: View {
         }
     }
 
+    // MARK: your widgets (bar.widgets)
+
+    /// Write all your widgets, and the bar's lists when a name changed or one is gone.
+    private func writeWidgets(_ widgets: [String: CustomWidget], rename: (String, String)? = nil, removed: String? = nil) {
+        var left = m.s.bar.left, right = m.s.bar.right
+        if let (old, new) = rename, let n = BarWidget(rawValue: new) {
+            left = left.map { $0.rawValue == old ? n : $0 }
+            right = right.map { $0.rawValue == old ? n : $0 }
+        }
+        if let removed {
+            left.removeAll { $0.rawValue == removed }
+            right.removeAll { $0.rawValue == removed }
+        }
+        m.edit { text in
+            // Lists first: a name only in the lists, not defined, wouldn't load.
+            var t = KSettings.setBarWidgets(text, widgets)
+            t = KSettings.setBarList(t, key: "left", left)
+            return KSettings.setBarList(t, key: "right", right)
+        }
+    }
+
+    private func saveWidget(old: String, new: String, _ w: CustomWidget) {
+        var all = m.s.bar.custom
+        all[old] = nil
+        all[new] = w
+        writeWidgets(all, rename: old == new ? nil : (old, new))
+    }
+
+    private func deleteWidget(_ name: String) {
+        var all = m.s.bar.custom
+        all[name] = nil
+        writeWidgets(all, removed: name)
+    }
+
+    /// A new widget showing the time, on the right side, to change from there.
+    private func addWidget() {
+        var all = m.s.bar.custom
+        var name = "widget", n = 1
+        while all[name] != nil || BarWidget(rawValue: name)?.isBuiltIn == true { n += 1; name = "widget\(n)" }
+        var w = CustomWidget(run: "date +%H:%M")
+        w.interval = 30
+        w.icon = "terminal"
+        all[name] = w
+        var right = m.s.bar.right
+        right.insert(BarWidget(rawValue: name)!, at: 0)
+        m.edit { text in
+            KSettings.setBarList(KSettings.setBarWidgets(text, all), key: "right", right)
+        }
+    }
+
     /// A widget's own options, indented under it, while it's in the bar.
     @ViewBuilder private func options(_ w: BarWidget, lastStats: Bool) -> some View {
         Group {
             switch w {
             case .workspaces:
-                Toggle("Hide empty workspaces", isOn: m.binding({ $0.bar.hideEmptyWorkspaces }, {
+                Toggle(isOn: m.binding({ $0.bar.hideEmptyWorkspaces }, {
                     block("workspaces", "hide-empty", SettingsModel.yaml($0))
-                }))
+                })) {
+                    explained("Hide empty workspaces", "Only workspaces with windows, and the ones on screen, show up in the bar.")
+                }
                 Toggle("Window count on each workspace", isOn: m.binding({ $0.bar.workspaceCounts }, {
                     block("workspaces", "window-counts", SettingsModel.yaml($0))
                 }))
@@ -591,6 +703,19 @@ struct BarPane: View {
                 }
             case .layout:
                 EmptyView()
+            case .badges:
+                TextField("Apps", text: $badgeApps, prompt: Text("Every app with a badge")).commitOnLeave {
+                    let apps = badgeApps.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                    if apps != m.s.bar.badgeApps { block("badges", "apps", KSettings.flowList(apps)) }
+                }
+                .onAppear { badgeApps = m.s.bar.badgeApps.joined(separator: ", ") }
+                Text("Unread counts from the Dock icons. Bundle IDs or names, separated by commas, e.g. Slack, Microsoft Outlook. Shown only while there's a number.")
+                    .font(.caption).foregroundStyle(.secondary)
+            default:
+                if let w = m.s.bar.custom[w.rawValue] {
+                    Text("Your widget: shows the first line of `\(w.run)` every \(SettingsModel.yaml(w.interval)) s. Change it under Your Widgets below.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.leading, 28)
@@ -644,6 +769,8 @@ struct BarPane: View {
         case .battery: return "battery.75percent"
         case .date: return "calendar"
         case .clock: return "clock"
+        case .badges: return "app.badge"
+        default: return Config.current.bar.custom[w.rawValue]?.icon ?? "terminal"
         }
     }
 
@@ -680,16 +807,19 @@ struct BorderPane: View {
                         m.nested("border", "color", "\"\(NSColor(c).hexString)\"")
                     }), supportsOpacity: false)
                 }
-                Toggle("Corners follow each window", isOn: m.binding({ $0.border.radius == nil }, {
+                Toggle(isOn: m.binding({ $0.border.radius == nil }, {
                     m.nested("border", "radius", $0 ? "auto" : "12")
-                }))
+                })) {
+                    explained("Corners follow each window", "Rounder for windows with a toolbar, the way macOS draws them.")
+                }
                 if let r = m.s.border.radius {
                     Stepper(value: m.binding({ _ in r }, { m.nested("border", "radius", SettingsModel.yaml($0)) }), in: 0...32) {
                         Text("Corner radius: \(Int(r)) pt")
                     }
                 }
-                Toggle("No frame when a window is alone on its display",
-                       isOn: m.binding({ $0.border.smart }, { m.nested("border", "smart", SettingsModel.yaml($0)) }))
+                Toggle(isOn: m.binding({ $0.border.smart }, { m.nested("border", "smart", SettingsModel.yaml($0)) })) {
+                    explained("No frame when a window is alone on its display", "With one window on screen it's clear which one has focus.")
+                }
             }
         }
     }
@@ -701,7 +831,11 @@ struct TrackpadPane: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Switch workspaces with swipes", isOn: m.binding({ $0.gestures.enabled }, { m.nested("gestures", "enabled", SettingsModel.yaml($0)) }))
+                Toggle(isOn: m.binding({ $0.gestures.enabled }, { m.nested("gestures", "enabled", SettingsModel.yaml($0)) })) {
+                    explained("Switch workspaces with swipes", "Turn off macOS's own swipe between full-screen apps with the same number of fingers first.",
+                              info: Info(text: "macOS uses the same swipe for its Spaces. In System Settings → Trackpad → More Gestures, set \"Swipe between full-screen applications\" to Off (or to the other number of fingers). The welcome window checks it.",
+                                         docs: "mouse-and-trackpad/#trackpad-swipes"))
+                }
                 Picker("Fingers", selection: m.binding({ $0.gestures.fingers }, { m.nested("gestures", "fingers", String($0)) })) {
                     Text("Three").tag(3); Text("Four").tag(4)
                 }
@@ -710,7 +844,9 @@ struct TrackpadPane: View {
                     Text("Natural").tag(GestureSettings.SwipeDirection.natural)
                     Text("Reversed").tag(GestureSettings.SwipeDirection.reversed)
                 }
-                Toggle("Skip empty workspaces", isOn: m.binding({ $0.gestures.skipEmpty }, { m.nested("gestures", "skip-empty", SettingsModel.yaml($0)) }))
+                Toggle(isOn: m.binding({ $0.gestures.skipEmpty }, { m.nested("gestures", "skip-empty", SettingsModel.yaml($0)) })) {
+                    explained("Skip empty workspaces", "Swipes jump over workspaces without windows and the ones shown on another display.")
+                }
                 Toggle("Feedback on the trackpad", isOn: m.binding({ $0.haptics }, { m.top("haptics", SettingsModel.yaml($0)) }))
                     .help("A light tap when a swipe switches workspaces or a window snaps into place.")
             }
@@ -847,7 +983,7 @@ private struct RuleRow: View {
                 Spacer()
                 Button(role: .destructive) {
                     m.edit { KSettings.setRule($0, at: index, rule: nil) }
-                } label: { Image(systemName: "minus.circle") }
+                } label: { Image(systemName: "minus.circle") }.help("Delete this rule")
                     .buttonStyle(.borderless)
                     .help("Remove this rule")
             }
@@ -873,6 +1009,8 @@ private struct RuleRow: View {
                     .toggleStyle(.checkbox)
                     .padding(.leading, 12)
                     .help("Minimized while its workspace is out of sight, so call apps show their small window.")
+                InfoButton(info: Info(text: "For calls: Teams, Zoom and Webex only show their small call window when the meeting window is minimized. With Minimize, the window is minimized while its workspace is out of sight, and restored when you come back. For every Teams meeting, whatever it's called: leave \"Window title contains\" empty and put \"Microsoft Teams, teams.microsoft.com\" under \"But not if it contains\".",
+                                      docs: "window-search-and-rules/#calls-minimize-instead-of-hiding"))
             }
         }
         .padding(.vertical, 4)
@@ -959,10 +1097,14 @@ struct ScratchpadEditor: View {
                     }
                 } label: { Image(systemName: "app.badge") }.menuStyle(.borderlessButton).fixedSize().help("Choose a running app")
             }
-            TextField("Window title contains", text: $title, prompt: Text("optional")).commitOnLeave {
+            TextField(text: $title, prompt: Text("optional")) {
+                explained("Window title contains", "A short part that stays the same, like the file name. Case doesn't matter.")
+            }.commitOnLeave {
                 if (title.isEmpty ? nil : title) != pad.title { save { $0.title = title.isEmpty ? nil : title } }
             }
-            TextField("Start with", text: $run, prompt: Text("shell command, e.g. open -a Notes")).commitOnLeave {
+            TextField(text: $run, prompt: Text("shell command, e.g. open -a Notes")) {
+                explained("Start with", "A shell command, run when the scratchpad isn't open. Quote paths with spaces.")
+            }.commitOnLeave {
                 if (run.isEmpty ? nil : run) != pad.run { save { $0.run = run.isEmpty ? nil : run } }
             }
             Button("Take App and Title from the Focused Window") {
@@ -1063,6 +1205,8 @@ struct CommandPicker: View {
     var onPick: (Command?) -> Void
     @State private var askSpawn = false
     @State private var spawnText = ""
+    @State private var askKeys = false
+    @State private var keysText = ""
 
     var body: some View {
         HStack {
@@ -1104,6 +1248,10 @@ struct CommandPicker: View {
                         if case .spawn(let c) = value { spawnText = c }
                         askSpawn = true
                     }
+                    Button("Send a Key Combination…") {
+                        if case .sendKey(let c) = value { keysText = c.description }
+                        askKeys = true
+                    }
                     item(.toggleFocusFollowsMouse)
                     item(.shortcuts); item(.settings); item(.welcome)
                     item(.refresh); item(.reload); item(.restart); item(.quit)
@@ -1123,9 +1271,27 @@ struct CommandPicker: View {
                     }
                     .frame(minWidth: 180)
             }
+            if askKeys || isSendKey {
+                // Typed like the keys in config.yaml, e.g. cmd-w.
+                TextField("Keys", text: $keysText, prompt: Text("e.g. cmd-w"))
+                    .commitOnLeave {
+                        let t = keysText.trimmingCharacters(in: .whitespaces)
+                        if !t.isEmpty, let c = try? KSettings.parseCommand("send-key \(t)", workspaceCount: settings.workspaces.count,
+                                                                               context: "send-key"), value != c {
+                            onPick(c)
+                        }
+                        askKeys = false
+                    }
+                    .frame(minWidth: 120)
+            }
         }
-        .onAppear { if case .spawn(let c) = value { spawnText = c } }
+        .onAppear {
+            if case .spawn(let c) = value { spawnText = c }
+            if case .sendKey(let c) = value { keysText = c.description }
+        }
     }
+
+    private var isSendKey: Bool { if case .sendKey = value { return true } else { return false } }
 
     private var isSpawn: Bool { if case .spawn = value { return true } else { return false } }
 
@@ -1312,4 +1478,104 @@ extension View {
     fileprivate func commitOnLeave(_ commit: @escaping () -> Void) -> some View {
         modifier(CommitOnLeave(commit: commit))
     }
+}
+
+
+/// One of your bar widgets: name, command, interval, icon, click.
+struct CustomWidgetEditor: View {
+    let name: String
+    let widget: CustomWidget
+    /// Names in use (a rename can't take one of them).
+    let taken: Set<String>
+    var onSave: (String, CustomWidget) -> Void
+    var onDelete: () -> Void
+
+    @State private var newName = ""
+    @State private var run = ""
+    @State private var icon = ""
+    @State private var click = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: NSImage(systemSymbolName: icon, accessibilityDescription: nil) == nil ? "questionmark.square.dashed" : icon)
+                    .foregroundStyle(.secondary).frame(width: 20)
+                TextField("Name", text: $newName, prompt: Text("vpn")).commitOnLeave { save() }
+                Spacer()
+                Button(role: .destructive) { onDelete() } label: { Image(systemName: "trash") }
+                    .buttonStyle(.borderless).help("Delete this widget")
+            }
+            TextField("Command", text: $run, prompt: Text("e.g. scutil --nc status 'Work VPN' | head -1")).commitOnLeave { save() }
+            Stepper(value: Binding(get: { widget.interval }, set: { v in var w = widget; w.interval = v; onSave(name, w) }),
+                    in: 2...3600, step: widget.interval < 10 ? 1 : 5) {
+                Text("Every \(SettingsModel.yaml(widget.interval)) s")
+            }
+            TextField("Icon (SF Symbol)", text: $icon, prompt: Text("e.g. lock.fill")).commitOnLeave { save() }
+            TextField("When clicked, run", text: $click, prompt: Text("optional shell command")).commitOnLeave { save() }
+        }
+        .padding(.vertical, 4)
+        .onAppear {
+            newName = name; run = widget.run; icon = widget.icon ?? ""; click = widget.click ?? ""
+        }
+    }
+
+    private func save() {
+        let n = newName.trimmingCharacters(in: .whitespaces)
+        let r = run.trimmingCharacters(in: .whitespaces)
+        // A name without spaces that isn't built in or taken; a command.
+        guard !n.isEmpty, !n.contains(" "), BarWidget(rawValue: n)?.isBuiltIn != true, n == name || !taken.contains(n), !r.isEmpty else {
+            newName = name; if r.isEmpty { run = widget.run }
+            return
+        }
+        var w = widget
+        w.run = r
+        w.icon = icon.trimmingCharacters(in: .whitespaces).isEmpty ? nil : icon.trimmingCharacters(in: .whitespaces)
+        w.click = click.trimmingCharacters(in: .whitespaces).isEmpty ? nil : click.trimmingCharacters(in: .whitespaces)
+        guard n != name || w != widget else { return }
+        onSave(n, w)
+    }
+}
+
+// MARK: - explanations
+
+/// What an ⓘ next to a setting shows: more explanation, and the docs page
+/// about it ("workspaces/#pinning-workspaces-to-a-display").
+struct Info {
+    let text: String
+    let docs: String
+}
+
+/// ⓘ: a short popover with more about a setting, and a link to the docs.
+struct InfoButton: View {
+    let info: Info
+    @State private var shown = false
+
+    var body: some View {
+        Button { shown.toggle() } label: { Image(systemName: "info.circle") }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help("More about this")
+            .popover(isPresented: $shown, arrowEdge: .trailing) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(info.text).fixedSize(horizontal: false, vertical: true)
+                    Link("Learn more", destination: URL(string: "https://jklaiber.github.io/kachel/" + info.docs)!)
+                }
+                .padding(14)
+                .frame(width: 320)
+            }
+    }
+}
+
+/// A setting's title with a line of explanation under it, like System
+/// Settings, and an ⓘ for more where one line isn't enough.
+@ViewBuilder func explained(_ title: String, _ detail: String, info: Info? = nil) -> some View {
+    if let info {
+        HStack(spacing: 4) {
+            Text(title)
+            InfoButton(info: info)
+        }
+    } else {
+        Text(title)
+    }
+    Text(detail)
 }

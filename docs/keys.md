@@ -108,5 +108,6 @@ In a terminal:
 | `window-search`, `app-rule` | search windows, set an app rule |
 | `scratchpad NAME` | show / hide a scratchpad |
 | `terminal`, `spawn COMMAND` | run something |
+| `send-key KEYS` | press a key combination in the front app, e.g. `send-key cmd-w` |
 | `shortcuts`, `settings`, `welcome` | Kachel's windows |
 | `refresh`, `reload`, `restart`, `quit` | Kachel itself |

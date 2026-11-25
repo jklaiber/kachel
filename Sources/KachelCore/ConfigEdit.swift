@@ -190,6 +190,44 @@ extension Settings {
         return lines.joined(separator: "\n")
     }
 
+    /// Replace `bar.widgets` as a whole (the settings window edits your
+    /// widgets together). Comments in the bar section stay, also the
+    /// commented-out example under `widgets:`.
+    public static func setBarWidgets(_ text: String, _ widgets: [String: CustomWidget]) -> String {
+        var entries: [String] = []
+        for (name, w) in widgets.sorted(by: { $0.key < $1.key }) {
+            entries.append("    \(yamlScalar(name)):")
+            entries.append("      run: \(yamlScalar(w.run))")
+            entries.append("      interval: \(trim(w.interval))")
+            if let i = w.icon, !i.isEmpty { entries.append("      icon: \(yamlScalar(i))") }
+            if let c = w.click, !c.isEmpty { entries.append("      click: \(yamlScalar(c))") }
+        }
+        let header = widgets.isEmpty ? "  widgets: {}" : "  widgets:"
+        var lines = text.components(separatedBy: "\n")
+        guard let bar = lines.firstIndex(where: { $0.hasPrefix("bar:") }) else {
+            return text + (text.hasSuffix("\n") ? "" : "\n") + "bar:\n" + ([header] + entries).joined(separator: "\n") + "\n"
+        }
+        let indent = { (l: String) in l.prefix { $0 == " " }.count }
+        // The bar section: indented, blank or comment lines after `bar:`.
+        var end = bar + 1
+        while end < lines.count, lines[end].isEmpty || lines[end].hasPrefix(" ") || lines[end].hasPrefix("#") { end += 1 }
+        while end > bar + 1, lines[end - 1].trimmingCharacters(in: .whitespaces).isEmpty || lines[end - 1].hasPrefix("#") { end -= 1 }
+        if let w = (bar + 1..<end).first(where: { indent(lines[$0]) == 2 && lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("widgets:") }) {
+            // Drop the old entries (deeper, not comments), keep comments.
+            var i = w + 1
+            while i < lines.count, lines[i].isEmpty || indent(lines[i]) > 2 || (lines[i].hasPrefix("  #")) {
+                let t = lines[i].trimmingCharacters(in: .whitespaces)
+                if !t.isEmpty, !t.hasPrefix("#"), indent(lines[i]) > 2 { lines.remove(at: i) } else { i += 1 }
+                if i >= lines.count || (!lines[i].isEmpty && indent(lines[i]) <= 2 && !lines[i].hasPrefix("  #")) { break }
+            }
+            lines[w] = header
+            lines.insert(contentsOf: entries, at: w + 1)
+        } else {
+            lines.insert(contentsOf: [header] + entries, at: end)
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private static func trim(_ d: Double) -> String {
         let s = String(format: "%.2f", d)
         return s.hasSuffix("0") ? String(s.dropLast()) : s
