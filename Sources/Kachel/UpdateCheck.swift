@@ -4,11 +4,15 @@ import KachelCore
 /// Once a day, asks GitHub for the latest release. Only that one public
 /// request, with no details about you or your Mac. When there's a newer
 /// version, the menus say so; nothing pops up by itself.
-final class UpdateCheck {
+final class UpdateCheck: ObservableObject {
     static let shared = UpdateCheck()
 
     struct Release { var version: ReleaseVersion; var notes: URL }
-    private(set) var available: Release?
+    @Published private(set) var available: Release?
+    /// For Settings → About.
+    @Published private(set) var lastChecked: Date?
+    @Published private(set) var checking = false
+    @Published private(set) var failed = false
     var onChange: (() -> Void)?
     private var timer: Timer?
 
@@ -30,7 +34,14 @@ final class UpdateCheck {
     }
 
     func check() {
-        guard timer != nil, let mine = ReleaseVersion(AppVersion.string) else { return }
+        guard timer != nil else { return }
+        checkNow()
+    }
+
+    /// The same one request, now (Settings → About → Check Now).
+    func checkNow() {
+        guard !checking, let mine = ReleaseVersion(AppVersion.string) else { return }
+        checking = true
         var req = URLRequest(url: Self.api, timeoutInterval: 20)
         req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         req.setValue("Kachel", forHTTPHeaderField: "User-Agent")
@@ -38,12 +49,16 @@ final class UpdateCheck {
             guard let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let tag = json["tag_name"] as? String, let latest = ReleaseVersion(tag) else {
                 Log.info("update check failed: \(error.map { "\($0.localizedDescription)" } ?? "unexpected answer")")
+                DispatchQueue.main.async { self?.checking = false; self?.failed = true }
                 return
             }
             let notes = (json["html_url"] as? String).flatMap(URL.init(string:))
                 ?? URL(string: "https://github.com/jklaiber/kachel/releases/latest")!
             DispatchQueue.main.async {
                 guard let self else { return }
+                self.checking = false
+                self.failed = false
+                self.lastChecked = Date()
                 let new = latest > mine ? Release(version: latest, notes: notes) : nil
                 if new?.version != self.available?.version {
                     Log.info(new.map { "update available: \($0.version) (running \(mine))" } ?? "Kachel is up to date (\(mine))")
@@ -69,12 +84,16 @@ final class UpdateCheck {
         a.window.orderFrontRegardless()
         switch a.runModal() {
         case .alertFirstButtonReturn:
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(Self.upgradeCommand, forType: .string)
+            Self.copyCommand()
         case .alertSecondButtonReturn:
             NSWorkspace.shared.open(r.notes)
         default:
             break
         }
+    }
+
+    static func copyCommand() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(upgradeCommand, forType: .string)
     }
 }

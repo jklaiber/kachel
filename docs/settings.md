@@ -9,7 +9,7 @@ as soon as you save. You can edit it by hand, use the settings window, or both.
 **Settings…** is in the bar's right-click menu (or the `settings` command, also
 `kachel settings` in a terminal). It
 looks and works like System Settings: General, Bar, Focus Border, Trackpad,
-Shortcuts, App Rules and Scratchpads.
+Shortcuts, App Rules, Scratchpads and About.
 
 - Every change is written into `config.yaml` straight away, **comments
   included**, and applies at once. Edits in the file show up in the window.
@@ -17,6 +17,9 @@ Shortcuts, App Rules and Scratchpads.
   menus. Kachel asks before taking keys that are already in use.
 - **Scratchpads**: add, rename, resize, and fill in app and title from the
   focused window.
+- **About**: the version, whether there's a newer one (**Check Now**), links
+  to these docs, the changelog and to report a problem, and where your config
+  and log are.
 - **⌘Z / ⇧⌘Z** undo and redo.
 - A change that wouldn't load is rolled back and shown at the top of the window.
 
@@ -73,5 +76,5 @@ check-for-updates: true      # once a day, look up the latest release on GitHub
 ```
 
 With `check-for-updates`, a newer version shows up at the top of the bar's menu
-and in Settings → General, with the command to upgrade. It only asks GitHub which
+and in Settings → About, with the command to upgrade. It only asks GitHub which
 release is the latest; nothing about you or your Mac is sent.

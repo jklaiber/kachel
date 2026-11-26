@@ -217,7 +217,7 @@ final class WindowManager {
             [("Update Available: Kachel \($0.version)…", { UpdateCheck.shared.showDetails() }), ("-", {})]
         } ?? []
         return update + [
-            ("About Kachel", { AppVersion.showAbout() }),
+            ("About Kachel", { [unowned self] in self.settingsWindow.show(.about) }),
             ("Settings…", { [unowned self] in self.settingsWindow.show() }),
             ("Keyboard Shortcuts", { [unowned self] in self.showOverview(hint: "Press any key to close") }),
             ("Welcome and Setup Check…", { [unowned self] in self.welcomeWindow.show() }),

@@ -113,6 +113,14 @@ final class UITests: XCTestCase {
         try Snapshot.check(Snapshot.image(of: page(RulesPane(m: m)), size: CGSize(width: 620, height: 700)), "settings-rules")
     }
 
+    func testAboutPane() throws {
+        let iconURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../docs/images/icon.svg").standardized
+        let icon = try XCTUnwrap(NSImage(contentsOf: iconURL))
+        try Snapshot.check(Snapshot.image(of: page(AboutPane(m: SettingsModel(), icon: icon)), size: CGSize(width: 620, height: 820)),
+                           "settings-about")
+    }
+
     /// Warnings about ignored settings show at the top of Settings. (The
     /// sidebar is a material, which comes out blank in the picture.)
     func testSettingsShowsConfigWarnings() throws {

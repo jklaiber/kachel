@@ -20,7 +20,7 @@ brew update && brew upgrade --cask kachel
 
 `brew update` first: without it, Homebrew may not know about a release from the
 last day yet and says the latest version is already installed. Which version you
-have: **About Kachel** in the bar's right-click menu, Settings → General, or
+have: **About Kachel** in the bar's right-click menu (Settings → About), or
 `/Applications/Kachel.app/Contents/MacOS/Kachel --version`.
 
 !!! note "Accessibility and upgrades"

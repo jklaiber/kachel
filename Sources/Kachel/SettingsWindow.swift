@@ -12,7 +12,8 @@ final class SettingsWindow {
     private var window: NSWindow?
     private let model = SettingsModel()
 
-    func show() {
+    func show(_ pane: SettingsPane? = nil) {
+        if let pane { model.pane = pane }
         if window == nil {
             let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model)))
             w.title = "Kachel Settings"
@@ -35,6 +36,7 @@ final class SettingsWindow {
 
 final class SettingsModel: ObservableObject {
     @Published var s = Config.current
+    @Published var pane: SettingsPane? = .general
     @Published var error: String?
     @Published var lastSaveError: String?
     private var observer: NSObjectProtocol?
@@ -148,6 +150,7 @@ final class SettingsModel: ObservableObject {
 enum SettingsPane: String, CaseIterable, Identifiable {
     case general = "General", bar = "Bar", border = "Focus Border", trackpad = "Trackpad"
     case shortcuts = "Shortcuts", rules = "App Rules", scratchpads = "Scratchpads"
+    case about = "About"
     var id: String { rawValue }
     var icon: String {
         switch self {
@@ -158,17 +161,17 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .shortcuts: return "keyboard"
         case .rules: return "macwindow.on.rectangle"
         case .scratchpads: return "rectangle.on.rectangle.angled"
+        case .about: return "info.circle"
         }
     }
 }
 
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
-    @State var pane: SettingsPane? = .general
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsPane.allCases, selection: $pane) { p in
+            List(SettingsPane.allCases, selection: $model.pane) { p in
                 Label(p.rawValue, systemImage: p.icon).tag(p)
             }
             .navigationSplitViewColumnWidth(190)
@@ -195,7 +198,7 @@ struct SettingsView: View {
                     .padding(10).background(Color.secondary.opacity(0.1))
                 }
                 Group {
-                    switch pane ?? .general {
+                    switch model.pane ?? .general {
                     case .general: GeneralPane(m: model)
                     case .bar: BarPane(m: model)
                     case .border: BorderPane(m: model)
@@ -203,6 +206,7 @@ struct SettingsView: View {
                     case .shortcuts: ShortcutsPane(m: model)
                     case .rules: RulesPane(m: model)
                     case .scratchpads: ScratchpadsPane(m: model)
+                    case .about: AboutPane(m: model)
                     }
                 }
                 .formStyle(.grouped)
@@ -224,7 +228,7 @@ struct SettingsView: View {
             } message: {
                 Text(model.pendingKey?.message ?? "")
             }
-            .navigationTitle((pane ?? .general).rawValue)
+            .navigationTitle((model.pane ?? .general).rawValue)
         }
     }
 }
@@ -427,19 +431,6 @@ struct GeneralPane: View {
                     explained("Terminal command", "What the Terminal command starts (give it a key under Shortcuts), e.g. open -na Ghostty.")
                 }.commitOnLeave {
                     if !terminalText.isEmpty, terminalText != m.s.terminal { m.top("terminal", KSettings.yamlScalar(terminalText)) }
-                }
-                Toggle(isOn: m.binding({ $0.checkForUpdates }, { m.top("check-for-updates", SettingsModel.yaml($0)) })) {
-                    Text("Check for updates")
-                    Text("Once a day, Kachel looks up the latest release on GitHub. A newer one shows up in the menu.")
-                }
-                LabeledContent("Version") {
-                    HStack {
-                        Text(AppVersion.string).textSelection(.enabled)
-                        if let r = UpdateCheck.shared.available {
-                            Button("\(r.version.description) available…") { UpdateCheck.shared.showDetails() }
-                        }
-                        Button("About Kachel") { AppVersion.showAbout() }
-                    }
                 }
             }
         }

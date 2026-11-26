@@ -7,6 +7,12 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- **Settings → About**: version and updates (with **Check Now**), links to the
+  documentation, the changelog and to report a problem, and where your config
+  and log are. **About Kachel** in the menus opens it; the update setting moved
+  there from General.
+
 ### Fixed
 
 - Settings (and Kachel's other windows) open on the first try from the menu bar
