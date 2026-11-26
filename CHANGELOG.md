@@ -7,6 +7,12 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.22] - 2026-11-26
+
+Unread counts and your own widgets in the bar, `send-key`, settings that
+explain themselves, and fixes for empty workspaces, the focus border and
+secure input.
+
 ### Added
 - Settings explain themselves: the settings that aren't obvious (focus and
   pointer, workspaces, tiling, swipes, call rules, scratchpads) have a line of
@@ -539,7 +545,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.21...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.22...HEAD
+[0.1.22]: https://github.com/jklaiber/kachel/compare/v0.1.21...v0.1.22
 [0.1.21]: https://github.com/jklaiber/kachel/compare/v0.1.20...v0.1.21
 [0.1.20]: https://github.com/jklaiber/kachel/compare/v0.1.19...v0.1.20
 [0.1.19]: https://github.com/jklaiber/kachel/compare/v0.1.18...v0.1.19
