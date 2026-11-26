@@ -1,4 +1,6 @@
-# Workspaces and displays
+---
+title: "Workspaces and displays"
+---
 
 ## The model
 
@@ -111,7 +113,7 @@ windows of hidden workspaces are moved into a screen corner with one pixel
 visible (macOS doesn't allow windows fully off screen). Switching workspaces
 just moves windows, so it's instant.
 
-A few macOS settings make that nicer; the [welcome window](getting-started.md#the-welcome-window)
+A few macOS settings make that nicer; the [welcome window](/kachel/getting-started/#the-welcome-window)
 checks them:
 
 - **One Space per display**, and *Automatically rearrange Spaces* off.
@@ -121,4 +123,4 @@ checks them:
 - An auto-hiding Dock at the bottom covers the one-pixel slivers.
 
 Kachel keeps track of which workspace every window is on across sleep,
-restarts and crashes; see [Troubleshooting](troubleshooting.md#windows-and-workspaces).
+restarts and crashes; see [Troubleshooting](/kachel/troubleshooting/#windows-and-workspaces).

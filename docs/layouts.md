@@ -1,4 +1,6 @@
-# Layouts
+---
+title: "Layouts"
+---
 
 `mod-shift-space` cycles through the layouts listed in `layouts:`; each
 workspace remembers its own. `prev-layout` goes the other way, and
@@ -64,7 +66,7 @@ again.
 | `mod-shift-f` | `toggle-fullscreen` | Full until pressed again (xmonad's ToggleLayouts) |
 
 The mouse works too: drag the edge between master and stack, or the top/bottom
-edge of a window in a column. See [Mouse and trackpad](mouse-and-trackpad.md).
+edge of a window in a column. See [Mouse and trackpad](/kachel/mouse-and-trackpad/).
 
 **Minimum sizes**: some apps can't get smaller than a certain size. Kachel
 learns that from the window and gives it the room it needs in its column; if
@@ -79,4 +81,4 @@ new-windows: end    # end of the stack (default) | below | above (xmonad) | mast
 ```
 
 A new window always gets focus. Floating windows (dialogs, small windows,
-[rules](window-search-and-rules.md#app-rules)) aren't tiled.
+[rules](/kachel/window-search-and-rules/#app-rules)) aren't tiled.

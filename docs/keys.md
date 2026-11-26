@@ -1,4 +1,6 @@
-# Keys
+---
+title: "Keys"
+---
 
 `mod` is **Option** (⌥) by default (`mod:` changes it: `alt`, `ctrl+alt`,
 `alt+cmd`, …). **Hold `mod` alone** for a moment and Kachel shows every
@@ -17,14 +19,15 @@ mod: left-alt        # left Option is mod; right Option types as before
 and **Settings → General → Which keys** sets the same. Keys pressed with the
 other side go straight to the app, untouched.
 
-!!! note "Secure input"
-    One-sided shortcuts read the keyboard through Accessibility. When an app
-    turns on **secure input**, macOS hides key presses from such tools, so
-    these shortcuts stop working until that app lets go: Terminal with
-    *Terminal ▸ Secure Keyboard Entry* on (for as long as Terminal runs), a
-    password prompt (`sudo`, `ssh`), a password manager. Kachel says so in the
-    bar and the log, with the app's name ("Secure input is on (Terminal) …").
-    Turn the option off in that app, or use a `mod` that isn't one-sided.
+:::note[Secure input]
+One-sided shortcuts read the keyboard through Accessibility. When an app
+turns on **secure input**, macOS hides key presses from such tools, so
+these shortcuts stop working until that app lets go: Terminal with
+*Terminal ▸ Secure Keyboard Entry* on (for as long as Terminal runs), a
+password prompt (`sudo`, `ssh`), a password manager. Kachel says so in the
+bar and the log, with the app's name ("Secure input is on (Terminal) …").
+Turn the option off in that app, or use a `mod` that isn't one-sided.
+:::
 
 ## Default keys
 
@@ -42,7 +45,7 @@ other side go straight to the app, untouched.
 | `mod-h` / `mod-l` | narrower / wider master |
 | `mod-shift-h` / `mod-shift-l` | shorter / taller window in its column |
 | `mod-shift-space` | next layout |
-| `mod-shift-f` | Kachel's fullscreen: Full layout until pressed again ([macOS fullscreen](workspaces.md#fullscreen) is different) |
+| `mod-shift-f` | Kachel's fullscreen: Full layout until pressed again ([macOS fullscreen](/kachel/workspaces/#fullscreen) is different) |
 | `mod-t` | float / tile the window |
 | `mod-,` / `mod-.` | focus next / previous display |
 | `mod-shift-,` / `mod-shift-.` | send the window to the next / previous display |

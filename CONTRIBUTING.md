@@ -49,7 +49,7 @@ code layout and how to sign builds so the permission sticks.
 - Add a line under `[Unreleased]` in [CHANGELOG.md](CHANGELOG.md) for anything a
   user would notice. Release notes are made from it.
 - Update the pages in `docs/` if behaviour or settings change.
-  `mkdocs build --strict` checks the links.
+  `npm run build` in `website/` checks the links.
 
 By contributing, you agree that your contributions are licensed under the
 [MIT licence](LICENSE).

@@ -1,11 +1,13 @@
-# Window search and app rules
+---
+title: "Window search and app rules"
+---
 
 ## Window search
 
 `mod-p` opens a search over every open window, on every workspace and display.
 
-![Window search listing all windows grouped by workspace](images/screenshots/window-search.png){ width="49%" }
-![Window search filtered by typing term](images/screenshots/window-search-query.png){ width="49%" }
+![Window search listing all windows grouped by workspace](images/screenshots/window-search.png)
+![Window search filtered by typing term](images/screenshots/window-search-query.png)
 
 - Before you type, it lists everything by workspace, with the window you used
   before already selected: `mod-p` then ↩ jumps back.

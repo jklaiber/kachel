@@ -3,9 +3,11 @@ build/
 .swiftpm/
 *.xcodeproj/
 .DS_Store
-site/
-.venv/
 
 # Snapshot test failures (written next to the references)
 *.actual.png
 *.diff.png
+docs/configuration.md
+website/node_modules/
+website/dist/
+website/.astro/

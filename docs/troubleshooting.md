@@ -1,4 +1,6 @@
-# Troubleshooting
+---
+title: "Troubleshooting"
+---
 
 ## Nothing happens
 
@@ -21,7 +23,7 @@ look switched on but no longer count. Remove it with **–** and add Kachel agai
 
 - **All shortcuts stop working after opening Terminal** (or another app), with
   `mod: left-alt` or another one-sided `mod`: that app holds *secure input*. The
-  bar says which app; see [Keys](keys.md#only-the-left-or-right-key).
+  bar says which app; see [Keys](/kachel/keys/#only-the-left-or-right-key).
 
 ## Windows and workspaces
 
@@ -29,9 +31,9 @@ look switched on but no longer count. Remove it with **–** and add Kachel agai
   Kachel saves the state after every change and restores it on the next start. If
   it crashes, a helper puts parked windows back on screen and starts it again.
 - **After a restart of the Mac**, windows are recognised by app and title as their
-  apps open them ([details](workspaces.md#after-a-restart)).
+  apps open them ([details](/kachel/workspaces/#after-a-restart)).
 - **Minimized and macOS fullscreen windows** aren't tiled; they keep their
-  workspace and come back there ([fullscreen](workspaces.md#fullscreen)).
+  workspace and come back there ([fullscreen](/kachel/workspaces/#fullscreen)).
 - **An app that hangs** doesn't hold Kachel up: the log says "… isn't answering:
   not waiting for it", and once it answers again its windows are put in place.
 - **An app that keeps its window after closing it** (Calendar, many Electron
@@ -54,7 +56,7 @@ names, display names and your config's commands are in it.
 
 ## The kachel command
 
-[`kachel`](command-line.md) shows what Kachel sees and runs commands:
+[`kachel`](/kachel/command-line/) shows what Kachel sees and runs commands:
 
 ```bash
 kachel dump                # write every workspace and window to the log
@@ -77,7 +79,7 @@ a new issue with the crash details filled in, for you to look over and send.
 | Option | |
 |---|---|
 | `--version` | Kachel's version |
-| `--ctl COMMAND` | the [`kachel` command](command-line.md) without Homebrew's link |
+| `--ctl COMMAND` | the [`kachel` command](/kachel/command-line/) without Homebrew's link |
 | `--print-default-config` | print the default config with all comments |
 | `--list-taken-keys` | key combinations macOS and skhd already use |
 | `--render-screenshots DIR` | draw the documentation images |

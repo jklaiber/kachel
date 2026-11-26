@@ -1,0 +1,17 @@
+{
+  "name": "kachel-website",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/configuration-page.mjs",
+    "dev": "astro dev",
+    "prebuild": "node scripts/configuration-page.mjs",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.43.2",
+    "astro": "^7.4.13",
+    "starlight-links-validator": "^0.27.1"
+  }
+}

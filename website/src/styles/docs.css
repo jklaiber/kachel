@@ -1,0 +1,16 @@
+/* Kachel's look for the documentation: the system font (SF Pro on a Mac),
+   the icon's green as the accent, the flame's orange for highlights. */
+:root {
+  --sl-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --sl-font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --sl-color-accent-low: #0d3a2c;
+  --sl-color-accent: #2fae84;
+  --sl-color-accent-high: #bfeedd;
+}
+:root[data-theme='light'] {
+  --sl-color-accent-low: #d4f2e6;
+  --sl-color-accent: #1d7d5f;
+  --sl-color-accent-high: #0f4433;
+}
+body { -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; }
+.sl-markdown-content h1, .sl-markdown-content h2, h1#_top { letter-spacing: -0.03em; }

@@ -1,4 +1,6 @@
-# Development
+---
+title: "Development"
+---
 
 Requires macOS 26+ and Xcode 26 (or its Command Line Tools) (`xcode-select --install`).
 
@@ -116,15 +118,19 @@ our own wallpaper: `./scripts/screenshots.sh` renders them into
 
 ## Documentation
 
-These pages live in `docs/` and are built with MkDocs Material; every push to
-`main` publishes them. To preview locally:
+These pages live in `docs/` as Markdown. The website around them is in
+`website/`: [Astro](https://astro.build) with
+[Starlight](https://starlight.astro.build) for the documentation, and a home
+page of its own (`website/src/pages/index.astro`). Every push to `main`
+publishes it. To preview locally (needs Node.js):
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install -r docs/requirements.txt
-.venv/bin/mkdocs serve
+cd website && npm ci && npm run dev
 ```
 
-`mkdocs build --strict` fails on broken links; CI runs it on every push and pull request.
+`npm run build` fails on broken links between pages, also to a heading;
+CI runs it on every push and pull request. The configuration reference is
+made from `config.example.yaml` at build time.
 
 ## Releasing
 

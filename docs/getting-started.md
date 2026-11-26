@@ -1,4 +1,6 @@
-# Getting started
+---
+title: "Getting started"
+---
 
 ## Install
 
@@ -23,11 +25,12 @@ last day yet and says the latest version is already installed. Which version you
 have: **About Kachel** in the bar's right-click menu (Settings → About), or
 `/Applications/Kachel.app/Contents/MacOS/Kachel --version`.
 
-!!! note "Accessibility and upgrades"
-    Since 0.1.18 every release is signed with the same certificate, so upgrades
-    keep the Accessibility permission. Coming from an older version, macOS asks
-    one last time; if an old entry is listed but doesn't work, remove it with
-    **–** and add Kachel again.
+:::note[Accessibility and upgrades]
+Since 0.1.18 every release is signed with the same certificate, so upgrades
+keep the Accessibility permission. Coming from an older version, macOS asks
+one last time; if an old entry is listed but doesn't work, remove it with
+**–** and add Kachel again.
+:::
 
 ## The welcome window
 
@@ -71,9 +74,10 @@ The default modifier, `mod`, is **Option** (⌥).
 
 Then open **Settings…** from the bar's right-click menu, or edit
 `~/.config/kachel/config.yaml` directly; both apply immediately. See
-[Settings and config.yaml](settings.md).
+[Settings and config.yaml](/kachel/settings/).
 
-!!! tip "Swiss, German and French keyboards"
-    With `mod: alt`, ⌥+digit no longer types characters like `# [ ] | { }`.
-    Use `mod: left-alt` to keep the right Option key for typing (Settings →
-    General → Which keys), or `mod: ctrl+alt`. See [Keys](keys.md#only-the-left-or-right-key).
+:::tip[Swiss, German and French keyboards]
+With `mod: alt`, ⌥+digit no longer types characters like `# [ ] | { }`.
+Use `mod: left-alt` to keep the right Option key for typing (Settings →
+General → Which keys), or `mod: ctrl+alt`. See [Keys](/kachel/keys/#only-the-left-or-right-key).
+:::

@@ -1,4 +1,6 @@
-# The bar
+---
+title: "The bar"
+---
 
 ![The bar: workspaces, layout, window title, network, CPU, memory, date and clock](images/screenshots/bar.png)
 

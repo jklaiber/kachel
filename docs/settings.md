@@ -1,4 +1,6 @@
-# Settings and config.yaml
+---
+title: "Settings and config.yaml"
+---
 
 Everything Kachel does is set in **`~/.config/kachel/config.yaml`**. Kachel writes
 it with every option and an explanation on first launch, and applies changes
@@ -43,7 +45,7 @@ keys:
   ignored with a note in the bar and at the top of Settings ("unknown setting
   'gapp' ignored (did you mean 'gap'?)"); everything else applies.
 
-The [configuration reference](configuration.md) lists every option.
+The [configuration reference](/kachel/configuration/) lists every option.
 After an upgrade, compare your config with the new defaults:
 
 ```bash

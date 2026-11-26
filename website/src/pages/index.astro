@@ -1,0 +1,638 @@
+---
+// Kachel's home page. The documentation is Starlight's (../docs/*.md); this
+// page is its own: a live desktop to try Kachel's keys on, and the features.
+import icon from '../../../docs/images/icon.svg';
+import bar from '../../../docs/images/screenshots/bar.png';
+import window_search from '../../../docs/images/screenshots/window-search.png';
+import welcome from '../../../docs/images/screenshots/welcome.png';
+
+const shots = { bar, window_search, welcome };
+const home = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const docs = `${home}getting-started/`;
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kachel — tiling for macOS</title>
+<meta name="description" content="A native tiling window manager for macOS with xmonad's workspace model.">
+<link rel="icon" href={`${home}favicon.svg`}>
+<style is:global>
+:root {
+  --bg: #fbfbfd;
+  --bg-alt: #f5f5f7;
+  --card: #ffffff;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --line: rgba(0,0,0,.08);
+  --green: #1d7d5f;
+  --green-2: #2fae84;
+  --flame: #ff8a3d;
+  --blue: #0071e3;
+  --nav: rgba(251,251,253,.72);
+  --shadow: 0 20px 60px -20px rgba(0,0,0,.25), 0 2px 8px rgba(0,0,0,.06);
+  --code: #f0f0f3;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --bg-alt: #0d0d0f; --card: #161618; --text: #f5f5f7; --muted: #a1a1a6;
+    --line: rgba(255,255,255,.1); --nav: rgba(0,0,0,.6); --code: #1c1c1f;
+    --shadow: 0 30px 80px -20px rgba(0,0,0,.8), 0 2px 8px rgba(0,0,0,.4);
+    --green-2: #3cc897; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --bg-alt: #0d0d0f; --card: #161618; --text: #f5f5f7; --muted: #a1a1a6;
+  --line: rgba(255,255,255,.1); --nav: rgba(0,0,0,.6); --code: #1c1c1f;
+  --shadow: 0 30px 80px -20px rgba(0,0,0,.8), 0 2px 8px rgba(0,0,0,.4);
+  --green-2: #3cc897; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased; letter-spacing: -.022em; overflow-x: hidden;
+}
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px; }
+
+/* nav */
+nav.top {
+  position: sticky; top: 0; z-index: 50; height: 52px;
+  background: var(--nav); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--line);
+}
+nav.top .wrap { display: flex; align-items: center; height: 100%; gap: 28px; }
+nav.top .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text); font-size: 17px; }
+nav.top .brand img { width: 24px; height: 24px; }
+nav.top .links { display: flex; gap: 22px; margin-left: auto; font-size: 13px; }
+nav.top .links a { color: var(--text); opacity: .8; }
+nav.top .links a:hover { opacity: 1; text-decoration: none; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; border-radius: 980px; padding: 6px 14px;
+  background: var(--blue); color: #fff !important; font-size: 13px; font-weight: 500; opacity: 1 !important;
+}
+.pill:hover { text-decoration: none; filter: brightness(1.08); }
+@media (max-width: 640px) { nav.top .links a:not(.pill) { display: none; } }
+
+/* hero */
+header.hero { text-align: center; padding: 72px 0 24px; }
+.hero .icon { width: 112px; height: 112px; filter: drop-shadow(0 18px 30px rgba(29,125,95,.35)); animation: float 6s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-6px); } }
+.eyebrow { font-size: 19px; font-weight: 600; color: var(--flame); margin: 18px 0 4px; letter-spacing: -.01em; }
+h1 {
+  font-size: clamp(44px, 8vw, 88px); line-height: 1.04; letter-spacing: -.045em; margin: 0; font-weight: 700;
+}
+.grad {
+  background: linear-gradient(120deg, var(--green) 10%, var(--green-2) 45%, var(--flame) 95%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.lead { font-size: clamp(19px, 2.4vw, 24px); color: var(--muted); max-width: 680px; margin: 18px auto 0; line-height: 1.35; }
+.cta { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 30px; flex-wrap: wrap; }
+.brew {
+  display: inline-flex; align-items: center; gap: 12px; padding: 12px 14px 12px 20px; border-radius: 14px;
+  background: var(--code); border: 1px solid var(--line); font: 15px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0;
+}
+.brew .dollar { color: var(--muted); }
+.brew button {
+  border: 0; border-radius: 8px; padding: 6px 10px; background: var(--card); color: var(--text); font: 13px -apple-system, sans-serif;
+  cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.12);
+}
+.fine { font-size: 13px; color: var(--muted); margin-top: 14px; }
+
+/* the live desktop */
+.stage { padding: 36px 0 20px; }
+.desktop {
+  position: relative; aspect-ratio: 16 / 10; border-radius: 18px; overflow: hidden; box-shadow: var(--shadow);
+  background:
+    radial-gradient(120% 90% at 0% 0%, #1f6f7a 0%, transparent 55%),
+    radial-gradient(120% 120% at 100% 0%, #c47452 0%, transparent 55%),
+    radial-gradient(140% 120% at 50% 100%, #24324d 0%, #1b2236 60%);
+  outline: none; user-select: none; container-type: inline-size;
+}
+.desktop:focus-visible { box-shadow: var(--shadow), 0 0 0 3px var(--blue); }
+.menubar {
+  position: absolute; inset: 0 0 auto 0; height: 3.4%; display: flex; align-items: center; gap: 2.2%; padding: 0 1.4%;
+  color: #fff; font-size: 1.15cqw; background: rgba(0,0,0,.12); backdrop-filter: blur(20px); z-index: 30;
+}
+.menubar b { font-weight: 600; }
+.menubar .right { margin-left: auto; opacity: .95; }
+.kbar {
+  position: absolute; inset: auto 0 0 0; height: 4.2%; display: flex; align-items: center; gap: .9cqw; padding: 0 .8cqw;
+  color: #fff; font-size: 1.2cqw; z-index: 30; text-shadow: 0 0 6px rgba(0,0,0,.35);
+}
+.kbar .ws {
+  width: 2.1cqw; height: 2.1cqw; display: grid; place-items: center; border-radius: .5cqw; position: relative;
+  opacity: .45; cursor: pointer; transition: background .2s, opacity .2s;
+}
+.kbar .ws.has { opacity: .95; }
+.kbar .ws.has::after { content: ""; position: absolute; bottom: .15cqw; width: .3cqw; height: .3cqw; border-radius: 50%; background: currentColor; }
+.kbar .ws.on { background: rgba(255,255,255,.92); color: #1d1d1f; opacity: 1; text-shadow: none; }
+.kbar .layout { margin-left: .8cqw; opacity: .75; }
+.kbar .title { margin-left: 1.2cqw; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30cqw; }
+.kbar .stats { margin-left: auto; display: flex; gap: 1.6cqw; opacity: .95; white-space: nowrap; }
+
+.win {
+  position: absolute; border-radius: 1.1cqw; overflow: hidden; background: #1f1f22; color: #e6e6ea;
+  box-shadow: 0 1.2cqw 3cqw rgba(0,0,0,.35); z-index: 5;
+  transition: left .42s cubic-bezier(.32,.72,0,1), top .42s cubic-bezier(.32,.72,0,1), width .42s cubic-bezier(.32,.72,0,1),
+              height .42s cubic-bezier(.32,.72,0,1), opacity .3s, transform .42s cubic-bezier(.32,.72,0,1);
+}
+.win.light { background: #fbfbfd; color: #1d1d1f; }
+.win.gone { opacity: 0; transform: scale(.92); pointer-events: none; }
+.win.focus { z-index: 6; }
+.win.focus::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; border: .22cqw solid var(--flame); pointer-events: none;
+}
+.win.front { z-index: 7; }
+.win .tb { height: 2.6cqw; display: flex; align-items: center; padding: 0 1cqw; gap: .5cqw; font-size: 1.05cqw; font-weight: 600; opacity: .9; }
+.win .tb i { width: .9cqw; height: .9cqw; border-radius: 50%; display: block; }
+.win .tb i:nth-child(1) { background: #ff5f57; } .win .tb i:nth-child(2) { background: #febc2e; } .win .tb i:nth-child(3) { background: #28c840; }
+.win .tb span { flex: 1; text-align: center; margin-right: 3.3cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .75; font-weight: 500; }
+.win .bd { padding: .6cqw 1.4cqw; font-size: 1.1cqw; }
+.term { font-family: ui-monospace, Menlo, monospace; line-height: 1.75; white-space: nowrap; }
+.term .p { color: #39c1d1; } .term .c { color: var(--flame); } .term .o { opacity: .55; }
+.sk { height: .75cqw; border-radius: .4cqw; background: currentColor; opacity: .12; margin: 1.1cqw 0; }
+.sk.h { height: 1.6cqw; width: 40%; opacity: .7; background: none; font-weight: 700; font-size: 1.7cqw; margin: 1.4cqw 0 .8cqw; }
+.hero-img { height: 42%; border-radius: .8cqw; margin-top: .6cqw; }
+.hint {
+  position: absolute; left: 50%; top: 45%; transform: translate(-50%,-50%); z-index: 1; color: rgba(255,255,255,.6);
+  font-size: 1.5cqw; text-align: center; transition: opacity .3s;
+}
+.toast {
+  position: absolute; left: 50%; top: 9%; transform: translate(-50%, -10px); z-index: 40; opacity: 0;
+  background: rgba(30,30,32,.55); color: #fff; backdrop-filter: blur(24px) saturate(180%); border: 1px solid rgba(255,255,255,.18);
+  padding: .9cqw 1.8cqw; border-radius: 2cqw; font-size: 1.5cqw; font-weight: 600; transition: opacity .25s, transform .25s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; margin-top: 22px; font-size: 14px; color: var(--muted); }
+.keys button {
+  display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 4px 2px;
+}
+.keys button:hover { color: var(--text); }
+kbd {
+  display: inline-block; min-width: 26px; padding: 3px 7px; border-radius: 7px; background: var(--card); color: var(--text);
+  border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); font: 600 12px -apple-system, sans-serif; text-align: center;
+}
+.try { text-align: center; font-size: 13px; color: var(--muted); margin-top: 10px; }
+
+/* sections */
+section { padding: 110px 0; }
+section.alt { background: var(--bg-alt); }
+.kicker { color: var(--green-2); font-weight: 600; font-size: 17px; margin: 0 0 8px; }
+h2 { font-size: clamp(34px, 5.4vw, 56px); line-height: 1.07; letter-spacing: -.04em; margin: 0; font-weight: 700; max-width: 820px; }
+.sub { font-size: 21px; color: var(--muted); max-width: 640px; line-height: 1.42; margin: 18px 0 0; }
+.center { text-align: center; } .center h2, .center .sub { margin-left: auto; margin-right: auto; }
+
+/* two displays */
+.displays { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 54px; max-width: 860px; margin-left: auto; margin-right: auto; }
+.screen {
+  aspect-ratio: 16/10; border-radius: 14px; position: relative; overflow: hidden; cursor: pointer;
+  background: linear-gradient(160deg, #2a4b63, #1a2235); box-shadow: var(--shadow); outline: 3px solid transparent; transition: outline-color .2s;
+  container-type: inline-size;
+}
+.screen.cur { outline-color: var(--flame); }
+.screen .tag {
+  position: absolute; right: 4%; bottom: 4%; font-size: 9cqw; font-weight: 800; color: rgba(255,255,255,.85); letter-spacing: -.04em;
+}
+.screen .label { position: absolute; left: 5%; bottom: 6%; font-size: 3.6cqw; color: rgba(255,255,255,.75); }
+.screen .mini { position: absolute; border-radius: 2.2cqw; transition: all .5s cubic-bezier(.32,.72,0,1); }
+.ws-keys { display: flex; justify-content: center; gap: 10px; margin-top: 28px; }
+.ws-keys button {
+  width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--text);
+  font: 600 17px -apple-system, sans-serif; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.08); transition: transform .1s;
+}
+.ws-keys button:active { transform: scale(.94); }
+.ws-keys small { display: block; font-size: 10px; color: var(--muted); font-weight: 500; margin-top: -2px; }
+.explain { text-align: center; color: var(--muted); font-size: 15px; margin-top: 16px; min-height: 1.5em; }
+@media (max-width: 640px) { .displays { gap: 14px; } }
+
+/* layouts strip */
+.layouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px; margin-top: 50px; }
+.lay { background: var(--card); border-radius: 18px; padding: 16px; border: 1px solid var(--line); }
+.lay .pic { aspect-ratio: 16/10; position: relative; }
+.lay .pic div { position: absolute; border-radius: 5px; background: var(--green-2); opacity: .35; }
+.lay .pic div.m { opacity: .9; background: var(--green); }
+.lay b { display: block; margin-top: 12px; font-size: 15px; }
+.lay span { font-size: 13px; color: var(--muted); }
+
+/* bento */
+.bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 18px; margin-top: 54px; }
+.tile {
+  background: var(--card); border-radius: 26px; padding: 30px; border: 1px solid var(--line); overflow: hidden; position: relative;
+  grid-column: span 2; min-height: 230px; display: flex; flex-direction: column;
+}
+.tile.w3 { grid-column: span 3; } .tile.w4 { grid-column: span 4; } .tile.w6 { grid-column: span 6; }
+.tile .ic { font-size: 30px; line-height: 1; }
+.tile h3 { font-size: 24px; letter-spacing: -.03em; line-height: 1.15; margin: 16px 0 8px; }
+.tile p { margin: 0; color: var(--muted); font-size: 16px; }
+.tile img { width: 100%; border-radius: 12px; margin-top: auto; padding-top: 22px; display: block; }
+.big { font-size: 64px; font-weight: 800; letter-spacing: -.05em; line-height: 1; margin-top: auto; padding-top: 20px; }
+.big small { font-size: 22px; font-weight: 600; color: var(--muted); letter-spacing: -.02em; }
+.cli {
+  margin-top: auto; padding: 14px 16px; border-radius: 12px; background: #1d1d1f; color: #e6e6ea;
+  font: 13px/1.7 ui-monospace, Menlo, monospace; letter-spacing: 0; white-space: pre; overflow: auto;
+}
+.cli .p { color: #39c1d1; } .cli .o { opacity: .6; }
+@media (max-width: 860px) { .tile, .tile.w3, .tile.w4 { grid-column: span 3; } }
+@media (max-width: 600px) { .bento { grid-template-columns: 1fr; } .tile, .tile.w3, .tile.w4, .tile.w6 { grid-column: span 1; } }
+
+/* steps */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 50px; counter-reset: s; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 26px; }
+.step::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--green); color: #fff; font-weight: 700; margin-bottom: 14px; }
+.step h3 { margin: 0 0 6px; font-size: 19px; } .step p { margin: 0; color: var(--muted); font-size: 15px; }
+@media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+
+footer { padding: 40px 0 60px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); }
+footer .wrap { display: flex; gap: 20px; flex-wrap: wrap; }
+footer .grow { flex: 1; }
+
+/* reveal */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s, transform .8s cubic-bezier(.2,.7,0,1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .win, .screen .mini { transition: none !important; }
+  .hero .icon { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="brand" href={home}><img src={icon.src} alt="">Kachel</a>
+    <div class="links">
+      <a href="#workspaces">Workspaces</a>
+      <a href="#layouts">Layouts</a>
+      <a href="#features">Features</a>
+      <a href={docs}>Documentation</a>
+      <a href="https://github.com/jklaiber/kachel">GitHub</a>
+      <a class="pill" href="#install">Get Kachel</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero wrap">
+  <img class="icon" src={icon.src} alt="Kachel's icon: a green tiled stove">
+  <p class="eyebrow">Kachel for macOS</p>
+  <h1>Every window<br><span class="grad">in its place.</span></h1>
+  <p class="lead">A native tiling window manager with xmonad's workspaces. Nine of them, on every display, one key away.</p>
+  <div class="cta" id="install">
+    <div class="brew"><span><span class="dollar">$</span> brew install --cask jklaiber/tap/kachel</span><button id="copy">Copy</button></div>
+  </div>
+  <p class="fine">Free and open source · macOS 26 Tahoe · Apple silicon and Intel</p>
+</header>
+
+<div class="stage wrap reveal">
+  <div class="desktop" id="desk" tabindex="0" aria-label="A live Kachel desktop: use the keys below to try it">
+    <div class="menubar"><b id="appname">Terminal</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><span class="right" id="clock1"></span></div>
+    <div class="hint" id="hint">Workspace <span id="hintws">1</span> is empty — press <b>N</b> for a window</div>
+    <div class="toast" id="toast"></div>
+    <div class="kbar">
+      <div id="tags" style="display:flex;gap:.5cqw"></div>
+      <span class="layout" id="layname">Tall</span>
+      <span class="title" id="wintitle"></span>
+      <span class="stats"><span>↓ 1.2 MB/s</span><span>12 %</span><span id="clock2"></span></span>
+    </div>
+  </div>
+  <div class="keys" id="keys">
+    <button data-k="1"><kbd>⌥</kbd><kbd>1</kbd>…<kbd>9</kbd> workspace</button>
+    <button data-k="j"><kbd>⌥</kbd><kbd>J</kbd><kbd>K</kbd> focus</button>
+    <button data-k="enter"><kbd>⌥</kbd><kbd>↩</kbd> to the master</button>
+    <button data-k="space"><kbd>⌥</kbd><kbd>⇧</kbd><kbd>Space</kbd> next layout</button>
+    <button data-k="shift2"><kbd>⌥</kbd><kbd>⇧</kbd><kbd>2</kbd> send to 2</button>
+    <button data-k="n"><kbd>N</kbd> new window</button>
+    <button data-k="w"><kbd>W</kbd> close</button>
+  </div>
+  <p class="try">It's live: click the desktop and use the keys (Option is optional here).</p>
+</div>
+
+<section id="workspaces">
+  <div class="wrap center reveal">
+    <p class="kicker">Workspaces</p>
+    <h2>Nine workspaces. Every display. No Spaces.</h2>
+    <p class="sub">Each display shows one of nine shared workspaces. Ask for one that's on the other display, and the two swap, like in xmonad. Switching is instant: no animation to wait for, no Mission Control.</p>
+  </div>
+  <div class="wrap reveal">
+    <div class="displays">
+      <div class="screen cur" id="scr0" data-s="0"><span class="label">Built-in display</span><span class="tag"></span></div>
+      <div class="screen" id="scr1" data-s="1"><span class="label">Studio Display</span><span class="tag"></span></div>
+    </div>
+    <div class="ws-keys" id="wskeys"></div>
+    <p class="explain" id="explain">Click a display to work on it, then pick a workspace.</p>
+  </div>
+</section>
+
+<section class="alt" id="layouts">
+  <div class="wrap reveal">
+    <p class="kicker">Layouts</p>
+    <h2>Eleven layouts. One key to cycle.</h2>
+    <p class="sub">From xmonad's Tall to BSP and Three-column for wide displays. Every workspace keeps its own, and you can resize the master and each window in a column, with keys or the mouse.</p>
+    <div class="layouts" id="lays"></div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap reveal">
+    <p class="kicker">And everything around it</p>
+    <h2>Made for the Mac you have.</h2>
+  </div>
+  <div class="wrap">
+    <div class="bento">
+      <div class="tile w4 reveal">
+        <div class="ic">▭</div>
+        <h3>A bar for your workspaces.</h3>
+        <p>A second menu bar along the bottom: workspaces to click, the layout, the window, unread counts from the Dock, and widgets of your own.</p>
+        <img src={shots.bar.src} alt="Kachel's bar">
+      </div>
+      <div class="tile reveal">
+        <div class="ic">🍃</div>
+        <h3>Light.</h3>
+        <p>Sits quietly while you work.</p>
+        <div class="big">0.5<small> % CPU</small></div>
+        <div class="big" style="padding-top:6px">35<small> MB</small></div>
+      </div>
+      <div class="tile w3 reveal">
+        <div class="ic">⌕</div>
+        <h3>Find any window.</h3>
+        <p>Type a few letters and go: Kachel takes you to its workspace and display.</p>
+        <img src={shots.window_search.src} alt="Window search">
+      </div>
+      <div class="tile w3 reveal">
+        <div class="ic">⌨︎</div>
+        <h3>Scriptable.</h3>
+        <p>Every command from the terminal, and everything Kachel knows as JSON for launchers and other bars.</p>
+        <div class="cli"><span class="p">~ ❯</span> kachel workspace 3
+<span class="p">~ ❯</span> kachel query workspaces | jq '.[0]'
+<span class="o">{'{ "tag": "1", "layout": "tall", "windows": 3 }'}</span></div>
+      </div>
+      <div class="tile reveal">
+        <div class="ic">✋</div>
+        <h3>Swipe.</h3>
+        <p>Three fingers to change workspace. Drag a window onto another to swap them.</p>
+      </div>
+      <div class="tile reveal">
+        <div class="ic">▤</div>
+        <h3>Scratchpads.</h3>
+        <p>A terminal or your notes on one key, over whatever you're doing.</p>
+      </div>
+      <div class="tile reveal">
+        <div class="ic">⟲</div>
+        <h3>Dependable.</h3>
+        <p>Workspaces survive a restart. A hung app never holds Kachel up, and after a crash it's back with every window in place.</p>
+      </div>
+      <div class="tile w6 reveal">
+        <div class="ic">⚙︎</div>
+        <h3>Settings like System Settings. Or a file, if you prefer.</h3>
+        <p>Every option in a window that looks like the rest of macOS, written to a plain <code>config.yaml</code> you can keep in your dotfiles. The left Option key for Kachel, the right one for typing ü and @. App rules, per-workspace layouts, your own keys.</p>
+        <img src={shots.welcome.src} alt="Kachel's welcome window" style="max-width:520px;margin-left:auto;margin-right:auto">
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap reveal">
+    <p class="kicker">Get started</p>
+    <h2>Up and tiling in a minute.</h2>
+    <div class="steps">
+      <div class="step"><h3>Install</h3><p>With Homebrew: <code>brew install --cask jklaiber/tap/kachel</code></p></div>
+      <div class="step"><h3>Allow Accessibility</h3><p>The welcome window walks you through it and checks your macOS settings.</p></div>
+      <div class="step"><h3>Press ⌥1 … ⌥9</h3><p>Hold ⌥ for a moment to see every shortcut. Coming from Amethyst, yabai or AeroSpace? There's <a href={`${docs}../coming-from/`}>a guide</a>.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="grow">Kachel is German for tile, as in Kachelofen: the tiled stove in the icon, nine tiles for nine workspaces.</span>
+    <a href={docs}>Documentation</a>
+    <a href="https://github.com/jklaiber/kachel">GitHub</a>
+    <a href="https://github.com/jklaiber/kachel/blob/main/CHANGELOG.md">What's new</a>
+    <span>MIT licence</span>
+  </div>
+</footer>
+
+<script is:inline>
+// ---------- the live desktop ----------
+const desk = document.getElementById('desk');
+const APPS = [
+  { app: 'Terminal', title: 'kachel — zsh', kind: 'term' },
+  { app: 'Safari', title: 'Kachel — a tiling window manager', kind: 'page', light: true },
+  { app: 'Notes', title: 'Ideas', kind: 'notes', light: true },
+  { app: 'Mail', title: 'Inbox — 12 unread', kind: 'list', light: true },
+  { app: 'Xcode', title: 'WindowManager.swift', kind: 'code' },
+  { app: 'Music', title: 'Music', kind: 'page' },
+  { app: 'Messages', title: 'Messages', kind: 'list' },
+  { app: 'Calendar', title: 'November 2026', kind: 'page', light: true },
+];
+const LAYOUTS = ['Tall', 'Wide', 'Three-column', 'BSP', 'Column', 'Full'];
+let nextApp = 0, nextId = 1;
+const ws = Array.from({ length: 9 }, () => ({ wins: [], focus: 0, layout: 0 }));
+let cur = 0;
+const els = new Map();
+
+function newWin() {
+  const a = APPS[nextApp++ % APPS.length];
+  return { id: nextId++, ...a };
+}
+ws[0].wins = [newWin(), newWin(), newWin()];
+ws[1].wins = [newWin(), newWin()];
+ws[4].wins = [newWin()];
+
+function body(w) {
+  if (w.kind === 'term') return `<div class="term"><div><span class="p">~/kachel</span> <span class="c">❯</span> swift test</div>
+    <div class="o">Executed 264 tests, with 0 failures</div><div><span class="p">~/kachel</span> <span class="c">❯</span> kachel workspace 2</div>
+    <div><span class="p">~/kachel</span> <span class="c">❯</span> ▌</div></div>`;
+  if (w.kind === 'code') return `<div class="term"><div><span class="c">func</span> greedyView(_ i: Int) {</div>
+    <div>&nbsp;&nbsp;syncFocusFromSystem()</div><div>&nbsp;&nbsp;show(i); render()</div><div>}</div></div>`;
+  const h = w.kind === 'notes' ? 'Ideas' : w.kind === 'list' ? 'Today' : 'Kachel';
+  return `<div class="sk h">${h}</div>` + '<div class="sk" style="width:88%"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:80%"></div><div class="sk" style="width:55%"></div><div class="sk" style="width:76%"></div>';
+}
+function el(w) {
+  if (els.has(w.id)) return els.get(w.id);
+  const d = document.createElement('div');
+  d.className = 'win gone' + (w.light ? ' light' : '');
+  d.innerHTML = `<div class="tb"><i></i><i></i><i></i><span>${w.title}</span></div><div class="bd">${body(w)}</div>`;
+  d.addEventListener('mousedown', () => { const s = ws[cur]; const i = s.wins.indexOf(w); if (i >= 0) { s.focus = i; render(); } });
+  desk.appendChild(d);
+  els.set(w.id, d);
+  return d;
+}
+
+// Rectangles in % of the desktop (between the menu bar and Kachel's bar).
+function tile(kind, n, focus) {
+  const T = 4.4, B = 95, L = .6, R = 99.4, g = .6;
+  const box = (x, y, w, h) => ({ x: x + g / 2, y: y + g / 2, w: w - g, h: h - g });
+  const H = B - T, W = R - L;
+  const col = (x, w, k) => Array.from({ length: k }, (_, i) => box(x, T + i * H / k, w, H / k));
+  const row = (y, h, k) => Array.from({ length: k }, (_, i) => box(L + i * W / k, y, W / k, h));
+  if (n === 0) return [];
+  if (n === 1 || kind === 'Full') return Array.from({ length: n }, () => box(L, T, W, H));
+  switch (kind) {
+    case 'Tall': return [box(L, T, W * .55, H), ...col(L + W * .55, W * .45, n - 1)];
+    case 'Wide': return [box(L, T, W, H * .58), ...row(T + H * .58, H * .42, n - 1)];
+    case 'Column': return row(T, H, n);
+    case 'Three-column': {
+      if (n === 2) return [box(L, T, W * .55, H), box(L + W * .55, T, W * .45, H)];
+      const left = Math.floor((n - 1) / 2), right = n - 1 - left;
+      return [box(L + W * .25, T, W * .5, H), ...col(L + W * .75, W * .25, right), ...col(L, W * .25, left)]
+        .map((r, i) => r);
+    }
+    case 'BSP': {
+      const out = []; let x = L, y = T, w = W, h = H;
+      for (let i = 0; i < n; i++) {
+        if (i === n - 1) { out.push(box(x, y, w, h)); break; }
+        if (i % 2 === 0) { out.push(box(x, y, w / 2, h)); x += w / 2; w /= 2; }
+        else { out.push(box(x, y, w, h / 2)); y += h / 2; h /= 2; }
+      }
+      return out;
+    }
+  }
+}
+
+const toastEl = document.getElementById('toast');
+let toastT;
+function toast(t) { toastEl.textContent = t; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), 900); }
+
+function render() {
+  const s = ws[cur], kind = LAYOUTS[s.layout];
+  if (s.focus >= s.wins.length) s.focus = Math.max(0, s.wins.length - 1);
+  const rects = tile(kind, s.wins.length, s.focus);
+  const shown = new Set(s.wins.map(w => w.id));
+  els.forEach((d, id) => { if (!shown.has(id)) d.classList.add('gone'); });
+  s.wins.forEach((w, i) => {
+    const d = el(w), r = rects[i];
+    d.style.left = r.x + '%'; d.style.top = r.y + '%'; d.style.width = r.w + '%'; d.style.height = r.h + '%';
+    d.classList.remove('gone');
+    d.classList.toggle('focus', i === s.focus);
+    d.classList.toggle('front', kind === 'Full' && i === s.focus);
+  });
+  document.getElementById('tags').innerHTML = ws.map((w, i) =>
+    `<div class="ws${w.wins.length ? ' has' : ''}${i === cur ? ' on' : ''}" data-i="${i}">${i + 1}</div>`).join('');
+  document.getElementById('layname').textContent = kind;
+  const f = s.wins[s.focus];
+  document.getElementById('wintitle').textContent = f ? f.title : '';
+  document.getElementById('appname').textContent = f ? f.app : 'Finder';
+  document.getElementById('hint').style.opacity = s.wins.length ? 0 : 1;
+  document.getElementById('hintws').textContent = cur + 1;
+}
+document.getElementById('tags').addEventListener('click', e => { const t = e.target.closest('.ws'); if (t) { cur = +t.dataset.i; render(); } });
+
+function act(k, shift) {
+  const s = ws[cur];
+  if (/^[1-9]$/.test(k)) {
+    const i = +k - 1;
+    if (shift) {
+      const w = s.wins.splice(s.focus, 1)[0];
+      if (w) { ws[i].wins.push(w); ws[i].focus = ws[i].wins.length - 1; toast(`Sent to ${i + 1}`); }
+    } else cur = i;
+  } else if (k === 'j' || k === 'arrowdown' || k === 'arrowright') { if (s.wins.length) s.focus = (s.focus + 1) % s.wins.length; }
+  else if (k === 'k' || k === 'arrowup' || k === 'arrowleft') { if (s.wins.length) s.focus = (s.focus - 1 + s.wins.length) % s.wins.length; }
+  else if (k === ' ' || k === 'space') { s.layout = (s.layout + 1) % LAYOUTS.length; toast(LAYOUTS[s.layout]); }
+  else if (k === 'enter') { if (s.focus > 0) { const [w] = s.wins.splice(s.focus, 1); s.wins.unshift(w); s.focus = 0; } }
+  else if (k === 'n') { if (s.wins.length < 6) { s.wins.push(newWin()); s.focus = s.wins.length - 1; } else toast('That’s plenty'); }
+  else if (k === 'w' || k === 'backspace') {
+    const [w] = s.wins.splice(s.focus, 1);
+    if (w) { const d = els.get(w.id); d.classList.add('gone'); setTimeout(() => { d.remove(); els.delete(w.id); }, 350); }
+  } else return false;
+  render();
+  return true;
+}
+
+let armed = false;
+desk.addEventListener('focus', () => armed = true);
+desk.addEventListener('blur', () => armed = false);
+desk.addEventListener('mousedown', () => desk.focus());
+document.addEventListener('keydown', e => {
+  if (!armed || e.metaKey || e.ctrlKey) return;
+  const m = e.code.match(/^Digit([1-9])$/);
+  const k = m ? m[1] : e.key.toLowerCase();
+  if (act(k, e.shiftKey)) e.preventDefault();
+});
+document.getElementById('keys').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const k = b.dataset.k;
+  if (k === '1') act(String((cur + 1) % 9 + 1));
+  else if (k === 'shift2') act('2', true);
+  else act(k);
+  desk.focus();
+});
+
+function clocks() {
+  const d = new Date();
+  const t = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const day = d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+  document.getElementById('clock1').textContent = `${day}  ${t}`;
+  document.getElementById('clock2').textContent = t;
+}
+clocks(); setInterval(clocks, 15000);
+render();
+
+// ---------- two displays, greedyView ----------
+const COLORS = ['#2fae84', '#ff8a3d', '#5b8def', '#c86dd7'];
+const shownOn = [0, 1];   // workspace index per display
+let focusScreen = 0;
+const scr = [document.getElementById('scr0'), document.getElementById('scr1')];
+const minis = COLORS.map((c, i) => {
+  // Each workspace has a couple of windows drawn in its colour.
+  return [0, 1].map(j => { const m = document.createElement('div'); m.className = 'mini'; m.style.background = c; m.style.opacity = j ? .55 : .9; return m; });
+});
+function drawScreens(msg) {
+  shownOn.forEach((wsI, s) => {
+    scr[s].classList.toggle('cur', s === focusScreen);
+    scr[s].querySelector('.tag').textContent = wsI + 1;
+    minis[wsI].forEach((m, j) => {
+      scr[s].appendChild(m);
+      Object.assign(m.style, j === 0 ? { left: '4%', top: '6%', width: '55%', height: '74%' } : { left: '61%', top: '6%', width: '35%', height: '74%' });
+    });
+  });
+  minis.forEach((ms, wsI) => { if (!shownOn.includes(wsI)) ms.forEach(m => m.remove()); });
+  if (msg) document.getElementById('explain').textContent = msg;
+  document.querySelectorAll('#wskeys button').forEach((b, i) => b.style.boxShadow = shownOn.includes(i) ? `inset 0 -3px 0 ${COLORS[i]}` : '');
+}
+document.getElementById('wskeys').innerHTML = COLORS.map((c, i) => `<button data-i="${i}">${i + 1}<small>⌥${i + 1}</small></button>`).join('');
+document.getElementById('wskeys').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const i = +b.dataset.i, other = 1 - focusScreen;
+  if (shownOn[focusScreen] === i) return drawScreens(`Workspace ${i + 1} is already here.`);
+  if (shownOn[other] === i) { shownOn[other] = shownOn[focusScreen]; shownOn[focusScreen] = i; drawScreens(`Workspace ${i + 1} was on the other display: they swapped.`); }
+  else { shownOn[focusScreen] = i; drawScreens(`Workspace ${i + 1} came to this display.`); }
+});
+scr.forEach((s, i) => s.addEventListener('click', () => { focusScreen = i; drawScreens(`Working on the ${i ? 'Studio Display' : 'built-in display'}.`); }));
+drawScreens();
+
+// ---------- layouts strip ----------
+const LAYS = [
+  ['Tall', 'master and a stack'], ['Wide', 'master on top'], ['Three-column', 'master in the middle'],
+  ['BSP', 'halves, alternating'], ['Column', 'side by side'], ['Full', 'one at a time'],
+];
+document.getElementById('lays').innerHTML = LAYS.map(([k, d]) => {
+  const n = k === 'Full' ? 1 : 4;
+  const rects = tile(k, n, 0).map((r, i) => {
+    const y = (r.y - 4.4) / (95 - 4.4) * 100, h = r.h / (95 - 4.4) * 100;
+    return `<div class="${i ? '' : 'm'}" style="left:${r.x}%;top:${y}%;width:${r.w}%;height:${h}%"></div>`;
+  }).join('');
+  return `<div class="lay"><div class="pic">${rects}</div><b>${k}</b><span>${d}</span></div>`;
+}).join('') + `<div class="lay" style="display:flex;flex-direction:column;justify-content:center"><b style="margin:0;font-size:28px;letter-spacing:-.03em">+5</b><span>Tall right, Widescreen tall, Two-pane, Rows and Floating</span></div>`;
+
+// ---------- small things ----------
+document.getElementById('copy').addEventListener('click', e => {
+  navigator.clipboard?.writeText('brew install --cask jklaiber/tap/kachel').then(() => {
+    e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy', 1400);
+  }).catch(() => {});
+});
+const io = new IntersectionObserver(es => es.forEach(x => { if (x.isIntersecting) { x.target.classList.add('in'); io.unobserve(x.target); } }), { threshold: .12 });
+document.querySelectorAll('.reveal').forEach(x => io.observe(x));
+</script>
+</body>
+</html>

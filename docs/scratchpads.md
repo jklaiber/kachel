@@ -1,4 +1,6 @@
-# Scratchpads
+---
+title: "Scratchpads"
+---
 
 A scratchpad is a window you summon with one key, like xmonad's
 NamedScratchpad: it floats over whatever workspace you're on, and the same key
@@ -51,9 +53,10 @@ Window* fills in the details.
     run: open -na Alacritty --args --title quicknotes -o window.dynamic_title=false -e zsh -lc 'nvim ~/notes/quick.md'
 ```
 
-!!! tip "Tools from Homebrew or Nix"
-    Commands started by Kachel only see the system `PATH`. Start such tools
-    through your login shell (`zsh -lc '…'`), as in the last example.
+:::tip[Tools from Homebrew or Nix]
+Commands started by Kachel only see the system `PATH`. Start such tools
+through your login shell (`zsh -lc '…'`), as in the last example.
+:::
 
 ## Good to know
 

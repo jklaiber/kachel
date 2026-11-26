@@ -1,4 +1,6 @@
-# Command line
+---
+title: "Command line"
+---
 
 Homebrew installs a `kachel` command next to the app. It talks to the running
 Kachel, so scripts, launchers (Raycast, Alfred, Shortcuts) and other bars can
@@ -12,7 +14,7 @@ kachel scratchpad notes
 kachel query focused        # JSON
 ```
 
-Every command from [Keys](keys.md#all-commands) works: write it just like in
+Every command from [Keys](/kachel/keys/#all-commands) works: write it just like in
 `keys:`. Also `kachel settings` opens Kachel's settings; `kachel help` lists the rest.
 
 ## Queries

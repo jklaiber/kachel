@@ -1,4 +1,6 @@
-# Mouse and trackpad
+---
+title: "Mouse and trackpad"
+---
 
 ## Mouse
 
@@ -35,12 +37,13 @@ gestures:
 
 Turn macOS's own swipe off first: System Settings → Trackpad → More Gestures →
 *Swipe between full-screen applications* → Off. The
-[welcome window](getting-started.md#the-welcome-window) checks it.
+[welcome window](/kachel/getting-started/#the-welcome-window) checks it.
 
 `haptics: true` gives a light tap on the trackpad when a swipe triggers or a
 window snaps into place.
 
-!!! note
-    Swipes are read through Apple's private `MultitouchSupport` framework, as
-    BetterTouchTool and similar tools do. If a macOS update breaks it, swipes
-    stop working and everything else keeps going.
+:::note
+Swipes are read through Apple's private `MultitouchSupport` framework, as
+BetterTouchTool and similar tools do. If a macOS update breaks it, swipes
+stop working and everything else keeps going.
+:::
