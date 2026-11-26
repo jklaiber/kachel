@@ -73,6 +73,10 @@ final class WindowManager {
     /// (so macOS keeping an app of it in front doesn't drag you back).
     var shownWorkspace: Int?
     var leftWorkspace: (index: Int, at: Date)?
+    /// The window macOS had in front when Kachel showed an empty workspace and
+    /// focused it (macOS often leaves that window in front): while it stays
+    /// so, it doesn't pull Kachel to its display (#16).
+    var frontWhenEmpty: (window: WindowID, screen: Int, at: Date)?
     /// The app holding secure input while it blocks one-sided shortcuts (#12).
     var secureInputHolder: String?
     /// The window focusCurrent last focused, so the log names each change once.

@@ -7,6 +7,13 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- From an empty workspace, the key for a workspace shown on the other display
+  brings it here (swapping the displays) instead of only moving focus to that
+  display. macOS keeps the other display's window in front, and Kachel took
+  that for a wish to go there (#16).
+
 ## [0.1.22] - 2026-11-26
 
 Unread counts and your own widgets in the bar, `send-key`, settings that

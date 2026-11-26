@@ -123,7 +123,15 @@ extension WindowManager {
     func syncFocusFromSystem(followHidden: Bool) {
         guard clock.now > ignoreFocusEventsUntil,
               let id = focusedSystemWindow(),
-              ss.workspaceIndex(of: id) != nil else { return }
+              let ws = ss.workspaceIndex(of: id) else { return }
+        // On an empty workspace macOS still reports the window that was in
+        // front on another display. That's not a wish to go there: only a
+        // click or key of yours since makes it one (#16).
+        if ss.current.windows.isEmpty, let held = frontWhenEmpty, held.window == id,
+           held.screen == ss.currentScreen, lastUserInput < held.at,
+           let s = ss.screen(ofWorkspace: ws), s != ss.currentScreen {
+            return
+        }
         let before = ss.current.focused
         if ss.focus(id) {
             if before != id {

@@ -364,7 +364,9 @@ extension WindowManager {
             w.focus()
             DispatchQueue.main.async { self.updateBorder() }
             keepBorderAbove()
-        } else if !headless {
+        } else {
+            frontWhenEmpty = focusedSystemWindow().map { ($0, ss.currentScreen, clock.now) }
+            guard !headless else { return }
             border.hide()
             // Empty workspace: take focus ourselves so keystrokes don't go
             // to a window that's parked in a corner. The forceful (deprecated)

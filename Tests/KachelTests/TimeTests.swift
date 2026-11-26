@@ -251,3 +251,58 @@ final class EmptyWorkspaceTests: WindowManagerTestCase {
         XCTAssertEqual(current, "4")
     }
 }
+
+/// Issue #16: from an empty workspace, the key for a workspace shown on the
+/// other display swaps it here, although macOS still reports that display's
+/// window as focused.
+final class EmptyDisplayTests: WindowManagerTestCase {
+    /// Chrome on 1 (laptop), focused; you go to the DELL, which shows the empty 2.
+    private func goToEmptyDisplay() throws -> FakeWindow {
+        try start(displays: [Self.laptop, Self.dell])
+        let chrome = sys.open("com.google.Chrome", title: "Inbox", pid: 8000)
+        refresh()
+        XCTAssertEqual(sys.focused, chrome.id)
+        try run("focus-next-screen")              // empty: Chrome stays in front
+        XCTAssertEqual(wm.ss.currentScreen, 1)
+        return chrome
+    }
+
+    func testWorkspaceKeySwapsInsteadOfJustFocusingTheOtherDisplay() throws {
+        let chrome = try goToEmptyDisplay()
+        clock.advance(by: 1)
+        try run("workspace 1")
+        XCTAssertEqual(wm.ss.currentScreen, 1, "still on the DELL")
+        XCTAssertEqual(wm.ss.current.tag, "1")
+        XCTAssertEqual(display(of: chrome), "DELL U2720Q")
+        XCTAssertEqual(wm.ss.workspaces[wm.ss.screenWorkspace[0]].tag, "2", "2 went to the laptop")
+    }
+
+    /// The poll doesn't pull you back either.
+    func testStaysOnTheEmptyDisplay() throws {
+        _ = try goToEmptyDisplay()
+        clock.advance(by: 1)
+        wm.syncFocusFromSystem(followHidden: true)
+        XCTAssertEqual(wm.ss.currentScreen, 1)
+    }
+
+    /// You clicked Chrome on the laptop: Kachel follows you there.
+    func testYourClickOnTheOtherDisplayFollows() throws {
+        let chrome = try goToEmptyDisplay()
+        clock.advance(by: 0.5)
+        wm.lastUserInput = clock.now
+        wm.syncFocusFromSystem(followHidden: true)
+        XCTAssertEqual(wm.ss.currentScreen, 0)
+        XCTAssertEqual(wm.ss.current.focused, chrome.id)
+    }
+
+    /// Another window getting focus (a link opening a new window) is followed.
+    func testANewlyFocusedWindowIsFollowed() throws {
+        _ = try goToEmptyDisplay()
+        let other = sys.open("com.google.Chrome", title: "Link", pid: 8000)
+        clock.advance(by: 1)
+        refresh()
+        sys.focused = other.id
+        wm.syncFocusFromSystem(followHidden: true)
+        XCTAssertNotEqual(wm.ss.current.windows, [], "not left on the empty workspace")
+    }
+}
