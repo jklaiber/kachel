@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Settings (and Kachel's other windows) open on the first try from the menu bar
+  icon or the bar's menu, instead of behind the app you're in.
+
 ## [0.1.23] - 2026-11-26
 
 A fix for switching workspaces from an empty display.

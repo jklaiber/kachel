@@ -24,7 +24,7 @@ final class WelcomeWindow {
         model.refresh()
         model.startWatching()
         window?.center()
-        NSApp.activate()
+        NSApp.comeForward()
         window?.makeKeyAndOrderFront(nil)
     }
 
@@ -37,7 +37,7 @@ final class WelcomeWindow {
         // macOS may not let a background app activate itself; the window comes
         // to the front either way.
         window.orderFrontRegardless()
-        NSApp.activate()
+        NSApp.comeForward()
         window.makeKeyAndOrderFront(nil)
     }
 

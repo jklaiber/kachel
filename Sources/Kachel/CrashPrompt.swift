@@ -81,7 +81,7 @@ enum CrashPrompt {
         a.window.center()
         a.window.orderFrontRegardless()
         a.window.makeKey()
-        NSApp.activate()
+        NSApp.comeForward()
     }
 
     fileprivate static func close() {

@@ -369,10 +369,9 @@ extension WindowManager {
             guard !headless else { return }
             border.hide()
             // Empty workspace: take focus ourselves so keystrokes don't go
-            // to a window that's parked in a corner. The forceful (deprecated)
-            // call on purpose: the cooperative activate() can be ignored, and
-            // the app left in front then drags you back (#15).
-            NSApp.activate(ignoringOtherApps: true)
+            // to a window that's parked in a corner. Forcefully: the app left
+            // in front would otherwise drag you back (#15).
+            NSApp.comeForward()
             clock.after(0.3) { [weak self] in
                 guard let self, self.ss.current.windows.isEmpty,
                       let front = NSWorkspace.shared.frontmostApplication, front != .current else { return }

@@ -25,7 +25,8 @@ final class SettingsWindow {
             window = w
         }
         model.reload()
-        NSApp.activate()
+        NSApp.comeForward()
+        window?.orderFrontRegardless()
         window?.makeKeyAndOrderFront(nil)
     }
 }

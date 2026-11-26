@@ -79,7 +79,7 @@ final class WindowSwitcher: NSObject, NSTextFieldDelegate, NSWindowDelegate {
         let width = min(560, area.width - 16)
         panel.setFrame(NSRect(x: area.minX + 8, y: area.minY + bottom + 6, width: width, height: 200), display: false)
         refilter()
-        NSApp.activate()
+        NSApp.comeForward()
         panel.makeKeyAndOrderFront(nil)
         panel.makeFirstResponder(field)
         Log.info("window search opened with \(entries.count) windows")
