@@ -11,6 +11,8 @@ taken from its section here.
 
 - Settings (and Kachel's other windows) open on the first try from the menu bar
   icon or the bar's menu, instead of behind the app you're in.
+- A window restored from minimized (Teams with `hide: minimize`) no longer
+  takes focus back when you move on with a Kachel shortcut right after (#17).
 
 ## [0.1.23] - 2026-11-26
 

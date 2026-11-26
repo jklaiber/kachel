@@ -81,6 +81,8 @@ final class WindowManager {
     var secureInputHolder: String?
     /// The window focusCurrent last focused, so the log names each change once.
     var lastFocusedByUs: WindowID?
+    /// When it changed: a shortcut of yours moved focus then.
+    var lastFocusedByUsAt = Date.distantPast
     /// Floating window frames relative to their screen's visible origin, saved on hide.
     var floatRel: [WindowID: CGRect] = [:]
     /// workspace index -> screen it was on at the last render (to detect swaps).

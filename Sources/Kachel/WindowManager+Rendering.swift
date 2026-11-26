@@ -360,6 +360,7 @@ extension WindowManager {
             if lastFocusedByUs != f {
                 Log.info("focusing window \(f) (\(appName(of: w)))")
                 lastFocusedByUs = f
+                lastFocusedByUsAt = clock.now
             }
             w.focus()
             DispatchQueue.main.async { self.updateBorder() }

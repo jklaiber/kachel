@@ -33,12 +33,15 @@ extension WindowManager {
     /// focus can come too early (the window still animating, its app not
     /// answering), and macOS then activates whatever was in front before. Look
     /// again a little later and focus it once more, unless you typed or
-    /// clicked meanwhile: then it's your choice.
+    /// clicked meanwhile, or Kachel focused another window for you (a
+    /// shortcut, which the key monitor doesn't see, #17): then it's your choice.
     func makeSureItGetsFocus(_ id: WindowID) {
         let since = clock.now
         for delay in [0.5, 1.5] {
             clock.after(delay) { [weak self] in
-                guard let self, self.lastUserInput < since, let w = self.windows[id],
+                guard let self, self.lastUserInput < since,
+                      self.lastFocusedByUs == id || self.lastFocusedByUsAt < since,
+                      let w = self.windows[id],
                       let ws = self.ss.workspaceIndex(of: id), self.ss.currentWorkspaceIndex == ws,
                       self.focusedSystemWindow() != id else { return }
                 Log.info("window \(id) (\(self.appName(of: w))) didn't stay in front after it was restored: focusing it again")

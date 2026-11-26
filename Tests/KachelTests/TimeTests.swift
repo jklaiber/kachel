@@ -187,6 +187,18 @@ final class RestoreFocusTests: WindowManagerTestCase {
         XCTAssertEqual(sys.focused, terminal.id)
     }
 
+    /// You moved on with a Kachel shortcut right after (the key monitor
+    /// doesn't see those keys): that stays too (#17).
+    func testYourShortcutWins() throws {
+        let (meeting, terminal) = try setUpMeeting()
+        clock.advance(by: 0.2)
+        try run("focus-down")
+        XCTAssertEqual(sys.focused, terminal.id)
+        clock.advance(by: 2)
+        XCTAssertEqual(sys.focused, terminal.id, "not taken back to \(meeting.id)")
+        XCTAssertEqual(wm.ss.current.focused, terminal.id)
+    }
+
     /// The app didn't answer the first time (Teams after sleep): the second
     /// look, later, still gets it in front.
     func testSecondLookLater() throws {
