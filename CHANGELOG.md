@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.23] - 2026-11-26
+
+A fix for switching workspaces from an empty display.
+
 ### Fixed
 
 - From an empty workspace, the key for a workspace shown on the other display
@@ -552,7 +556,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.22...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.23...HEAD
+[0.1.23]: https://github.com/jklaiber/kachel/compare/v0.1.22...v0.1.23
 [0.1.22]: https://github.com/jklaiber/kachel/compare/v0.1.21...v0.1.22
 [0.1.21]: https://github.com/jklaiber/kachel/compare/v0.1.20...v0.1.21
 [0.1.20]: https://github.com/jklaiber/kachel/compare/v0.1.19...v0.1.20
