@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.25] - 2026-11-26
+
+Much lighter on CPU and memory while you work.
+
 ### Changed
 - Kachel uses much less CPU and memory: under 1 % CPU while idle instead of
   3 %, and about 35 MB of memory instead of 200 MB.
@@ -594,7 +598,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.24...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.25...HEAD
+[0.1.25]: https://github.com/jklaiber/kachel/compare/v0.1.24...v0.1.25
 [0.1.24]: https://github.com/jklaiber/kachel/compare/v0.1.23...v0.1.24
 [0.1.23]: https://github.com/jklaiber/kachel/compare/v0.1.22...v0.1.23
 [0.1.22]: https://github.com/jklaiber/kachel/compare/v0.1.21...v0.1.22
