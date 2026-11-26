@@ -72,9 +72,12 @@ shortcut-overview: 0.8       # hold mod this long to see all shortcuts; 0 = off
 haptics: true
 float-dialogs: true
 float-small-windows: 0
-check-for-updates: true      # once a day, look up the latest release on GitHub
+check-for-updates: true      # once an hour, look up the latest release on GitHub
 ```
 
-With `check-for-updates`, a newer version shows up at the top of the bar's menu
-and in Settings → About, with the command to upgrade. It only asks GitHub which
-release is the latest; nothing about you or your Mac is sent.
+With `check-for-updates`, Kachel looks once an hour and after your Mac wakes.
+A newer version shows up at the top of the bar's menu and in Settings → About,
+with the command to upgrade (Homebrew has it as soon as the release is out). It
+only asks GitHub which release is the latest; nothing about you or your Mac is
+sent. **Check for Updates…** in the menus (or **Check Now** in Settings →
+About) looks right away, also with the automatic check off.

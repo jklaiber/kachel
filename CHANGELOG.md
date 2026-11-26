@@ -12,6 +12,13 @@ taken from its section here.
   documentation, the changelog and to report a problem, and where your config
   and log are. **About Kachel** in the menus opens it; the update setting moved
   there from General.
+- **Check for Updates…** in the menu bar icon's and the bar's menus: looks
+  right away and always answers, also when you're up to date.
+
+### Changed
+- The update check looks once an hour instead of once a day, and after your
+  Mac wakes. It asks GitHub whether anything changed since its last answer,
+  so "nothing new" is a short, empty answer.
 
 ### Fixed
 

@@ -218,6 +218,7 @@ final class WindowManager {
         } ?? []
         return update + [
             ("About Kachel", { [unowned self] in self.settingsWindow.show(.about) }),
+            ("Check for Updates…", { UpdateCheck.shared.checkFromMenu() }),
             ("Settings…", { [unowned self] in self.settingsWindow.show() }),
             ("Keyboard Shortcuts", { [unowned self] in self.showOverview(hint: "Press any key to close") }),
             ("Welcome and Setup Check…", { [unowned self] in self.welcomeWindow.show() }),

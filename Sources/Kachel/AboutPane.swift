@@ -31,7 +31,7 @@ struct AboutPane: View {
             Section("Updates") {
                 updateStatus
                 Toggle(isOn: m.binding({ $0.checkForUpdates }, { m.top("check-for-updates", SettingsModel.yaml($0)) })) {
-                    explained("Check for updates", "Once a day, Kachel asks GitHub for the latest release, with nothing about you or your Mac. A newer one shows up here and in the menu.")
+                    explained("Check for updates", "Once an hour and after your Mac wakes, Kachel asks GitHub for the latest release, with nothing about you or your Mac. A newer one shows up here and in the menu.")
                 }
             }
             Section("Help") {
@@ -84,13 +84,13 @@ struct AboutPane: View {
             } label: {
                 if updates.failed {
                     Text("Couldn't reach GitHub")
-                    Text("No connection, or GitHub didn't answer. Kachel tries again tomorrow.")
+                    Text("No connection, or GitHub didn't answer. Kachel tries again in an hour.")
                 } else if let at = checkedOverride ?? updates.lastChecked {
                     Text("Kachel is up to date")
                     Text("Checked \(at.formatted(date: .omitted, time: .shortened)).")
                 } else {
                     Text("Not checked yet")
-                    Text(m.s.checkForUpdates ? "Kachel checks a minute after it starts, then once a day." : "The daily check is off.")
+                    Text(m.s.checkForUpdates ? "Kachel checks a minute after it starts, then once an hour." : "The automatic check is off.")
                 }
             }
         }

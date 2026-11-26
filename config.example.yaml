@@ -61,7 +61,7 @@ float-dialogs: true
 float-small-windows: 0
 
 start-at-login: false     # launch Kachel when you log in (needs Kachel.app in /Applications)
-check-for-updates: true   # once a day, look up the latest release on GitHub; the menu says when there's a newer one
+check-for-updates: true   # once an hour, look up the latest release on GitHub; the menu says when there's a newer one
 
 # The bar at the bottom of every screen. Click a workspace to show it on that
 # screen; right-click for the menu, where widgets can also be switched on and off.
