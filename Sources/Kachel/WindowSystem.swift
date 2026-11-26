@@ -11,6 +11,10 @@ protocol WindowSystem: AnyObject {
     func windows(known: [WindowID: AppWindow]) -> [WindowID: AppWindow]
     /// Every window the window server knows, on any Space, visible or not.
     func windowServerIDs() -> Set<WindowID>
+    /// What's on screen now (which windows, where, how big), as one number.
+    /// Cheap: the window server answers, not the apps, so the poll can skip
+    /// asking every app while it doesn't change.
+    func onScreenSignature() -> Int
     /// The focused window of the frontmost app (not Kachel's own).
     func focusedWindow() -> WindowID?
     /// An app quit: forget what we kept for it.
@@ -166,6 +170,23 @@ final class AXWindowSystem: WindowSystem {
         guard let list = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
                 as? [[String: Any]] else { return [] }
         return Set(list.compactMap { ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value })
+    }
+
+    func onScreenSignature() -> Int {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return 0 }
+        let me = getpid()
+        var h = Hasher()
+        for w in list {
+            guard (w[kCGWindowLayer as String] as? Int) == 0,
+                  let pid = w[kCGWindowOwnerPID as String] as? pid_t, pid != me else { continue }
+            h.combine((w[kCGWindowNumber as String] as? NSNumber)?.uint32Value)
+            h.combine(pid)
+            if let b = w[kCGWindowBounds as String] as? [String: Any], let r = CGRect(dictionaryRepresentation: b as CFDictionary) {
+                h.combine(r.minX); h.combine(r.minY); h.combine(r.width); h.combine(r.height)
+            }
+        }
+        return h.finalize()
     }
 
     func focusedWindow() -> WindowID? {

@@ -32,6 +32,7 @@ extension WindowManager {
         let kind = ws.effectiveLayout
         let (area, gap) = tileArea(s, count: tiled.count)
         let before = expected[id] ?? frame
+        expected[id] = nil                          // you moved it: send its place again
         let dw = abs(frame.width - before.width), dh = abs(frame.height - before.height)
         // Which way the split runs vs. which way windows share a column.
         let splitChanged = kind == .mirrorTall ? dh > 4 : dw > 4
@@ -123,6 +124,7 @@ extension WindowManager {
         let target = ss.workspaces[wsIndex].windows.first { t in
             t != id && !floatsNow(t) && (expected[t] ?? windows[t]?.frame)?.contains(drop) == true
         }
+        expected[id] = nil                          // you moved it: send its place again
         if target != nil || wsIndex != from { Haptics.tap() }
         if let t = target {
             Log.info("mouse drag: swap window \(id) with \(t)")

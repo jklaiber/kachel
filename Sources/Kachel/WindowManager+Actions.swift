@@ -173,6 +173,7 @@ extension WindowManager {
     }
 
     func refreshNow() {
+        expected = [:]                              // put every window in place again
         screensChanged()
     }
 

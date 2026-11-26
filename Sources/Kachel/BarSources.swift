@@ -62,6 +62,7 @@ final class CustomWidgetRunner {
         for (name, w) in active {
             run(name)
             timers[name] = Timer.scheduledTimer(withTimeInterval: w.interval, repeats: true) { [weak self] _ in self?.run(name) }
+            timers[name]?.tolerance = w.interval / 10
         }
     }
 

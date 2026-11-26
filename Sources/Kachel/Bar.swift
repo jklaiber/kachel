@@ -10,7 +10,7 @@ import KachelCore
 /// Click a workspace to show it on that screen; right-click for the menu.
 final class Bar {
     /// The three things you want to know about a workspace, independently.
-    struct Tag {
+    struct Tag: Hashable {
         var name: String
         var active = false        // the workspace you're in (focused screen)
         var visible = false       // shown on some screen
@@ -85,6 +85,9 @@ final class Bar {
             guard let self, self.settings.shows(.clock) || self.settings.shows(.date) else { return }
             self.redraw()
         }
+        // Some slack lets macOS run timers together with other work instead
+        // of waking up just for them (here and for the other timers).
+        clockTimer?.tolerance = 0.1
     }
 
     /// The bar's height: the configured one, or the top menu bar's.
@@ -136,6 +139,7 @@ final class Bar {
         if settings.shows(.badges), !isDemo {
             readBadges()
             badgeTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.readBadges() }
+            badgeTimer?.tolerance = 1
         }
         if !isDemo { custom.apply(settings.custom, shown: Set((settings.left + settings.right).map(\.rawValue))) }
 
@@ -147,8 +151,9 @@ final class Bar {
                 self?.sampleStats()
                 self?.redraw()
             }
+            statsTimer?.tolerance = settings.interval / 10
         }
-        redraw()
+        redraw(force: true)
     }
 
     private func readBadges() {
@@ -163,12 +168,33 @@ final class Bar {
     }
 
     /// An app's icon for the badges widget (cached).
+    /// The app's icon as a small bitmap, made once. Drawing the icon macOS
+    /// hands out renders it again from its full-size layers every time (on
+    /// macOS 26 with the glass effect), ~100 MB of graphics memory for a
+    /// moment on every redraw of the bar.
     func appIcon(_ b: DockBadges.Badge) -> NSImage? {
         guard let url = b.appURL else { return nil }
         if let i = appIcons[url.path] { return i }
-        let i = NSWorkspace.shared.icon(forFile: url.path)
+        let i = Self.bitmap(NSWorkspace.shared.icon(forFile: url.path), points: 32)
         appIcons[url.path] = i
         return i
+    }
+
+    static func bitmap(_ image: NSImage, points: CGFloat) -> NSImage {
+        let px = Int(points * 2)                       // sharp on Retina
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px, bitsPerSample: 8,
+                                         samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let ctx = NSGraphicsContext(bitmapImageRep: rep) else { return image }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = ctx
+        ctx.imageInterpolation = .high
+        image.draw(in: NSRect(x: 0, y: 0, width: px, height: px))      // the context counts in pixels
+        NSGraphicsContext.restoreGraphicsState()
+        rep.size = NSSize(width: points, height: points)
+        let out = NSImage(size: rep.size)
+        out.addRepresentation(rep)
+        return out
     }
 
     /// Fade out the bar on the screen the Dock slid up on, back in once it's gone.
@@ -221,7 +247,10 @@ final class Bar {
         redraw()
     }
 
-    private func redraw() { panels.forEach { $0.view.needsDisplay = true } }
+    /// Draw again, but only the bars whose text, icons or colours changed:
+    /// the clock and the stats ask every second, and drawing is most of what
+    /// Kachel does while you work. `force` after settings or position changes.
+    private func redraw(force: Bool = false) { panels.forEach { $0.view.redrawIfChanged(force: force) } }
 
     fileprivate func showMenu(for event: NSEvent, in view: NSView) {
         let target = MenuTarget.shared
@@ -354,6 +383,8 @@ private final class BarView: NSView {
     private var hits: [(rect: CGRect, action: Segment.Action)] = []
     private var hover: CGPoint?
     private let dateFmt = DateFormatter()
+    /// What the last drawing showed (see redrawIfChanged).
+    private var drawn: Int?
 
     init(bar: Bar, index: Int) {
         self.bar = bar
@@ -369,6 +400,35 @@ private final class BarView: NSView {
         addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways],
                                        owner: self))
     }
+    /// Everything that ends up on screen, as one number: equal means the same picture.
+    private func shows(_ left: [Segment], _ right: [Segment]) -> Int {
+        var h = Hasher()
+        for (side, segs) in [left, right].enumerated() {
+            h.combine(side)
+            for seg in segs {
+                h.combine(seg.parts.count)
+                for p in seg.parts { h.combine(p.icon); h.combine(p.text) }
+                h.combine(seg.dots?.count); h.combine(seg.dots?.focused)
+                h.combine(seg.tab); h.combine(seg.tag)
+                h.combine(seg.color)
+                h.combine(seg.appIcon.map(ObjectIdentifier.init))
+                h.combine(seg.bold); h.combine(seg.flexible)
+            }
+        }
+        h.combine(warning); h.combine(transparent)
+        h.combine(bounds.width); h.combine(bounds.height)
+        return h.finalize()
+    }
+
+    func redrawIfChanged(force: Bool) {
+        if force || drawn == nil {
+            needsDisplay = true
+            return
+        }
+        let s = bar.settings
+        if shows(segments(s.left), segments(s.right)) != drawn { needsDisplay = true }
+    }
+
     override func mouseMoved(with event: NSEvent) { hover = convert(event.locationInWindow, from: nil); needsDisplay = true }
     override func mouseExited(with event: NSEvent) { hover = nil; needsDisplay = true }
 
@@ -606,6 +666,7 @@ private final class BarView: NSView {
         hits = []
         let s = bar.settings
         let left = segments(s.left), right = segments(s.right)
+        drawn = shows(left, right)
         let edge: CGFloat = 6
         let gap: CGFloat = 2
 

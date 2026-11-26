@@ -25,6 +25,9 @@ final class FakeWindow: AppWindow {
     /// Smallest size the "app" accepts (like a real app refusing to shrink).
     var minSize: CGSize = .zero
     weak var system: FakeWindowSystem?
+    /// How often Kachel moved, resized or (un)minimized it: each is a request
+    /// to the app, which has to wake up for it.
+    var writes = 0
 
     init(id: WindowID, pid: pid_t, bundleID: String?, title: String, frame: CGRect) {
         self.id = id
@@ -35,14 +38,17 @@ final class FakeWindow: AppWindow {
     }
 
     func setFrame(_ r: CGRect) {
+        writes += 1
         let r = r.integral
         frame = CGRect(origin: r.origin, size: CGSize(width: max(r.width, minSize.width), height: max(r.height, minSize.height)))
     }
     func move(to p: CGPoint) {
+        writes += 1
         frame?.origin = p
         if let s = system, !s.displays.contains(where: { $0.frame.insetBy(dx: 2, dy: 2).contains(frame!) }) { timesParked += 1 }
     }
     func setMinimized(_ on: Bool) {
+        writes += 1
         if on { timesMinimized += 1 }
         minimized = on
     }
@@ -97,11 +103,23 @@ final class FakeWindowSystem: WindowSystem {
 
     // MARK: WindowSystem
 
+    /// How often Kachel asked every app for its windows (the expensive look).
+    private(set) var windowListings = 0
+
     func windows(known: [WindowID: AppWindow]) -> [WindowID: AppWindow] {
+        windowListings += 1
         // Like Accessibility: minimized windows aren't manageable.
-        all.filter { !$0.value.minimized && !$0.value.fullscreen && !axHidden.contains($0.key) }.mapValues { $0 as AppWindow }
+        return all.filter { !$0.value.minimized && !$0.value.fullscreen && !axHidden.contains($0.key) }.mapValues { $0 as AppWindow }
     }
     func windowServerIDs() -> Set<WindowID> { Set(all.keys) }
+    func onScreenSignature() -> Int {
+        var h = Hasher()
+        for (id, w) in all.sorted(by: { $0.key < $1.key }) where !w.minimized && !w.fullscreen {
+            h.combine(id)
+            h.combine(w.frame.map { [$0.minX, $0.minY, $0.width, $0.height] })
+        }
+        return h.finalize()
+    }
     func focusedWindow() -> WindowID? { focused }
     func appQuit(_ pid: pid_t) {}
     /// Change it to simulate a restart of the Mac.

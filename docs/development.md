@@ -79,6 +79,35 @@ After changing the default config:
 swift run Kachel --print-default-config > config.example.yaml
 ```
 
+## CPU and memory
+
+Kachel runs all day, so while nothing happens it should do close to nothing.
+The targets, measured on an idle Mac with the bar showing the clock, CPU,
+memory and badges:
+
+| | Target | Kachel 0.1.25 |
+|---|---|---|
+| CPU while idle | under 0.5 % | 0.5 to 0.7 % |
+| Memory | under 100 MB | about 35 MB |
+
+Measure the running app the same way each time (leave the Mac alone meanwhile):
+
+```bash
+scripts/measure.sh            # CPU and memory over 60 s
+SAMPLE=1 scripts/measure.sh   # and which of Kachel's functions take the time
+```
+
+Memory briefly goes up by about 100 MB when the bar redraws: Metal's working
+buffers for drawing the window, which macOS marks reclaimable a second later.
+That's why the bar redraws only when what it shows changes.
+
+`PerformanceTests` keep it that way in CI. They count instead of timing, so
+they're exact on any Mac:
+
+- while nothing on screen changes, the 2-second poll doesn't ask every app for
+  its windows (only every 10 s), and no window is moved;
+- focus changes and workspace switches send no window a place it already has.
+
 ## Images
 
 The images in these docs are drawn by Kachel itself, with made-up windows and

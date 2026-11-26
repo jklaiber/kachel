@@ -63,9 +63,21 @@ extension WindowManager {
         }
     }
 
+    /// The safety net every 2 s, for changes no notification told us about.
+    /// Asking every app for its windows wakes them all up, so only when the
+    /// window server's cheap list changed, or every 10 s (a window that
+    /// appears without showing, a title for a rule).
+    func pollRefresh() {
+        let now = system.onScreenSignature()
+        if now == lastOnScreen, clock.now.timeIntervalSince(lastFullRefresh) < 10 { return }
+        lastOnScreen = now
+        refresh()
+    }
+
     /// Reconcile our model with the windows that actually exist.
     func refresh() {
         guard !asleep, !locked else { return }
+        lastFullRefresh = clock.now
         let found = system.windows(known: windows)
         var changed = false
         let focusedBefore = ss.workspaces.map(\.focused)

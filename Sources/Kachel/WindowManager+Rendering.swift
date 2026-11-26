@@ -80,6 +80,7 @@ extension WindowManager {
         // corner remembered as its place).
         let lost = ids.filter { id in hidden.contains(id) && windows[id]?.frame.map { !isOffscreen($0) } == true }
         hidden.subtract(lost)
+        ids.forEach { expected[$0] = nil }          // its moves may be lost: send them again
         Log.info("putting the windows of pid \(pid) back in place" + (lost.isEmpty ? "" : " (\(lost.count) to park again)"))
         render(refocus: false)
     }
@@ -159,7 +160,11 @@ extension WindowManager {
                                     minSizes: tiled.map { minSize[$0] },
                                     weights: tiled.map { ws.weights[$0] ?? 1 })
             for (id, r) in zip(tiled, rects) {
-                windows[id]?.setFrame(r)
+                // Already there: asking again would only wake its app (every
+                // window, on every focus change). The verify pass catches a
+                // window that moved anyway; mouse drags, a hung app answering
+                // again and re-tile forget the place so it's sent again.
+                if expected[id] != r.integral || hidden.contains(id) { windows[id]?.setFrame(r) }
                 expected[id] = r.integral
                 hidden.remove(id)
             }

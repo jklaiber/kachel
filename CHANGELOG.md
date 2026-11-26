@@ -7,6 +7,20 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- Kachel uses much less CPU and memory: under 1 % CPU while idle instead of
+  3 %, and about 35 MB of memory instead of 200 MB.
+  - The bar redraws only when what it shows changes (the clock, once a minute).
+  - The focus border is drawn as a layer, not as a picture the size of the
+    window.
+  - The 2-second check for new and closed windows asks every app only when
+    the window server's list changed, or every 10 seconds; before, it woke up
+    every app every time.
+  - A focus change no longer sends every window on the workspace its place
+    again: only windows that move get a request, so their apps stay asleep.
+  - Badge icons in the bar are drawn once into a small picture.
+  - Timers leave macOS some slack to run them together with other work.
+
 ## [0.1.24] - 2026-11-26
 
 An About page in Settings, update checks every hour and from the menus, and

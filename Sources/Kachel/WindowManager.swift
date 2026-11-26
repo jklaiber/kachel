@@ -131,6 +131,9 @@ final class WindowManager {
     var hotkeyProblems: [String] = []
     var pollTimer: Timer?
     var pollTick = 0
+    /// The poll's last look: what was on screen, and when it last asked every app.
+    var lastOnScreen: Int?
+    var lastFullRefresh = Date.distantPast
 
     /// The workspace each display showed when it was last connected, by
     /// display (see displayKeys), to give it back when it's plugged in again.
@@ -205,10 +208,11 @@ final class WindowManager {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [unowned self] _ in
             if Config.load() { self.applySettings() }
             self.pollTick += 1
-            if self.managing, self.pollTick % 2 == 0 { self.refresh(); self.updateBar() }
+            if self.managing, self.pollTick % 2 == 0 { self.pollRefresh(); self.updateBar() }
             if self.managing, !self.locked, !self.asleep, self.pollTick % 300 == 0 { self.rememberWindows() }
             self.checkSecureInput()
         }
+        pollTimer?.tolerance = 0.2      // lets macOS group it with other wakeups
     }
 
     /// Shared by the menu bar icon and the bar's right-click menu.

@@ -27,19 +27,27 @@ final class FocusBorder {
         let w = CGFloat(settings.width)
         let cocoa = NSRect(x: frame.minX - w / 2, y: primary.frame.height - frame.maxY - w / 2,
                            width: frame.width + w, height: frame.height + w)
-        view.width = w
-        view.radius = radius + w / 2
-        view.color = settings.color == "accent" ? .controlAccentColor : NSColor(hex: settings.color) ?? .controlAccentColor
-        panel.setFrame(cocoa, display: true)
-        view.needsDisplay = true
+        let color = settings.color == "accent" ? NSColor.controlAccentColor : NSColor(hex: settings.color) ?? .controlAccentColor
+        // Same place, same look: nothing to do (it's asked after every refresh).
+        let look = Look(frame: cocoa, width: w, radius: radius + w / 2, color: color, window: window)
+        if look == shown, panel.isVisible { return }
+        shown = look
+        view.set(width: w, radius: radius + w / 2, color: color)
+        panel.setFrame(cocoa, display: false)
         // Right above the focused window, not above everything.
         panel.order(.above, relativeTo: Int(window))
         self.window = window
     }
 
+    private struct Look: Equatable {
+        var frame: NSRect, width: CGFloat, radius: CGFloat, color: NSColor, window: WindowID
+    }
+    private var shown: Look?
+
     func hide() {
         panel.orderOut(nil)
         window = nil
+        shown = nil
     }
 
     /// The window the frame is around, while it's shown.
@@ -67,17 +75,27 @@ final class FocusBorder {
     }
 }
 
+/// The line itself is a layer border, drawn by Core Animation: no picture
+/// of the whole window's size (that took around 100 MB of graphics memory
+/// on a large window, again on every redraw).
 private final class BorderView: NSView {
-    var width: CGFloat = 3
-    var radius: CGFloat = 12
-    var color: NSColor = .controlAccentColor
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.cornerCurve = .continuous             // like macOS windows' corners
+    }
+    required init?(coder: NSCoder) { fatalError() }
 
-    override func draw(_ dirtyRect: NSRect) {
-        let r = bounds.insetBy(dx: width / 2, dy: width / 2)
-        let path = NSBezierPath(roundedRect: r, xRadius: radius, yRadius: radius)
-        path.lineWidth = width
-        color.setStroke()
-        path.stroke()
+    override var wantsUpdateLayer: Bool { true }
+
+    func set(width: CGFloat, radius: CGFloat, color: NSColor) {
+        guard let layer else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)        // no fade between looks
+        layer.borderWidth = width
+        layer.cornerRadius = radius
+        layer.borderColor = color.cgColor
+        CATransaction.commit()
     }
 }
 
