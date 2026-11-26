@@ -7,6 +7,11 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.24] - 2026-11-26
+
+An About page in Settings, update checks every hour and from the menus, and
+focus fixes.
+
 ### Added
 - **Settings → About**: version and updates (with **Check Now**), links to the
   documentation, the changelog and to report a problem, and where your config
@@ -21,7 +26,6 @@ taken from its section here.
   so "nothing new" is a short, empty answer.
 
 ### Fixed
-
 - Settings (and Kachel's other windows) open on the first try from the menu bar
   icon or the bar's menu, instead of behind the app you're in.
 - A window restored from minimized (Teams with `hide: minimize`) no longer
@@ -576,7 +580,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.23...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.24...HEAD
+[0.1.24]: https://github.com/jklaiber/kachel/compare/v0.1.23...v0.1.24
 [0.1.23]: https://github.com/jklaiber/kachel/compare/v0.1.22...v0.1.23
 [0.1.22]: https://github.com/jklaiber/kachel/compare/v0.1.21...v0.1.22
 [0.1.21]: https://github.com/jklaiber/kachel/compare/v0.1.20...v0.1.21
