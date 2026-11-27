@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.27] - 2026-11-27
+
+The layout as a picture in the bar.
+
 ### Changed
 - The bar shows the layout as a small picture instead of its name: Tall as
   a big window and three small ones, and so on, two-pane turned on a portrait
@@ -614,7 +618,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.26...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.27...HEAD
+[0.1.27]: https://github.com/jklaiber/kachel/compare/v0.1.26...v0.1.27
 [0.1.26]: https://github.com/jklaiber/kachel/compare/v0.1.25...v0.1.26
 [0.1.25]: https://github.com/jklaiber/kachel/compare/v0.1.24...v0.1.25
 [0.1.24]: https://github.com/jklaiber/kachel/compare/v0.1.23...v0.1.24
