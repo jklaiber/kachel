@@ -109,6 +109,9 @@ public struct BarSettings: Equatable {
     public var workspaceCounts = false
     /// The battery widget shows the percentage next to its icon.
     public var batteryPercentage = true
+    /// The layout widget: a small picture of the layout, or its name.
+    public var layoutStyle: LayoutStyle = .icon
+    public enum LayoutStyle: String { case icon, name }
     /// The bar fades out while an auto-hidden Dock slides up over it.
     public var makeWayForDock = true
     public init() {}
@@ -487,6 +490,13 @@ public struct Settings {
                         }
                         if k2 == "only-in-full" { s.bar.windowsFullOnly = try bool(v2, "bar.title.only-in-full") }
                     }
+                case "layout":
+                    for (_, v2) in try block(v, "bar.layout", keys: ["show"], warnings: &s.warnings) {
+                        guard let style = BarSettings.LayoutStyle(rawValue: "\(v2)") else {
+                            throw SettingsError("bar.layout.show must be icon or name")
+                        }
+                        s.bar.layoutStyle = style
+                    }
                 case "stats":
                     for (_, v2) in try block(v, "bar.stats", keys: ["interval"], warnings: &s.warnings) {
                         s.bar.interval = max(0.5, try number(v2, "bar.stats.interval"))
@@ -794,7 +804,7 @@ public struct Settings {
 
     enum BorderKeys { static let all = ["enabled", "width", "radius", "smart", "color"] }
     enum GesturesKeys { static let all = ["enabled", "fingers", "skip-empty", "direction", "swipe-left", "swipe-right", "swipe-up", "swipe-down"] }
-    enum BarKeys { static let all = ["badges", "widgets", "enabled", "height", "font-size", "left", "right", "workspaces", "title", "stats", "battery", "date", "clock", "background", "appearance", "make-way-for-dock"] }
+    enum BarKeys { static let all = ["badges", "widgets", "enabled", "height", "font-size", "left", "right", "workspaces", "layout", "title", "stats", "battery", "date", "clock", "background", "appearance", "make-way-for-dock"] }
 
     /// "unknown setting 'gapp' ignored (did you mean 'gap'?)"
     static func unknown<C: Collection>(_ path: String, _ allowed: C, last: String? = nil) -> String where C.Element == String {
@@ -921,6 +931,8 @@ bar:
   workspaces:
     hide-empty: false     # hide workspaces without windows
     window-counts: false  # a small window count next to each workspace
+  layout:
+    show: icon            # a small picture of the layout; name = its name ("Tall")
   title:
     windows: tabs         # the other windows of this workspace: position (2/4 next
                           # to the layout), dots, tabs (click one to switch) or off

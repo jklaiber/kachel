@@ -53,6 +53,24 @@ final class LayoutTests: XCTestCase {
                        0.7, accuracy: 0.001)
     }
 
+    /// The bar's pictures: inside the square, with a master, two-pane turning on portrait.
+    func testLayoutIcons() {
+        for k in LayoutKind.allCases {
+            let cells = LayoutIcon.cells(k)
+            XCTAssertTrue(cells.contains { $0.role == .master }, k.configName)
+            XCTAssertTrue(cells.allSatisfy { CGRect(x: 0, y: 0, width: 1, height: 1).contains($0.rect) }, k.configName)
+        }
+        let portrait = LayoutIcon.cells(.twoPane, portrait: true).first { $0.role == .master }!.rect
+        XCTAssertEqual(portrait, CGRect(x: 0, y: 0, width: 1, height: 0.5), "master on top")
+        XCTAssertEqual(LayoutIcon.cells(.tall, portrait: true), LayoutIcon.cells(.tall), "only two-pane turns")
+    }
+
+    func testBarLayoutSetting() throws {
+        XCTAssertEqual(try Settings.parse("").bar.layoutStyle, .icon, "a picture by default")
+        XCTAssertEqual(try Settings.parse("bar:\n  layout:\n    show: name\n").bar.layoutStyle, .name)
+        XCTAssertThrowsError(try Settings.parse("bar:\n  layout:\n    show: text\n"))
+    }
+
     func testRows() {
         let r = tile(.row, 3)
         XCTAssertEqual(r.map(\.width), [1000, 1000, 1000])

@@ -137,6 +137,7 @@ enum Screenshots {
             Bar.Tag(name: "\(i)", active: i == 1, visible: i == 1 || i == 2, hasWindows: [1, 2, 3, 5].contains(i))
         }
         c.layout = "Tall"
+        c.layoutKind = .tall
         c.title = "kachel — zsh"
         c.isCurrentScreen = true
         return c

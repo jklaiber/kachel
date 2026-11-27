@@ -50,6 +50,7 @@ final class UITests: XCTestCase {
         var s = BarSettings()
         s.appearance = .light
         s.workspaceCounts = true
+        s.layoutStyle = .name            // the layout's name instead of its picture
         var c = Screenshots.demoContent()
         for i in c.tags.indices where c.tags[i].hasWindows { c.tags[i].count = i + 1 }
         try Snapshot.check(Snapshot.image(of: bar(s, content: c), appearance: NSAppearance(named: .aqua)), "bar-light-counts")
@@ -60,10 +61,33 @@ final class UITests: XCTestCase {
         s.windows = .tabs
         var c = Screenshots.demoContent()
         c.layout = "Full"
+        c.layoutKind = .full
         c.isFullLayout = true
         c.windows = [.init(id: 1, title: "kachel — zsh", focused: true), .init(id: 2, title: "Notes"),
                      .init(id: 3, title: "Kachel — a tiling window manager")]
         try Snapshot.check(Snapshot.image(of: bar(s, content: c)), "bar-tabs")
+    }
+
+    /// Every layout's picture, as the bar shows it; and two-pane on a portrait display.
+    func testBarLayoutIcons() throws {
+        var s = BarSettings()
+        s.left = [.layout, .title]
+        s.right = []
+        let kinds = LayoutKind.allCases.map { ($0, false) } + [(.twoPane, true)]
+        let row: CGFloat = 30, width: CGFloat = 260
+        let all = Wallpaper(frame: NSRect(x: 0, y: 0, width: width, height: row * CGFloat(kinds.count)))
+        for (i, (kind, portrait)) in kinds.enumerated() {
+            var c = Screenshots.demoContent()
+            c.layoutKind = kind
+            c.layout = kind.rawValue
+            c.portrait = portrait
+            c.title = kind.configName + (portrait ? " (portrait)" : "")
+            let v = Bar.demoView(width: width, height: row, settings: s, content: c, now: Screenshots.demoNow,
+                                 cpu: 0, memory: 0, down: 0, up: 0)
+            v.setFrameOrigin(NSPoint(x: 0, y: all.bounds.height - row * CGFloat(i + 1)))
+            all.addSubview(v)
+        }
+        try Snapshot.check(Snapshot.image(of: all), "bar-layout-icons")
     }
 
     /// Charging, and a Mac without a battery: no empty gap where it would be.
@@ -107,7 +131,7 @@ final class UITests: XCTestCase {
     func testSettingsPanes() throws {
         let m = SettingsModel()
         let size = CGSize(width: 620, height: 1100)
-        try Snapshot.check(Snapshot.image(of: page(GeneralPane(m: m)), size: size), "settings-general")
+        try Snapshot.check(Snapshot.image(of: page(GeneralPane(m: m)), size: CGSize(width: 620, height: 2100)), "settings-general")
         try Snapshot.check(Snapshot.image(of: page(BarPane(m: m)), size: size), "settings-bar")
         try Snapshot.check(Snapshot.image(of: page(BorderPane(m: m)), size: CGSize(width: 620, height: 500)), "settings-border")
         try Snapshot.check(Snapshot.image(of: page(RulesPane(m: m)), size: CGSize(width: 620, height: 700)), "settings-rules")

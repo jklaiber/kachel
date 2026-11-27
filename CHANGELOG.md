@@ -7,6 +7,12 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- The bar shows the layout as a small picture instead of its name: Tall as
+  a big window and three small ones, and so on, two-pane turned on a portrait
+  display. **Settings → Bar → Layout** (or `bar: layout: {show: name}`) brings
+  the name back.
+
 ## [0.1.26] - 2026-11-27
 
 Two-pane on a portrait display.

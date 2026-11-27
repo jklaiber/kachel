@@ -43,7 +43,7 @@ including `toggle-fullscreen`; in the other layouts you see the windows anyway.
 | Widget | Shows | Click |
 |---|---|---|
 | `workspaces` | see above | show it on this display |
-| `layout` | Tall, Wide, … | |
+| `layout` | a small picture of the layout, like the ones in [Layouts](/kachel/layouts/); `layout: {show: name}` shows its name (Tall, Wide, …) instead | |
 | `title` | the focused window on that display | |
 | `network` | ↓ / ↑ throughput | Activity Monitor |
 | `cpu` | CPU load | Activity Monitor |

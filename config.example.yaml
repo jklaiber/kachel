@@ -84,6 +84,8 @@ bar:
   workspaces:
     hide-empty: false     # hide workspaces without windows
     window-counts: false  # a small window count next to each workspace
+  layout:
+    show: icon            # a small picture of the layout; name = its name ("Tall")
   title:
     windows: tabs         # the other windows of this workspace: position (2/4 next
                           # to the layout), dots, tabs (click one to switch) or off

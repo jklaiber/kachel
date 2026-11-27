@@ -28,6 +28,10 @@ final class Bar {
     struct Content {
         var tags: [Tag] = []
         var layout = ""
+        /// For the layout's picture; nil while tiling is paused (the name says so).
+        var layoutKind: LayoutKind?
+        /// The display is taller than wide (two-pane's picture turns).
+        var portrait = false
         var title = ""
         var isCurrentScreen = false
         var windows: [Window] = []
@@ -368,6 +372,8 @@ private struct Segment {
     var color: NSColor = .labelColor
     /// An app's icon in front (badges).
     var appIcon: NSImage? = nil
+    /// A layout's picture in front (the layout widget).
+    var layoutIcon: (kind: LayoutKind, portrait: Bool)? = nil
     var bold = false
     var flexible = false                // takes the leftover width (title, warnings)
     var action: Action? = nil
@@ -412,6 +418,7 @@ private final class BarView: NSView {
                 h.combine(seg.tab); h.combine(seg.tag)
                 h.combine(seg.color)
                 h.combine(seg.appIcon.map(ObjectIdentifier.init))
+                h.combine(seg.layoutIcon?.kind); h.combine(seg.layoutIcon?.portrait)
                 h.combine(seg.bold); h.combine(seg.flexible)
             }
         }
@@ -452,12 +459,13 @@ private final class BarView: NSView {
                                        bold: t.active, action: .workspace(i)))
                 }
             case .layout:
-                var text = content.layout
+                let icon = s.layoutStyle == .icon ? content.layoutKind.map { ($0, content.portrait) } : nil
+                var text = icon == nil ? content.layout : ""
                 // Many windows don't fit as dots: the position says it shorter.
                 if style == .position || (style == .dots && wins.count > 8) {
-                    text += " \((focusedAt ?? 0) + 1)/\(wins.count)"
+                    text += "\(text.isEmpty ? "" : " ")\((focusedAt ?? 0) + 1)/\(wins.count)"
                 }
-                out.append(Segment(parts: [(nil, text)], color: .secondaryLabelColor))
+                out.append(Segment(parts: [(nil, text)], color: .secondaryLabelColor, layoutIcon: icon))
             case .title:
                 if let warning {
                     out.append(Segment(parts: [("exclamationmark.triangle.fill", warning)], color: .systemOrange, flexible: true))
@@ -543,6 +551,36 @@ private final class BarView: NSView {
     }
 
     private var appIconSize: CGFloat { CGFloat(bar.settings.fontSize) + 3 }
+    /// The layout's picture: a little wider than tall, like a display.
+    private var layoutIconSize: CGSize {
+        let h = (CGFloat(bar.settings.fontSize) * 0.95).rounded()
+        return CGSize(width: (h * 1.45).rounded(), height: h)
+    }
+
+    /// Draws LayoutIcon's windows in `rect`: the master solid, the others
+    /// lighter, the ones waiting behind lighter still.
+    private func drawLayoutIcon(_ kind: LayoutKind, portrait: Bool, in rect: CGRect, color: NSColor) {
+        let gap: CGFloat = 1.2
+        // In a layer of its own: a window in front covers the ones behind it
+        // (with a thin gap around it) instead of letting them show through.
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+        ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+        defer { ctx.endTransparencyLayer() }
+        for cell in LayoutIcon.cells(kind, portrait: portrait) {
+            // Unit square, y down → this rect, y up.
+            let u = cell.rect
+            let r = CGRect(x: rect.minX + u.minX * rect.width, y: rect.maxY - u.maxY * rect.height,
+                           width: u.width * rect.width, height: u.height * rect.height)
+                .insetBy(dx: gap / 2, dy: gap / 2)
+            let alpha: CGFloat = cell.role == .master ? 1 : cell.role == .window ? 0.5 : 0.28
+            ctx.setBlendMode(.clear)
+            NSBezierPath(roundedRect: r.insetBy(dx: -gap / 2, dy: -gap / 2), xRadius: 2, yRadius: 2).fill()
+            ctx.setBlendMode(.normal)
+            color.withAlphaComponent(alpha).setFill()
+            NSBezierPath(roundedRect: r, xRadius: 1.4, yRadius: 1.4).fill()
+        }
+    }
+
     private var dotSize: CGFloat { max(5, CGFloat(bar.settings.fontSize) * 0.45) }
     private var countFont: NSFont { NSFont.monospacedDigitSystemFont(ofSize: max(8, CGFloat(bar.settings.fontSize) * 0.65), weight: .medium) }
 
@@ -557,6 +595,7 @@ private final class BarView: NSView {
         }
         let f = font(seg.bold)
         var w: CGFloat = seg.appIcon == nil ? 0 : appIconSize + iconGap
+        if seg.layoutIcon != nil { w += layoutIconSize.width + (seg.parts.allSatisfy(\.text.isEmpty) ? 0 : iconGap) }
         for (i, p) in seg.parts.enumerated() {
             if i > 0 { w += partGap }
             if let n = p.icon, let img = icon(n, color: seg.color) { w += img.size.width + (p.text.isEmpty ? 0 : iconGap) }
@@ -647,6 +686,12 @@ private final class BarView: NSView {
         if let img = seg.appIcon {
             img.draw(in: NSRect(x: x, y: (h - appIconSize) / 2, width: appIconSize, height: appIconSize))
             x += appIconSize + iconGap
+        }
+        if let l = seg.layoutIcon {
+            let size = layoutIconSize
+            drawLayoutIcon(l.kind, portrait: l.portrait, in: CGRect(x: x, y: ((h - size.height) / 2).rounded(), width: size.width, height: size.height),
+                           color: color)
+            x += size.width + (seg.parts.allSatisfy(\.text.isEmpty) ? 0 : iconGap)
         }
         for (i, p) in seg.parts.enumerated() {
             if i > 0 { x += partGap }

@@ -343,6 +343,8 @@ extension WindowManager {
             let ws = ss.workspaces[wsIndex]
             c.layout = tilingPaused ? "Paused" : ws.effectiveLayout.rawValue
             c.isFullLayout = ws.effectiveLayout == .full
+            c.layoutKind = tilingPaused ? nil : ws.effectiveLayout
+            if s < screens.count { c.portrait = screens[s].visible.height > screens[s].visible.width }
             if managing, let f = ws.focused, let w = windows[f] { c.title = w.title }
             if managing {
                 c.windows = shown(ws).compactMap { id in

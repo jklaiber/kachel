@@ -395,11 +395,16 @@ struct GeneralPane: View {
             }
             Section {
                 ForEach(KSettings.layoutOrder, id: \.self) { kind in
-                    Toggle(kind.rawValue, isOn: m.binding({ $0.layouts.contains(kind) }, { on in
+                    Toggle(isOn: m.binding({ $0.layouts.contains(kind) }, { on in
                         var l = m.s.layouts.filter { $0 != kind }
                         if on { l = KSettings.layoutOrder.filter { l.contains($0) || $0 == kind } }
                         if !l.isEmpty { m.top("layouts", KSettings.flowList(l.map(\.configName))) }
-                    }))
+                    })) {
+                        HStack(spacing: 10) {
+                            LayoutPicture(kind: kind)
+                            Text(kind.rawValue)
+                        }
+                    }
                     .disabled(m.s.layouts == [kind])   // at least one stays
                 }
             } header: {
@@ -694,7 +699,11 @@ struct BarPane: View {
                     if !clock.isEmpty, clock != m.s.bar.clockFormat { block("clock", "format", KSettings.yamlScalar(clock)) }
                 }
             case .layout:
-                EmptyView()
+                Picker("Show", selection: m.binding({ $0.bar.layoutStyle }, { block("layout", "show", $0.rawValue) })) {
+                    Text("Picture").tag(BarSettings.LayoutStyle.icon)
+                    Text("Name").tag(BarSettings.LayoutStyle.name)
+                }
+                .pickerStyle(.segmented)
             case .badges:
                 TextField("Apps", text: $badgeApps, prompt: Text("Every app with a badge")).commitOnLeave {
                     let apps = badgeApps.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
@@ -1434,6 +1443,7 @@ private struct BarPreview: NSViewRepresentable {
             c.isCurrentScreen = true
             c.isFullLayout = true
             c.layout = "Full"
+            c.layoutKind = .full
             c.title = "Safari"
             let counts = [3, 4, 0, 1, 0]
             c.tags = counts.enumerated().map { i, n in
@@ -1570,4 +1580,34 @@ struct InfoButton: View {
         Text(title)
     }
     Text(detail)
+}
+
+/// A layout's picture, as in the bar: the master in the accent colour, the
+/// others grey, the ones waiting behind lighter still.
+struct LayoutPicture: View {
+    var kind: LayoutKind
+    var size = CGSize(width: 30, height: 20)
+
+    var body: some View {
+        Canvas { ctx, area in
+            let gap: CGFloat = 1.5
+            for cell in LayoutIcon.cells(kind) {
+                let u = cell.rect
+                let r = CGRect(x: u.minX * area.width, y: u.minY * area.height,
+                               width: u.width * area.width, height: u.height * area.height).insetBy(dx: gap / 2, dy: gap / 2)
+                let color: Color = switch cell.role {
+                case .master: .accentColor
+                case .window: .secondary.opacity(0.55)
+                case .behind: .secondary.opacity(0.3)
+                }
+                // A window in front covers the ones behind it, with a thin gap.
+                ctx.blendMode = .clear
+                ctx.fill(Path(roundedRect: r.insetBy(dx: -gap / 2, dy: -gap / 2), cornerRadius: 2.5), with: .color(.black))
+                ctx.blendMode = .normal
+                ctx.fill(Path(roundedRect: r, cornerRadius: 2), with: .color(color))
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .accessibilityHidden(true)
+    }
 }
