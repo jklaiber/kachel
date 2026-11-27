@@ -67,14 +67,21 @@ public enum Layout {
         }
     }
 
+    /// Taller than wide: a display turned on its side. Two-pane splits top
+    /// and bottom there.
+    static func isPortrait(_ area: CGRect) -> Bool { area.height > area.width }
+
     /// Layouts whose windows don't share groups: one cell per window.
     static func cells(_ kind: LayoutKind, _ n: Int, _ area: CGRect, _ ratio: Double) -> [CGRect] {
         switch kind {
         case .twoPane:
-            // Master on the left; every other window in the right pane, on top of
-            // each other (the focused one comes to the front).
+            // Master on the left (on top on a portrait display); every other
+            // window in the second pane, on top of each other (the focused one
+            // comes to the front).
             guard n > 1 else { return [area] }
-            let (master, pane) = area.divided(atDistance: area.width * CGFloat(ratio), from: .minXEdge)
+            let portrait = isPortrait(area)
+            let (master, pane) = area.divided(atDistance: (portrait ? area.height : area.width) * CGFloat(ratio),
+                                              from: portrait ? .minYEdge : .minXEdge)
             return [master] + Array(repeating: pane, count: n - 1)
         case .bsp:
             // Each window takes half of what's left, alternating side by side
@@ -204,7 +211,11 @@ public enum Layout {
             let edge = index < nMaster ? frame.minX - gap / 2 : frame.maxX + gap / 2
             return clamp((area.maxX - edge) / area.width)
         case .twoPane:
-            guard n > 1, area.width > 0 else { return nil }
+            guard n > 1, area.width > 0, area.height > 0 else { return nil }
+            if isPortrait(area) {
+                let edge = index == 0 ? frame.maxY + gap / 2 : frame.minY - gap / 2
+                return clamp((edge - area.minY) / area.height)
+            }
             let edge = index == 0 ? frame.maxX + gap / 2 : frame.minX - gap / 2
             return clamp((edge - area.minX) / area.width)
         case .widescreenTall:

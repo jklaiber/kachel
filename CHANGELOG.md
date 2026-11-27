@@ -7,6 +7,12 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Changed
+- Two-pane follows the shape of the display: on a display turned to portrait,
+  the master is on top and the second pane below it, with the other windows
+  waiting behind that pane. Resizing the master (keys or mouse) changes its
+  height there.
+
 ## [0.1.25] - 2026-11-26
 
 Much lighter on CPU and memory while you work.

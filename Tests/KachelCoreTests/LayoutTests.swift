@@ -34,6 +34,25 @@ final class LayoutTests: XCTestCase {
         XCTAssertEqual(tile(.twoPane, 1), [screen])
     }
 
+    /// On a display turned on its side: master on top, the others below it.
+    func testTwoPaneOnAPortraitDisplay() {
+        let portrait = CGRect(x: 0, y: 0, width: 600, height: 1000)
+        let r = Layout.tile(.twoPane, count: 3, in: portrait, nMaster: 1, ratio: 0.6, gap: 0)
+        XCTAssertEqual(r[0], CGRect(x: 0, y: 0, width: 600, height: 600))
+        XCTAssertTrue(r[1...].allSatisfy { $0 == CGRect(x: 0, y: 600, width: 600, height: 400) })
+        // Resizing with the mouse moves the split up and down, and gives the same layout back.
+        for gap: CGFloat in [0, 6] {
+            let t = Layout.tile(.twoPane, count: 3, in: portrait, nMaster: 1, ratio: 0.6, gap: gap)
+            for i in 0..<3 {
+                let back = Layout.ratio(afterResizing: t[i], index: i, count: 3, kind: .twoPane, in: portrait, nMaster: 1, gap: gap)
+                XCTAssertEqual(back ?? 0, 0.6, accuracy: 0.01, "window \(i), gap \(gap)")
+            }
+        }
+        let taller = CGRect(x: 0, y: 0, width: 600, height: 700)
+        XCTAssertEqual(Layout.ratio(afterResizing: taller, index: 0, count: 2, kind: .twoPane, in: portrait, nMaster: 1, gap: 0) ?? 0,
+                       0.7, accuracy: 0.001)
+    }
+
     func testRows() {
         let r = tile(.row, 3)
         XCTAssertEqual(r.map(\.width), [1000, 1000, 1000])

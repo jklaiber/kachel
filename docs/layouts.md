@@ -14,7 +14,7 @@ workspace remembers its own. `prev-layout` goes the other way, and
 | `wide` | master on top, the others side by side below (Mirror Tall) |
 | `widescreen-tall` | the masters side by side on the left, the stack on the right; for wide displays with `inc-master` |
 | `three-column` | master in the middle, stacks on both sides (ThreeColMid); good for wide displays |
-| `two-pane` | master and one pane; the other windows wait behind that pane, the focused one in front |
+| `two-pane` | master and one pane; the other windows wait behind that pane, the focused one in front. Side by side, or on top of each other on a display turned to portrait |
 | `column` | all windows side by side |
 | `rows` | all windows on top of each other, full width |
 | `bsp` | each window takes half of what's left, alternating side by side and on top of each other |
