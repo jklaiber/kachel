@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.26] - 2026-11-27
+
+Two-pane on a portrait display.
+
 ### Changed
 - Two-pane follows the shape of the display: on a display turned to portrait,
   the master is on top and the second pane below it, with the other windows
@@ -604,7 +608,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.25...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.26...HEAD
+[0.1.26]: https://github.com/jklaiber/kachel/compare/v0.1.25...v0.1.26
 [0.1.25]: https://github.com/jklaiber/kachel/compare/v0.1.24...v0.1.25
 [0.1.24]: https://github.com/jklaiber/kachel/compare/v0.1.23...v0.1.24
 [0.1.23]: https://github.com/jklaiber/kachel/compare/v0.1.22...v0.1.23
