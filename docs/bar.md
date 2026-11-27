@@ -10,12 +10,12 @@ windows leave room for it.
 
 ## Workspaces
 
-| Looks like | Means |
-|---|---|
-| solid | the workspace you're in |
-| outline | shown on a display |
-| dot | has windows |
-| dim | empty |
+<div class="bar-legend not-content">
+<div class="bl-item"><div class="bar-look"><span class="bl-ws active">1</span></div><p><b>Solid</b>: the workspace you're in</p></div>
+<div class="bl-item"><div class="bar-look"><span class="bl-ws visible has">2</span></div><p><b>Outline</b>: shown on another display</p></div>
+<div class="bl-item"><div class="bar-look"><span class="bl-ws has">3</span></div><p><b>Dot</b>: has windows</p></div>
+<div class="bl-item"><div class="bar-look"><span class="bl-ws empty">4</span></div><p><b>Dim</b>: empty</p></div>
+</div>
 
 Click a workspace to show it on that display.
 
@@ -27,12 +27,12 @@ a small number next to it, instead of the dot.
 In the Full layout you only see one window. The `title` widget can show the
 others, set under `title:`:
 
-| `windows:` | Shows |
-|---|---|
-| `tabs` | every window's name, the focused one highlighted; click a tab to switch to it |
-| `dots` | one dot per window, the focused one filled |
-| `position` | which window and how many, next to the layout: `Full 2/4` |
-| `off` | only the focused window's title |
+<div class="bar-styles not-content">
+<div class="bs-item"><code>tabs</code><div class="bar-look"><svg class="bl-layout" viewBox="0 0 18 12" aria-hidden="true"><rect x="2.4" y="0.6" width="13.2" height="10.8" rx="1.4" opacity=".28"/><rect x="0.6" y="3.5" width="16.8" height="7.9" rx="1.4"/></svg><span class="bl-tab">Claude</span><span class="bl-tab focused">Safari</span><span class="bl-tab">Notes</span><span class="bl-tab">Terminal</span></div><p>Every window's name, the focused one highlighted. Click a tab to switch to it.</p></div>
+<div class="bs-item"><code>dots</code><div class="bar-look"><svg class="bl-layout" viewBox="0 0 18 12" aria-hidden="true"><rect x="2.4" y="0.6" width="13.2" height="10.8" rx="1.4" opacity=".28"/><rect x="0.6" y="3.5" width="16.8" height="7.9" rx="1.4"/></svg><span class="bl-dots"><i></i><i class="on"></i><i></i><i></i></span><span class="bl-title">Safari</span></div><p>One dot per window, the focused one filled.</p></div>
+<div class="bs-item"><code>position</code><div class="bar-look"><svg class="bl-layout" viewBox="0 0 18 12" aria-hidden="true"><rect x="2.4" y="0.6" width="13.2" height="10.8" rx="1.4" opacity=".28"/><rect x="0.6" y="3.5" width="16.8" height="7.9" rx="1.4"/></svg><span class="bl-dim">2/4</span><span class="bl-title">Safari</span></div><p>Which window and how many, next to the layout.</p></div>
+<div class="bs-item"><code>off</code><div class="bar-look"><svg class="bl-layout" viewBox="0 0 18 12" aria-hidden="true"><rect x="2.4" y="0.6" width="13.2" height="10.8" rx="1.4" opacity=".28"/><rect x="0.6" y="3.5" width="16.8" height="7.9" rx="1.4"/></svg><span class="bl-title">Safari</span></div><p>Only the focused window's title.</p></div>
+</div>
 
 `only-in-full: true` (the default) shows them only in the Full layout,
 including `toggle-fullscreen`; in the other layouts you see the windows anyway.

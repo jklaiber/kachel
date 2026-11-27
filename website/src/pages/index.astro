@@ -5,8 +5,11 @@ import icon from '../../../docs/images/icon.svg';
 import bar from '../../../docs/images/screenshots/bar.png';
 import window_search from '../../../docs/images/screenshots/window-search.png';
 import welcome from '../../../docs/images/screenshots/welcome.png';
+import { LAYOUTS, BLURBS, layoutShapes } from '../layout-pictures.mjs';
 
 const shots = { bar, window_search, welcome };
+// Every layout, as in the docs; names as in config.yaml.
+const layouts = Object.keys(LAYOUTS).map((name) => ({ name, blurb: BLURBS[name], ...layoutShapes(name) }));
 const home = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const docs = `${home}getting-started/`;
 ---
@@ -214,12 +217,18 @@ h2 { font-size: clamp(34px, 5.4vw, 56px); line-height: 1.07; letter-spacing: -.0
 @media (max-width: 640px) { .displays { gap: 14px; } }
 
 /* layouts strip */
-.layouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px; margin-top: 50px; }
+.layouts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 50px; }
+/* Eleven cards: rows that end evenly (6 + 5, 4 + 4 + 3, 3 + 3 + 3 + 2). */
+@media (min-width: 600px) { .layouts { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .layouts { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1150px) { .layouts { grid-template-columns: repeat(6, 1fr); } }
 .lay { background: var(--card); border-radius: 18px; padding: 16px; border: 1px solid var(--line); }
-.lay .pic { aspect-ratio: 16/10; position: relative; }
-.lay .pic div { position: absolute; border-radius: 5px; background: var(--green-2); opacity: .35; }
-.lay .pic div.m { opacity: .9; background: var(--green); }
-.lay b { display: block; margin-top: 12px; font-size: 15px; }
+.lay .pic { display: block; width: 100%; height: auto; overflow: visible; }
+.lay .pic rect { fill: var(--green-2); opacity: .35; }
+.lay .pic rect.master { fill: var(--green); opacity: .9; }
+.lay .pic rect.behind { opacity: .45; fill: var(--green); }
+.lay .pic rect.cut { fill: var(--card); opacity: 1; }
+.lay b { display: block; margin-top: 12px; font-size: 15px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-weight: 600; letter-spacing: -.01em; }
 .lay span { font-size: 13px; color: var(--muted); }
 
 /* bento */
@@ -337,7 +346,22 @@ footer .grow { flex: 1; }
     <p class="kicker">Layouts</p>
     <h2>Eleven layouts. One key to cycle.</h2>
     <p class="sub">From xmonad's Tall to BSP and Three-column for wide displays. Every workspace keeps its own, and you can resize the master and each window in a column, with keys or the mouse.</p>
-    <div class="layouts" id="lays"></div>
+    <div class="layouts">
+      {layouts.map((l) => (
+        <div class="lay">
+          <svg class="pic" viewBox={`0 0 ${l.W} ${l.H}`} aria-hidden="true">
+            {l.shapes.map((b) => (
+              <>
+                {/* a window covers the ones behind it, with a thin gap */}
+                <rect x={b.x - 1.5} y={b.y - 1.5} width={b.w + 3} height={b.h + 3} rx="6.5" class="cut" />
+                <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="5" class={b.role} />
+              </>
+            ))}
+          </svg>
+          <b>{l.name}</b><span>{l.blurb}</span>
+        </div>
+      ))}
+    </div>
   </div>
 </section>
 
@@ -610,20 +634,6 @@ document.getElementById('wskeys').addEventListener('click', e => {
 });
 scr.forEach((s, i) => s.addEventListener('click', () => { focusScreen = i; drawScreens(`Working on the ${i ? 'Studio Display' : 'built-in display'}.`); }));
 drawScreens();
-
-// ---------- layouts strip ----------
-const LAYS = [
-  ['Tall', 'master and a stack'], ['Wide', 'master on top'], ['Three-column', 'master in the middle'],
-  ['BSP', 'halves, alternating'], ['Column', 'side by side'], ['Full', 'one at a time'],
-];
-document.getElementById('lays').innerHTML = LAYS.map(([k, d]) => {
-  const n = k === 'Full' ? 1 : 4;
-  const rects = tile(k, n, 0).map((r, i) => {
-    const y = (r.y - 4.4) / (95 - 4.4) * 100, h = r.h / (95 - 4.4) * 100;
-    return `<div class="${i ? '' : 'm'}" style="left:${r.x}%;top:${y}%;width:${r.w}%;height:${h}%"></div>`;
-  }).join('');
-  return `<div class="lay"><div class="pic">${rects}</div><b>${k}</b><span>${d}</span></div>`;
-}).join('') + `<div class="lay" style="display:flex;flex-direction:column;justify-content:center"><b style="margin:0;font-size:28px;letter-spacing:-.03em">+5</b><span>Tall right, Widescreen tall, Two-pane, Rows and Floating</span></div>`;
 
 // ---------- small things ----------
 document.getElementById('copy').addEventListener('click', e => {

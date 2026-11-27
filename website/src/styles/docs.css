@@ -132,3 +132,49 @@ kbd.keys > kbd {
 @media (max-width: 50rem) {
   .sl-markdown-content table { display: block; overflow-x: auto; width: auto; }
 }
+
+/* ---- The bar, drawn (bar.md) --------------------------------------------- */
+
+/* A piece of Kachel's bar on the docs' wallpaper: white text, like on a dark desktop. */
+.bar-look {
+  display: flex; align-items: center; gap: 0.35rem; height: 2.1rem; padding: 0 0.6rem;
+  border-radius: 0.6rem; overflow: hidden;
+  background: linear-gradient(120deg, #1b2a4a, #22456a 60%, #2b5d7a);
+  color: #fff; font: 500 0.82rem/1 var(--sl-font);
+  text-shadow: 0 0 3px rgb(0 0 0 / 0.35);
+}
+.bl-ws {
+  position: relative; display: inline-grid; place-items: center;
+  min-width: 1.55rem; height: 1.55rem; border-radius: 0.32rem; padding-bottom: 0.15rem;
+}
+.bl-ws.has::after {
+  content: ''; position: absolute; bottom: 0.18rem; left: 50%; translate: -50% 0;
+  width: 3.5px; height: 3.5px; border-radius: 50%; background: currentColor;
+}
+.bl-ws.active { background: rgb(255 255 255 / 0.9); color: #111; text-shadow: none; }
+.bl-ws.visible { box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.55); }
+.bl-ws.empty { color: rgb(255 255 255 / 0.3); }
+.bl-layout { width: 1.15rem; height: auto; fill: #fff; opacity: 0.6; flex: none; margin-right: 0.35rem; }
+.bl-tab { padding: 0.3rem 0.5rem; border-radius: 0.32rem; color: rgb(255 255 255 / 0.6); white-space: nowrap; }
+.bl-tab.focused { background: rgb(255 255 255 / 0.16); color: #fff; font-weight: 650; }
+.bl-title { font-weight: 650; white-space: nowrap; }
+.bl-dim { color: rgb(255 255 255 / 0.6); margin-right: 0.35rem; }
+.bl-dots { display: inline-flex; gap: 0.33rem; margin-right: 0.35rem; }
+.bl-dots i { width: 6px; height: 6px; border-radius: 50%; box-shadow: inset 0 0 0 1.2px rgb(255 255 255 / 0.7); }
+.bl-dots i.on { background: #fff; box-shadow: none; }
+
+.bar-legend { display: grid; gap: 0.75rem; margin-block: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
+.bl-item, .bs-item {
+  padding: 0.7rem; border: 1px solid var(--sl-color-gray-5); border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--sl-color-gray-6) 55%, transparent);
+}
+:root[data-theme='light'] :is(.bl-item, .bs-item) { border-color: var(--sl-color-gray-6); background: var(--sl-color-gray-7); }
+.bl-item .bar-look { justify-content: center; }
+:is(.bl-item, .bs-item) p { margin: 0.6rem 0 0; font-size: var(--sl-text-sm); line-height: 1.45; color: var(--sl-color-gray-2); }
+:is(.bl-item, .bs-item) p b { color: var(--sl-color-white); font-weight: 600; }
+
+.bar-styles { display: grid; gap: 0.75rem; margin-block: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
+.bs-item > code {
+  display: inline-block; margin-bottom: 0.55rem; font-family: var(--sl-font-mono); font-size: var(--sl-text-sm);
+  font-weight: 600; color: var(--sl-color-white);
+}
