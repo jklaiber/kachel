@@ -14,3 +14,121 @@
 }
 body { -webkit-font-smoothing: antialiased; letter-spacing: -0.01em; }
 .sl-markdown-content h1, .sl-markdown-content h2, h1#_top { letter-spacing: -0.03em; }
+
+/* ---- Content ---------------------------------------------------------- */
+
+.sl-markdown-content {
+  --kc-line: var(--sl-color-gray-5);
+  --kc-panel: color-mix(in srgb, var(--sl-color-gray-6) 55%, transparent);
+  --kc-radius: 0.75rem;
+}
+:root[data-theme='light'] .sl-markdown-content { --kc-line: var(--sl-color-gray-6); --kc-panel: var(--sl-color-gray-7); }
+
+.sl-markdown-content h2 { margin-top: 2.75rem; font-weight: 650; }
+.sl-markdown-content h3 { font-weight: 620; }
+
+/* Inline code: a soft pill instead of a box. */
+.sl-markdown-content :not(pre, kbd) > code {
+  border: 0; border-radius: 0.375rem; padding: 0.12em 0.4em;
+  background: color-mix(in srgb, var(--sl-color-accent) 12%, transparent);
+  color: var(--sl-color-white);
+  font-size: 0.86em;
+}
+
+/* Tables: a rounded card with quiet row lines. */
+.sl-markdown-content table {
+  border-collapse: separate; border-spacing: 0;
+  border: 1px solid var(--kc-line); border-radius: var(--kc-radius);
+  overflow: hidden; font-size: var(--sl-text-sm);
+  display: table; width: 100%;
+}
+.sl-markdown-content :is(th, td) { border: 0; border-bottom: 1px solid var(--kc-line); padding: 0.6rem 0.9rem; vertical-align: middle; }
+.sl-markdown-content tr:last-child td { border-bottom: 0; }
+.sl-markdown-content th {
+  background: var(--kc-panel); font-weight: 600; font-size: var(--sl-text-xs);
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--sl-color-gray-2);
+}
+.sl-markdown-content tbody tr { transition: background 0.15s; }
+.sl-markdown-content tbody tr:hover { background: color-mix(in srgb, var(--sl-color-accent) 6%, transparent); }
+
+/* Notes and tips. */
+.starlight-aside { border-radius: var(--kc-radius); border-inline-start-width: 0; border: 1px solid color-mix(in srgb, var(--sl-color-asides-border) 45%, transparent); }
+
+/* ---- Keycaps: `mod-shift-1` --------------------------------------------- */
+
+/* (Starlight puts space between neighbouring elements: not between keys.) */
+.sl-markdown-content kbd.keys, .sl-markdown-content kbd.keys > kbd { margin: 0; }
+kbd.keys { display: inline-flex; gap: 0.2em; align-items: baseline; font: inherit; white-space: nowrap; }
+kbd.keys > kbd {
+  display: inline-block; min-width: 1.6em; padding: 0.08em 0.45em; text-align: center;
+  font-family: var(--sl-font); font-size: 0.78em; font-weight: 550; line-height: 1.5;
+  color: var(--sl-color-white);
+  background: linear-gradient(var(--sl-color-gray-5), var(--sl-color-gray-6));
+  border: 1px solid var(--sl-color-gray-4); border-bottom-width: 2px; border-radius: 0.4em;
+}
+:root[data-theme='light'] kbd.keys > kbd {
+  background: linear-gradient(#fff, #f2f3f5); border-color: #d3d6db; color: #1d1f23;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.04);
+}
+
+/* ---- Layout gallery (layouts.md's table) --------------------------------- */
+
+.layout-gallery {
+  display: grid; gap: 0.9rem; margin-block: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+}
+.layout-card {
+  display: flex; flex-direction: column; gap: 0.7rem; padding: 0.9rem;
+  border: 1px solid var(--kc-line); border-radius: 1rem; background: var(--kc-panel);
+  transition: border-color 0.2s, transform 0.2s;
+}
+.layout-card:hover { border-color: color-mix(in srgb, var(--sl-color-accent) 60%, transparent); transform: translateY(-2px); }
+.layout-card p { margin: 0.3rem 0 0; font-size: var(--sl-text-sm); line-height: 1.5; color: var(--sl-color-gray-2); }
+.layout-card code { font-size: 0.85em; }
+.layout-card .layout-name {
+  font-family: var(--sl-font-mono); font-weight: 600; font-size: var(--sl-text-base);
+  color: var(--sl-color-white); background: none; padding: 0;
+}
+.layout-picture { width: 100%; height: auto; display: block; }
+.layout-picture .screen { fill: var(--sl-color-black); stroke: var(--kc-line); }
+.layout-picture .window { fill: var(--sl-color-gray-5); }
+.layout-picture .behind { fill: var(--sl-color-gray-6); stroke: var(--sl-color-gray-4); stroke-width: 0.6; }
+.layout-picture .master { fill: var(--sl-color-accent); }
+:root[data-theme='light'] .layout-picture .screen { fill: #fff; }
+:root[data-theme='light'] .layout-picture .window { fill: #dfe3e8; }
+:root[data-theme='light'] .layout-picture .behind { fill: #eef0f3; stroke: #c9ced5; }
+
+/* ---- Two displays swapping (workspaces.md) ------------------------------- */
+
+.swap {
+  display: flex; align-items: center; justify-content: center; gap: 1.25rem; flex-wrap: wrap;
+  margin: 1.75rem 0; padding: 1.5rem 1rem;
+  border: 1px solid var(--kc-line); border-radius: 1rem; background: var(--kc-panel);
+}
+.swap-stage { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+.swap-displays { display: flex; align-items: flex-end; gap: 0.6rem; }
+.swap-display {
+  position: relative; box-sizing: border-box; width: 7.5rem; height: 4.7rem; border-radius: 0.6rem;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--sl-color-black); border: 1px solid var(--sl-color-gray-4);
+  margin-bottom: 0.55rem;
+}
+/* The stand. */
+.swap-display::after {
+  content: ''; position: absolute; bottom: -0.55rem; left: 50%; translate: -50% 0;
+  width: 1.8rem; height: 0.4rem; border-radius: 0 0 0.25rem 0.25rem; background: var(--sl-color-gray-4);
+}
+.swap-display b { font-size: 1.9rem; font-weight: 650; line-height: 1; color: var(--sl-color-white); }
+.swap-display span { font-size: var(--sl-text-xs); color: var(--sl-color-gray-3); margin-top: 0.3rem; }
+.swap-display.focused { border: 2px solid var(--sl-color-accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--sl-color-accent) 20%, transparent); }
+.swap-display.focused b { color: var(--sl-color-accent); }
+.swap-caption { font-size: var(--sl-text-sm); color: var(--sl-color-gray-2); }
+.swap-arrow { font-size: 1.6rem; color: var(--sl-color-accent); }
+:root[data-theme='light'] .swap-display { background: #fff; border-color: #cfd4da; }
+:root[data-theme='light'] .swap-display.focused { border-color: var(--sl-color-accent); }
+@media (max-width: 40rem) { .swap { flex-direction: column; } .swap-arrow { rotate: 90deg; } }
+
+/* Phones: a table too wide for the screen scrolls on its own, not the page. */
+@media (max-width: 50rem) {
+  .sl-markdown-content table { display: block; overflow-x: auto; width: auto; }
+}

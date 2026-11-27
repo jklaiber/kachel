@@ -17,12 +17,11 @@ displays: every display shows exactly one of them, and one display has focus.
   before, and again to return. With `workspace-back-and-forth: true`, pressing
   the key of the workspace you're already on does the same.
 
-```
- before mod-2 on A          after
- ┌──────┐ ┌──────┐          ┌──────┐ ┌──────┐
- │  A:1*│ │  B:2 │   ──▶    │  A:2*│ │  B:1 │
- └──────┘ └──────┘          └──────┘ └──────┘
-```
+<figure class="swap not-content" aria-label="Before: display A shows workspace 1 and has focus, display B shows workspace 2. After mod-2 on A: A shows 2, B shows 1.">
+<div class="swap-stage"><div class="swap-displays"><div class="swap-display focused"><b>1</b><span>Display A</span></div><div class="swap-display"><b>2</b><span>Display B</span></div></div><span class="swap-caption">Before: you press <kbd class="keys"><kbd>mod</kbd><kbd>2</kbd></kbd> on A</span></div>
+<div class="swap-arrow" aria-hidden="true">→</div>
+<div class="swap-stage"><div class="swap-displays"><div class="swap-display focused"><b>2</b><span>Display A</span></div><div class="swap-display"><b>1</b><span>Display B</span></div></div><span class="swap-caption">After: the two displays swapped</span></div>
+</figure>
 
 ## Several displays
 

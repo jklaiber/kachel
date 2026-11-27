@@ -132,6 +132,11 @@ cd website && npm ci && npm run dev
 CI runs it on every push and pull request. The configuration reference is
 made from `config.example.yaml` at build time.
 
+The pages stay plain Markdown; `website/src/plugins/kachel-markdown.mjs`
+dresses them up on the website. Shortcuts in inline code (`` `mod-shift-1` ``)
+become keycaps, and the table in Layouts becomes cards with a picture of each
+layout. A new layout needs its picture there.
+
 ## Releasing
 
 1. Move the `[Unreleased]` notes in `CHANGELOG.md` under a new version heading,

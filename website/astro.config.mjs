@@ -3,11 +3,15 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightLinksValidator from 'starlight-links-validator';
+import { satteri } from '@astrojs/markdown-satteri';
+import kachelMarkdown from './src/plugins/kachel-markdown.mjs';
 
 export default defineConfig({
   site: 'https://jklaiber.github.io',
   base: '/kachel',
   trailingSlash: 'always',
+  // Keycaps for shortcuts, pictures for the layouts (see the plugin).
+  markdown: { processor: satteri({ hastPlugins: [kachelMarkdown] }) },
   integrations: [
     starlight({
       title: 'Kachel',
@@ -18,6 +22,7 @@ export default defineConfig({
       editLink: { baseUrl: 'https://github.com/jklaiber/kachel/edit/main/' },
       routeMiddleware: './src/routeData.ts',
       customCss: ['./src/styles/docs.css'],
+      expressiveCode: { styleOverrides: { borderRadius: '0.75rem' } },
       // Broken links (and #anchors) fail the build, like `mkdocs build --strict` did.
       plugins: [starlightLinksValidator()],
       sidebar: [
