@@ -29,8 +29,15 @@ swift test                          # the model, and the window manager against 
 ```
 
 Without a signing certificate, every rebuild asks for Accessibility again. The
-[Development page](https://jklaiber.github.io/kachel/development/) explains the
-code layout and how to sign builds so the permission sticks.
+[Development page](https://jklaiber.github.io/kachel/development/) explains how
+to sign builds so the permission sticks.
+
+## How the code fits together
+
+Start with [Architecture](https://jklaiber.github.io/kachel/architecture/): the
+model and the window manager, what happens on a key press or a new window, how
+it's tested, and every place a new command, setting, layout or bar widget
+touches.
 
 ## Pull requests
 

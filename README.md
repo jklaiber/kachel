@@ -130,7 +130,8 @@ swift test
 ./scripts/bundle.sh && open build/Kachel.app
 ```
 
-More in [Development](https://jklaiber.github.io/kachel/development/).
+More in [Development](https://jklaiber.github.io/kachel/development/); how the
+code fits together is in [Architecture](https://jklaiber.github.io/kachel/architecture/).
 Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing

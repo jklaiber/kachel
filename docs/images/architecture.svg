@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" width="760" height="400" role="img" aria-label="Your input (keys, mouse and trackpad, the kachel command, Settings) becomes a Command for the WindowManager. The WindowManager keeps its model in KachelCore (StackSet, Layout, Settings), asks macOS about windows through the WindowSystem protocol (Accessibility for real, a fake in tests), and draws the bar, border and overlays and saves its state. A watchdog process puts windows back after a crash.">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; text-anchor: middle; }
+    .box { fill: #ffffff; stroke: #cfd4da; stroke-width: 1.5; }
+    .main { stroke: #1d7d5f; stroke-width: 2.5; }
+    .core { fill: #eef8f4; }
+    .t { font-size: 14px; font-weight: 650; fill: #1f2328; }
+    .s { font-size: 12px; fill: #57606a; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; fill: #1f2328; }
+    .a { fill: none; stroke: #8c959f; stroke-width: 1.6; marker-end: url(#h); }
+    .l { font-size: 11px; fill: #6e7781; }
+    .hd { fill: #8c959f; }
+    @media (prefers-color-scheme: dark) {
+      .box { fill: #161b22; stroke: #3d444d; }
+      .main { stroke: #2fae84; }
+      .core { fill: #12261f; }
+      .t, .mono { fill: #f0f6fc; }
+      .s { fill: #9198a1; }
+      .a { stroke: #6e7681; }
+      .l { fill: #9198a1; }
+      .hd { fill: #6e7681; }
+    }
+  </style>
+  <defs><marker id="h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="hd" d="M0 0 L10 5 L0 10 z"/></marker></defs>
+
+  <rect class="box" x="190" y="10" width="380" height="50" rx="10"/>
+  <text class="t" x="380" y="31">Your input</text>
+  <text class="s" x="380" y="49">keys · mouse and trackpad · kachel command · Settings</text>
+  <path class="a" d="M380 60 V90"/>
+  <text class="l" x="420" y="80">a Command</text>
+
+  <rect class="box main" x="230" y="94" width="300" height="100" rx="12"/>
+  <text class="t" x="380" y="120">WindowManager</text>
+  <text class="s" x="380" y="142">the state of every window and display</text>
+  <text class="mono" x="380" y="164">Discovery · Focus · Actions</text>
+  <text class="mono" x="380" y="182">Rendering · State · Events</text>
+
+  <rect class="box core" x="12" y="94" width="180" height="100" rx="12"/>
+  <text class="t" x="102" y="120">KachelCore</text>
+  <text class="s" x="102" y="142">StackSet: workspaces</text>
+  <text class="s" x="102" y="160">Layout: where windows go</text>
+  <text class="s" x="102" y="178">Settings: config.yaml</text>
+  <path class="a" d="M196 136 H226"/>
+  <path class="a" d="M226 154 H196"/>
+
+  <rect class="box" x="568" y="94" width="180" height="100" rx="12"/>
+  <text class="t" x="658" y="120">On screen, on disk</text>
+  <text class="s" x="658" y="142">bar, focus border</text>
+  <text class="s" x="658" y="160">window search, overview</text>
+  <text class="s" x="658" y="178">state.json, parked.json</text>
+  <path class="a" d="M532 144 H564"/>
+
+  <rect class="box" x="230" y="240" width="300" height="56" rx="12"/>
+  <text class="t" x="380" y="263">WindowSystem</text>
+  <text class="s" x="380" y="283">Accessibility for real, a fake in the tests</text>
+  <path class="a" d="M350 196 V236"/>
+  <path class="a" d="M410 236 V196"/>
+  <text class="l" x="342" y="220" style="text-anchor:end">frames, focus</text>
+  <text class="l" x="418" y="220" style="text-anchor:start">windows, events</text>
+
+  <rect class="box" x="230" y="338" width="300" height="50" rx="12"/>
+  <text class="t" x="380" y="360">macOS</text>
+  <text class="s" x="380" y="377">Accessibility and the window server</text>
+  <path class="a" d="M350 298 V334"/>
+  <path class="a" d="M410 334 V298"/>
+
+  <rect class="box" x="568" y="240" width="180" height="56" rx="12"/>
+  <text class="t" x="658" y="263">Watchdog</text>
+  <text class="s" x="658" y="283">puts windows back after a crash</text>
+  <path class="a" d="M658 196 V236"/>
+  <path class="a" d="M658 298 V363 H534"/>
+</svg>

@@ -20,6 +20,9 @@ the permission across your own rebuilds, use any certificate of yours:
 
 ## Layout of the code
 
+How the parts work together, and what to touch for a new command, setting,
+layout or bar widget: [Architecture](/kachel/architecture/).
+
 | Path | |
 |---|---|
 | `Sources/KachelCore/` | the pure model, fully unit-tested: `StackSet` (workspaces, displays, greedyView), `Layout`, `Settings` (parsing, the default config, careful edits of the YAML), `WindowSearch`, `Navigation`, `ShortcutList` |

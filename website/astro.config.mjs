@@ -53,6 +53,7 @@ export default defineConfig({
           items: [
             { label: 'Troubleshooting', slug: 'troubleshooting' },
             { label: 'Development', slug: 'development' },
+            { label: 'Architecture', slug: 'architecture' },
             { label: 'Changelog', link: 'https://github.com/jklaiber/kachel/blob/main/CHANGELOG.md' },
           ],
         },
