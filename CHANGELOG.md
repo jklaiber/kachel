@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.28] - 2026-11-28
+
+Follow Kachel from your own scripts and bars.
+
 ### Added
 - `kachel subscribe` prints a line of JSON for every change: the workspace,
   the focused window and its title, a workspace's layout, its windows. Other
@@ -629,7 +633,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.27...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.28...HEAD
+[0.1.28]: https://github.com/jklaiber/kachel/compare/v0.1.27...v0.1.28
 [0.1.27]: https://github.com/jklaiber/kachel/compare/v0.1.26...v0.1.27
 [0.1.26]: https://github.com/jklaiber/kachel/compare/v0.1.25...v0.1.26
 [0.1.25]: https://github.com/jklaiber/kachel/compare/v0.1.24...v0.1.25
