@@ -7,6 +7,10 @@ taken from its section here.
 
 ## [Unreleased]
 
+## [0.1.29] - 2026-11-28
+
+Safer crash recovery, and fixes from a code review.
+
 ### Fixed
 - After a crash, every window that was out of sight comes back: Kachel now
   tells the watchdog about a window before moving it away, not just after.
@@ -646,7 +650,8 @@ First release.
 - Configuration in `~/.config/kachel/config.yaml`, applied on save.
 - Homebrew: `brew install --cask jklaiber/tap/kachel`.
 
-[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.28...HEAD
+[Unreleased]: https://github.com/jklaiber/kachel/compare/v0.1.29...HEAD
+[0.1.29]: https://github.com/jklaiber/kachel/compare/v0.1.28...v0.1.29
 [0.1.28]: https://github.com/jklaiber/kachel/compare/v0.1.27...v0.1.28
 [0.1.27]: https://github.com/jklaiber/kachel/compare/v0.1.26...v0.1.27
 [0.1.26]: https://github.com/jklaiber/kachel/compare/v0.1.25...v0.1.26
