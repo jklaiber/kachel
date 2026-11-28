@@ -85,13 +85,40 @@ final class Bar {
         appearanceTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             self?.updateAppearance()
         }
-        clockTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self, self.settings.shows(.clock) || self.settings.shows(.date) else { return }
-            self.redraw()
+        // After sleep the clock is behind until its timer comes round.
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification,
+                                                          object: nil, queue: .main) { [weak self] _ in self?.redraw() }
+        // Time set by hand, or a new time zone: on the minute again.
+        for name in [Notification.Name.NSSystemClockDidChange, .NSSystemTimeZoneDidChange] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.scheduleClock()
+                self?.redraw()
+            }
         }
-        // Some slack lets macOS run timers together with other work instead
-        // of waking up just for them (here and for the other timers).
-        clockTimer?.tolerance = 0.1
+    }
+
+    /// Whether a date pattern shows seconds ("HH:mm:ss"); quoted text aside.
+    static func showsSeconds(_ pattern: String) -> Bool {
+        pattern.split(separator: "'", omittingEmptySubsequences: false).enumerated()
+            .contains { i, part in i % 2 == 0 && part.contains { $0 == "s" || $0 == "S" } }
+    }
+
+    /// The clock and date: once a minute, on the minute, unless they show
+    /// seconds. Some slack lets macOS run timers together with other work
+    /// instead of waking up just for them (here and for the other timers).
+    private func scheduleClock() {
+        clockTimer?.invalidate()
+        clockTimer = nil
+        guard settings.enabled, !isDemo, settings.shows(.clock) || settings.shows(.date) else { return }
+        let seconds = (settings.shows(.clock) && Self.showsSeconds(settings.clockFormat))
+            || (settings.shows(.date) && Self.showsSeconds(settings.dateFormat))
+        let now = Date()
+        let start = seconds ? now.addingTimeInterval(1)
+            : Date(timeIntervalSinceReferenceDate: (now.timeIntervalSinceReferenceDate / 60).rounded(.down) * 60 + 60.05)
+        let t = Timer(fire: start, interval: seconds ? 1 : 60, repeats: true) { [weak self] _ in self?.redraw() }
+        t.tolerance = seconds ? 0.1 : 0.3
+        RunLoop.main.add(t, forMode: .common)
+        clockTimer = t
     }
 
     /// The bar's height: the configured one, or the top menu bar's.
@@ -111,6 +138,7 @@ final class Bar {
             panels.forEach { $0.orderOut(nil) }
             panels.removeAll()
             statsTimer?.invalidate()
+            clockTimer?.invalidate()
             dock = nil
             return
         }
@@ -157,6 +185,7 @@ final class Bar {
             }
             statsTimer?.tolerance = settings.interval / 10
         }
+        scheduleClock()
         redraw(force: true)
     }
 
@@ -532,8 +561,15 @@ private final class BarView: NSView {
     private let iconGap: CGFloat = 4
     private let partGap: CGFloat = 8
 
+    /// Made once per size and weight: building the font each time it's
+    /// measured or drawn was a good part of every redraw.
+    private var fonts: [String: NSFont] = [:]
+    private var icons: [String: NSImage] = [:]
+
     private func font(_ bold: Bool) -> NSFont {
         let size = CGFloat(bar.settings.fontSize)
+        let key = "\(size)\(bold)"
+        if let f = fonts[key] { return f }
         let base = NSFont.menuBarFont(ofSize: size)
         // Tabular digits so numbers don't jiggle as they change.
         let desc = base.fontDescriptor.addingAttributes([
@@ -541,13 +577,21 @@ private final class BarView: NSView {
                                 NSFontDescriptor.FeatureKey.selectorIdentifier: kMonospacedNumbersSelector]],
             .traits: [NSFontDescriptor.TraitKey.weight: bold ? NSFont.Weight.semibold : NSFont.Weight.regular],
         ])
-        return NSFont(descriptor: desc, size: size) ?? base
+        let f = NSFont(descriptor: desc, size: size) ?? base
+        fonts[key] = f
+        return f
     }
 
     private func icon(_ name: String, color: NSColor) -> NSImage? {
-        let cfg = NSImage.SymbolConfiguration(pointSize: CGFloat(bar.settings.fontSize) - 1, weight: .regular)
+        let size = CGFloat(bar.settings.fontSize) - 1
+        let key = "\(name) \(size) \(color)"
+        if let i = icons[key] { return i }
+        let cfg = NSImage.SymbolConfiguration(pointSize: size, weight: .regular)
             .applying(.init(paletteColors: [color]))
-        return NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(cfg)
+        let i = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(cfg)
+        if icons.count > 200 { icons.removeAll() }       // colours follow the wallpaper
+        icons[key] = i
+        return i
     }
 
     private var appIconSize: CGFloat { CGFloat(bar.settings.fontSize) + 3 }

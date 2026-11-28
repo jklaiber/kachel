@@ -85,3 +85,6 @@ Same idea for hiding windows (a screen corner instead of Spaces), and
 [`workspace-screens`](/kachel/workspaces/#pinning-workspaces-to-a-display). Kachel
 tiles xmonad-style (master and stack) instead of i3's tree, and `mod-N` swaps
 displays (`greedyView`) instead of focusing the other display.
+`exec-on-workspace-change` and `on-focus-changed` are
+[`kachel subscribe`](/kachel/command-line/#events): a line of JSON for each
+change, to read in your own script.

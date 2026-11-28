@@ -310,6 +310,7 @@ extension WindowManager {
     }
 
     func updateBar() {
+        publishEvents()
         guard !headless else { return }
         var warning: String?
         if !managing {

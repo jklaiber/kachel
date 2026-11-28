@@ -7,6 +7,17 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Added
+- `kachel subscribe` prints a line of JSON for every change: the workspace,
+  the focused window and its title, a workspace's layout, its windows. Other
+  bars (SketchyBar) and scripts can follow along instead of asking every
+  second. `kachel subscribe workspace focus` for only some of them.
+
+### Changed
+- Less work while you're not doing anything: the clock wakes Kachel once a
+  minute instead of every second (unless it shows seconds), and the bar
+  redraws in about a quarter of the time.
+
 ## [0.1.27] - 2026-11-27
 
 The layout as a picture in the bar.

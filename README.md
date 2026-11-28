@@ -48,8 +48,8 @@ first. Upgrades keep the permission.
 - **Trackpad swipes** between workspaces, mouse drag-to-swap, focus border.
 - **A settings window** like System Settings, and a shortcut overview when you
   hold `mod`.
-- **A `kachel` command** for scripts and launchers: run any command, ask where
-  everything is as JSON.
+- **A `kachel` command** for scripts, launchers and other bars: run any
+  command, ask where everything is as JSON, or follow every change.
 - **Dependable**: workspaces survive a restart, a crash puts windows back and
   starts Kachel again, a hung app doesn't hold it up.
 - Everything lives in `~/.config/kachel/config.yaml`; the settings window

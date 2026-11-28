@@ -19,12 +19,17 @@ for _ in $(seq 1 40); do
 done
 "$APP" --ctl version                       # the socket answers
 "$APP" --ctl settings                      # Settings opens (SwiftUI)
+if "$APP" --ctl subscribe nothing 2>/dev/null; then
+    echo "subscribe took an event that doesn't exist" >&2; exit 1
+fi
+"$APP" --ctl subscribe >/dev/null & SUB=$!   # listens until Kachel quits
 sleep 5
 kill -0 "$PID"                             # still running after a few seconds
 
 echo "== quit"
 kill -TERM "$PID"
 wait "$PID" || true
+wait "$SUB"                                # the subscriber ended cleanly
 grep -q "starting Kachel" "$LOG"
 tail -1 "$LOG" | grep -q "quit"
 

@@ -66,10 +66,10 @@ enum Screenshots {
 
         window(master, title: "kachel — zsh", kind: .terminal([
             ("~/kachel", "swift test"),
-            ("", "Executed 79 tests, with 0 failures (0 unexpected)"),
+            ("", "Executed 273 tests, with 0 failures (0 unexpected)"),
             ("~/kachel", "./scripts/bundle.sh && open build/Kachel.app"),
             ("", "Built build/Kachel.app"),
-            ("~/kachel", "kachel-ctl \"workspace 2\""),
+            ("~/kachel", "kachel workspace 2"),
             ("~/kachel", ""),
         ]))
         window(top, title: "Kachel — a tiling window manager", kind: .browser)

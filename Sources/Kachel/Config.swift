@@ -22,12 +22,13 @@ enum Config {
     }()
 
     private static var lastModified: Date?
+    private static var migrated = false
 
     /// Returns true if the file was (re)read, successfully or not.
     @discardableResult
     static func load(force: Bool = false) -> Bool {
         let fm = FileManager.default
-        migrateFromXMonadMac()
+        if !migrated { migrated = true; migrateFromXMonadMac() }
         if !fm.fileExists(atPath: url.path) {
             do {
                 try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)

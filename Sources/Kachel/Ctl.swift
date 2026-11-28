@@ -18,6 +18,8 @@ enum Ctl {
       kachel query windows          JSON: every managed window
       kachel query screens          JSON: every display and the workspace on it
       kachel query focused          JSON: the focused window and workspace
+      kachel subscribe [events]     a JSON line on every change, until you stop it:
+                                    workspace, focus, layout, windows (all if none)
       kachel settings               open Kachel's settings
       kachel version                Kachel's version (this command's and the app's)
       kachel dump                   write Kachel's state to ~/Library/Logs/Kachel.log
@@ -43,6 +45,7 @@ enum Ctl {
             exit(2)
         }
         sendAll(fd, text + "\n")
+        if text == "subscribe" || text.hasPrefix("subscribe ") { stream(fd) }
         let reply = readAll(fd)
         close(fd)
         // First line: "ok" or "error"; then the output.
@@ -54,6 +57,28 @@ enum Ctl {
         }
         FileHandle.standardError.write("kachel: \(out)\n".data(using: .utf8)!)
         exit(1)
+    }
+
+    /// `kachel subscribe`: after "ok", every line Kachel sends goes straight
+    /// to standard output, until Kachel quits (exit 0) or you stop it.
+    private static func stream(_ fd: Int32) -> Never {
+        let status = readLine(fd)
+        guard status == "ok" else {
+            let why = readAll(fd).trimmingCharacters(in: .whitespacesAndNewlines)
+            FileHandle.standardError.write("kachel: \(status == "error" ? why : "no answer")\n".data(using: .utf8)!)
+            exit(1)
+        }
+        var buf = [UInt8](repeating: 0, count: 16 * 1024)
+        while true {
+            let n = read(fd, &buf, buf.count)
+            if n <= 0 { exit(0) }
+            var off = 0
+            while off < n {
+                let w = buf[off..<n].withUnsafeBytes { write(STDOUT_FILENO, $0.baseAddress, $0.count) }
+                if w <= 0 { exit(0) }       // nobody reads any more
+                off += w
+            }
+        }
     }
 
     /// Homebrew's `kachel` is a symlink, so Bundle.main doesn't know the app:
@@ -68,8 +93,39 @@ enum Ctl {
 
     private static var listener: DispatchSourceRead?
 
-    /// Answer `kachel` commands. The handler runs on the main thread.
-    static func listen(_ handle: @escaping (String) -> (ok: Bool, output: String)) {
+    /// What `kachel subscribe` answers to.
+    struct Subscriber {
+        var fd: Int32
+        var kinds: Set<String>
+        var hangup: DispatchSourceRead
+    }
+    /// Owns the subscribers and writes to them, off the main thread.
+    private static let events = DispatchQueue(label: "kachel.events")
+    private static var subscribers: [Subscriber] = []
+    static let maxSubscribers = 32
+    /// How many there are, kept on the main thread for the window manager.
+    static private(set) var subscribed = 0
+
+    /// One event to everyone subscribed to its kind. Any thread.
+    static func broadcast(kind: String, line: String) {
+        events.async {
+            for s in subscribers where s.kinds.contains(kind) {
+                if !sendAll(s.fd, line + "\n") { drop(s.fd) }
+            }
+        }
+    }
+
+    /// On the events queue.
+    private static func drop(_ fd: Int32) {
+        guard let i = subscribers.firstIndex(where: { $0.fd == fd }) else { return }
+        subscribers.remove(at: i).hangup.cancel()      // closes fd
+        DispatchQueue.main.async { subscribed -= 1 }
+    }
+
+    /// Answer `kachel` commands. The handlers run on the main thread;
+    /// `current` gives a new subscriber where things are now.
+    static func listen(_ handle: @escaping (String) -> (ok: Bool, output: String),
+                       current: @escaping () -> [(kind: String, line: String)] = { [] }) {
         try? FileManager.default.createDirectory(at: Watchdog.dir, withIntermediateDirectories: true)
         unlink(socketPath)
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
@@ -87,6 +143,10 @@ enum Ctl {
             var nosig: Int32 = 1
             setsockopt(c, SOL_SOCKET, SO_NOSIGPIPE, &nosig, socklen_t(MemoryLayout<Int32>.size))
             let text = readLine(c).trimmingCharacters(in: .whitespacesAndNewlines)
+            if text == "subscribe" || text.hasPrefix("subscribe ") {
+                subscribe(c, text, current: current)
+                return
+            }
             let r = DispatchQueue.main.sync { handle(text) }
             sendAll(c, (r.ok ? "ok" : "error") + "\n" + r.output)
             close(c)
@@ -94,6 +154,43 @@ enum Ctl {
         src.resume()
         listener = src
         Log.info("kachel command listening on \(socketPath)")
+    }
+
+    private static func subscribe(_ c: Int32, _ text: String, current: @escaping () -> [(kind: String, line: String)]) {
+        let asked = text.split(separator: " ").dropFirst().map(String.init)
+        if let bad = asked.first(where: { !WindowManager.eventKinds.contains($0) }) {
+            sendAll(c, "error\nno event \"\(bad)\"; there are \(WindowManager.eventKinds.joined(separator: ", "))")
+            close(c)
+            return
+        }
+        let kinds = Set(asked.isEmpty ? WindowManager.eventKinds : asked)
+        // A reader that stops reading can hold a write up for a second at most.
+        var timeout = timeval(tv_sec: 1, tv_usec: 0)
+        setsockopt(c, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+        // The state and the subscription are taken together on the main
+        // thread, so no event falls between them or comes twice.
+        DispatchQueue.main.sync {
+            subscribed += 1                   // counted from now, so no change is missed
+            let now = current().filter { kinds.contains($0.kind) }
+            events.async {
+                func refuse() { close(c); DispatchQueue.main.async { subscribed -= 1 } }
+                guard subscribers.count < maxSubscribers else {
+                    sendAll(c, "error\ntoo many subscribers (\(maxSubscribers))")
+                    refuse()
+                    return
+                }
+                guard sendAll(c, "ok\n" + now.map { $0.line + "\n" }.joined()) else { refuse(); return }
+                // The other side closed: read() says 0.
+                let hangup = DispatchSource.makeReadSource(fileDescriptor: c, queue: events)
+                hangup.setEventHandler {
+                    var b = [UInt8](repeating: 0, count: 256)
+                    if read(c, &b, b.count) <= 0 { drop(c) }
+                }
+                hangup.setCancelHandler { close(c) }
+                subscribers.append(Subscriber(fd: c, kinds: kinds, hangup: hangup))
+                hangup.resume()
+            }
+        }
     }
 
     static func stopListening() {
@@ -128,13 +225,15 @@ enum Ctl {
         } == 0
     }
 
-    private static func sendAll(_ fd: Int32, _ text: String) {
+    @discardableResult
+    private static func sendAll(_ fd: Int32, _ text: String) -> Bool {
         var data = Array(text.utf8)
         while !data.isEmpty {
             let n = data.withUnsafeBytes { write(fd, $0.baseAddress, $0.count) }
-            if n <= 0 { return }
+            if n <= 0 { return false }
             data.removeFirst(n)
         }
+        return true
     }
 
     private static func readLine(_ fd: Int32) -> String {

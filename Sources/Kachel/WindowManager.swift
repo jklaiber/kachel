@@ -131,6 +131,13 @@ final class WindowManager {
     var hotkeyProblems: [String] = []
     var pollTimer: Timer?
     var pollTick = 0
+    /// What `kachel subscribe` last reported (see WindowManager+Events.swift),
+    /// and where the events go: one JSON line each.
+    var lastEvents: EventState?
+    var onEvent: ((_ kind: String, _ line: String) -> Void)?
+    /// Whether anyone listens: without, nothing is compared (reading the
+    /// title asks the app).
+    var eventsWanted: () -> Bool = { true }
     /// The poll's last look: what was on screen, and when it last asked every app.
     var lastOnScreen: Int?
     var lastFullRefresh = Date.distantPast

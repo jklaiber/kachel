@@ -72,7 +72,9 @@ for sig in [SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP] {
 NSSetUncaughtExceptionHandler { _ in WindowManager.shared.emergencyRestore() }
 
 // The `kachel` command (see Ctl.swift).
-Ctl.listen { WindowManager.shared.ctl($0) }
+Ctl.listen({ WindowManager.shared.ctl($0) }, current: { WindowManager.shared.currentEvents() })
+WindowManager.shared.onEvent = { Ctl.broadcast(kind: $0, line: $1) }
+WindowManager.shared.eventsWanted = { Ctl.subscribed > 0 }
 
 /// A quit from outside (`brew upgrade` quits Kachel this way, as do logout
 /// and AppleScript) goes the same way as mod-shift-q: windows come back first.
