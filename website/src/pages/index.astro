@@ -7,6 +7,34 @@ import window_search from '../../../docs/images/screenshots/window-search.png';
 import welcome from '../../../docs/images/screenshots/welcome.png';
 import { LAYOUTS, BLURBS, layoutShapes } from '../layout-pictures.mjs';
 
+// The live demo's bar shows its layout as a picture, like the app's bar: the
+// same shapes as Sources/KachelCore/LayoutIcon.swift, the master solid, the
+// others lighter, the ones waiting behind lighter still.
+const t = 1 / 3;
+const BAR_ICONS = {
+  Tall: [[0, 0, .5, 1, 'master'], [.5, 0, .5, t], [.5, t, .5, t], [.5, 2 * t, .5, t]],
+  Wide: [[0, 0, 1, .5, 'master'], [0, .5, t, .5], [t, .5, t, .5], [2 * t, .5, t, .5]],
+  'Three-column': [[.25, 0, .5, 1, 'master'], [.75, 0, .25, .5], [.75, .5, .25, .5], [0, 0, .25, 1]],
+  BSP: [[0, 0, .5, 1, 'master'], [.5, 0, .5, .5], [.5, .5, .25, .5], [.75, .5, .25, .5]],
+  Column: [0, 1, 2, 3].map((i) => [i * .25, 0, .25, 1, i ? 'window' : 'master']),
+  Full: [[.12, 0, .76, 1, 'behind'], [0, .24, 1, .76, 'master']],
+};
+function barIcon(name) {
+  const W = 17.4, H = 12, gap = 1.2, r = 1.4;
+  const alpha = { master: 1, window: .5, behind: .28 };
+  const id = 'bi-' + name.toLowerCase().replace(/[^a-z]/g, '');
+  const rects = BAR_ICONS[name].map(([x, y, w, h, role = 'window']) =>
+    ({ x: x * W + gap / 2, y: y * H + gap / 2, w: w * W - gap, h: h * H - gap, role }));
+  // A window in front covers the ones behind it, with a thin gap around it.
+  const masks = rects.map((_, i) => rects.slice(i + 1).map((f) =>
+    `<rect x="${f.x - gap / 2}" y="${f.y - gap / 2}" width="${f.w + gap}" height="${f.h + gap}" rx="${r}" fill="#000"/>`).join(''));
+  return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><defs>` +
+    masks.map((m, i) => m ? `<mask id="${id}-${i}"><rect width="${W}" height="${H}" fill="#fff"/>${m}</mask>` : '').join('') +
+    '</defs>' + rects.map((q, i) =>
+      `<rect x="${q.x}" y="${q.y}" width="${q.w}" height="${q.h}" rx="${r}" fill="currentColor" fill-opacity="${alpha[q.role]}"${masks[i] ? ` mask="url(#${id}-${i})"` : ''}/>`).join('') +
+    '</svg>';
+}
+
 const shots = { bar, window_search, welcome };
 // Every layout, as in the docs; names as in config.yaml.
 const layouts = Object.keys(LAYOUTS).map((name) => ({ name, blurb: BLURBS[name], ...layoutShapes(name) }));
@@ -136,7 +164,8 @@ h1 {
 .kbar .ws.has { opacity: .95; }
 .kbar .ws.has::after { content: ""; position: absolute; bottom: .15cqw; width: .3cqw; height: .3cqw; border-radius: 50%; background: currentColor; }
 .kbar .ws.on { background: rgba(255,255,255,.92); color: #1d1d1f; opacity: 1; text-shadow: none; }
-.kbar .layout { margin-left: .8cqw; opacity: .75; }
+.kbar .layout { margin-left: .8cqw; display: flex; align-items: center; }
+.kbar .layout svg { display: block; height: 1.15cqw; width: auto; filter: drop-shadow(0 0 3px rgba(0,0,0,.3)); }
 .kbar .title { margin-left: 1.2cqw; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30cqw; }
 .kbar .stats { margin-left: auto; display: flex; gap: 1.6cqw; opacity: .95; white-space: nowrap; }
 
@@ -308,7 +337,9 @@ footer .grow { flex: 1; }
     <div class="toast" id="toast"></div>
     <div class="kbar">
       <div id="tags" style="display:flex;gap:.5cqw"></div>
-      <span class="layout" id="layname">Tall</span>
+      <span class="layout" id="layname" role="img" aria-label="Layout: Tall" title="Tall">{Object.keys(BAR_ICONS).map((n) => (
+        <span data-layout={n} hidden={n !== 'Tall'} set:html={barIcon(n)} />
+      ))}</span>
       <span class="title" id="wintitle"></span>
       <span class="stats"><span>↓ 1.2 MB/s</span><span>12 %</span><span id="clock2"></span></span>
     </div>
@@ -543,7 +574,9 @@ function render() {
   });
   document.getElementById('tags').innerHTML = ws.map((w, i) =>
     `<div class="ws${w.wins.length ? ' has' : ''}${i === cur ? ' on' : ''}" data-i="${i}">${i + 1}</div>`).join('');
-  document.getElementById('layname').textContent = kind;
+  const lay = document.getElementById('layname');
+  lay.querySelectorAll('[data-layout]').forEach(p => { p.hidden = p.dataset.layout !== kind; });
+  lay.title = kind; lay.setAttribute('aria-label', 'Layout: ' + kind);
   const f = s.wins[s.focus];
   document.getElementById('wintitle').textContent = f ? f.title : '';
   document.getElementById('appname').textContent = f ? f.app : 'Finder';
