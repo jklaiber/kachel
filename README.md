@@ -7,26 +7,26 @@
 [![Docs](https://img.shields.io/badge/docs-jklaiber.github.io%2Fkachel-blue)](https://jklaiber.github.io/kachel/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-*Kachel* is German for tile, as in a *Kachelofen*, the tiled stove in the icon:
-nine glazed tiles for nine workspaces.
+**Tiling windows for macOS, ready in a minute.** Windows arrange themselves
+side by side as you open them, nine workspaces switch instantly, and a bar,
+window search and scratchpads come built in. Set it up in a Settings window
+like System Settings, or in a YAML file. No turning off SIP, no fighting with
+Spaces.
 
 ![Kachel: three tiled windows, the focused one framed in orange, Kachel's bar along the bottom](docs/images/screenshots/desktop.png)
 
-A native tiling window manager for macOS with **xmonad's workspace model**: nine
-workspaces shared by all displays, each display showing one of them, and
-**`greedyView`**. Press `mod-2` while workspace 2 is on the other display, and
-the two displays swap.
+If you know xmonad: the same workspace model. Nine workspaces are shared by all
+displays, each display shows one of them, and `greedyView` decides what
+happens when you ask for one that's already on the other display: the two
+displays swap.
 
-```
- before mod-2 on A          after
- ┌──────┐ ┌──────┐          ┌──────┐ ┌──────┐
- │  A:1*│ │  B:2 │   ──▶    │  A:2*│ │  B:1 │
- └──────┘ └──────┘          └──────┘ └──────┘
-```
+<p align="center"><img src="docs/images/display-swap.svg" width="760" alt="Before: display A shows workspace 1 and has focus, display B shows workspace 2. After mod-2 on A: A shows 2, B shows 1."></p>
 
 **📖 Documentation: [jklaiber.github.io/kachel](https://jklaiber.github.io/kachel/)**
 
 ## Install
+
+Kachel runs on macOS 26 (Tahoe) or newer, on Apple Silicon and Intel Macs.
 
 ```bash
 brew install --cask jklaiber/tap/kachel
@@ -54,6 +54,53 @@ first. Upgrades keep the permission.
   starts Kachel again, a hung app doesn't hold it up.
 - Everything lives in `~/.config/kachel/config.yaml`; the settings window
   writes into it with your comments kept.
+
+## Kachel and the others
+
+| | Kachel | AeroSpace | yabai | Amethyst |
+|---|---|---|---|---|
+| Turn off SIP | never | never | for some features | never |
+| Workspaces | its own, instant | its own, instant | macOS Spaces | macOS Spaces |
+| Tiling | master and stack, 11 layouts | i3's tree | BSP, stack, float | master and stack |
+| Bar | built in | bring your own | bring your own | none |
+| Set up in | a settings window or YAML | a TOML file | a shell script | a preferences window or YAML |
+| Command line, events | yes | yes | yes | no |
+
+Each is good at what it sets out to do. Kachel is for you if you like
+xmonad's master-and-stack tiling and want everything in one app that you can
+set up without a config file. Switching? See
+[Coming from…](https://jklaiber.github.io/kachel/coming-from/).
+
+## What Kachel does with its permission
+
+Kachel needs Accessibility, the permission that lets an app move other apps'
+windows. Here's what it does with it, and what it doesn't:
+
+- **Windows**: it reads where your windows are, their size and their title,
+  and moves and resizes them. From the Dock it reads the red numbers on app
+  icons, for the bar's badges. Nothing else in your apps.
+- **Keys**: shortcuts go through macOS's hotkey system, which tells Kachel
+  only about its own key combinations. Otherwise Kachel notices *that* you
+  pressed a key, not which one: that's how it tells a focus change of yours
+  from one an app makes. Only with `mod` set to just the left (or right)
+  Option key does it look at each keypress, to see whether it's one of your
+  shortcuts. Keys are never written down or sent anywhere.
+- **Titles stay private**: window titles never reach the log, only a tag
+  that changes every time Kachel starts. Your user name is written as `~`. To
+  put windows back after a restart, Kachel keeps a hash of each title, never
+  the title itself. After a crash, Kachel offers to open a GitHub issue with
+  the details filled in, for you to read before you send it: no titles, no
+  files.
+- **Network**: one request an hour to GitHub for the latest version, with
+  nothing about you or your Mac. Off in Settings → About. No tracking, no
+  analytics.
+- **Your windows are safe**: quitting puts every window back on screen. If
+  Kachel crashes, a small helper does the same and starts Kachel again.
+- **Gone without a trace**: `brew uninstall --zap kachel` also removes the
+  config, the saved state and the log.
+
+The name: *Kachel* is German for tile, as in a *Kachelofen*, the tiled stove
+in the icon: nine glazed tiles for nine workspaces.
 
 ## A few keys
 
