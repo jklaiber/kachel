@@ -7,6 +7,19 @@ taken from its section here.
 
 ## [Unreleased]
 
+### Fixed
+- After a crash, every window that was out of sight comes back: Kachel now
+  tells the watchdog about a window before moving it away, not just after.
+- Fewer `workspaces:` in the config while two displays are in use: the other
+  display keeps the workspace it showed, instead of it jumping to the first
+  display.
+- A window swapped onto another workspace (dragged to the other display)
+  no longer gets its old size back when it later returns to its first
+  workspace; it starts even, like a window moved there.
+- Values from a damaged or edited saved state, and a negative `gap`, are
+  kept within sensible limits. An unreadable saved state is reported in the
+  log (Kachel starts afresh, as before).
+
 ## [0.1.28] - 2026-11-28
 
 Follow Kachel from your own scripts and bars.

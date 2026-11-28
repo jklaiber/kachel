@@ -281,7 +281,7 @@ public struct Settings {
             guard let list = v as? [Any], !list.isEmpty else { throw SettingsError("workspaces must be a non-empty list") }
             s.workspaces = list.map { "\($0)" }
         }
-        if let v = dict["gap"] { s.gap = try number(v, "gap") }
+        if let v = dict["gap"] { s.gap = min(200, max(0, try number(v, "gap"))) }
         if let v = dict["padding"] {
             if let t = v as? String, t == "auto" { s.padding = nil } else { s.padding = max(0, try number(v, "padding")) }
         }

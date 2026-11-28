@@ -52,18 +52,27 @@ final class WindowManager {
     /// window). Ones you minimized yourself aren't here and stay minimized.
     var minimizedByUs: [WindowID: (window: AppWindow, at: Date, wasFocused: Bool)] = [:] { didSet { scheduleRecordParked() } }
     var recordPending = false
+    /// Tests: where the watchdog's list goes instead of the file.
+    var recordParked: ((Watchdog.Parked) -> Void)?
 
-    /// Tell the watchdog what's out of sight, once per run loop pass.
+    /// Tell the watchdog what's out of sight, once per run loop pass (windows
+    /// coming back; parking writes at once, see `park`).
     func scheduleRecordParked() {
-        guard !headless, !recordPending else { return }
+        guard !recordPending else { return }
         recordPending = true
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.recordPending = false
-            let entry = { (id: WindowID) in self.windows[id].map { Watchdog.Parked.Entry(pid: $0.pid, window: id) } }
-            Watchdog.record(.init(parked: self.hidden.sorted().compactMap(entry),
-                                  minimized: self.minimizedByUs.keys.sorted().compactMap(entry)))
+            self.recordParkedNow()
         }
+    }
+
+    /// Write the watchdog's list now.
+    func recordParkedNow() {
+        let entry = { (id: WindowID) in self.windows[id].map { Watchdog.Parked.Entry(pid: $0.pid, window: id) } }
+        let state = Watchdog.Parked(parked: hidden.sorted().compactMap(entry),
+                                    minimized: minimizedByUs.keys.sorted().compactMap(entry))
+        if let recordParked { recordParked(state) } else if !headless { Watchdog.record(state) }
     }
     /// Restored by us; focus them again once they're back.
     var refocusWhenBack: Set<WindowID> = []

@@ -146,9 +146,14 @@ public struct StackSet {
             let orphans = workspaces[tags.count...].flatMap(\.windows)
             workspaces.removeLast(workspaces.count - tags.count)
             for w in orphans.reversed() { insert(w, into: tags.count - 1) }
-            let screens = screenWorkspace.count
-            screenWorkspace = screenWorkspace.filter { $0 < tags.count }
-            setScreenCount(screens)
+            // A display whose workspace is gone gets a free one; the others
+            // keep theirs, on the same display.
+            var shown = screenWorkspace.map { $0 < tags.count ? $0 : nil }
+            for s in shown.indices where shown[s] == nil {
+                shown[s] = workspaces.indices.first { i in !shown.contains(i) }
+            }
+            screenWorkspace = shown.compactMap { $0 }     // fewer workspaces than displays: some show none
+            currentScreen = min(currentScreen, screenWorkspace.count - 1)
         }
         while workspaces.count < tags.count {
             workspaces.append(Workspace(tag: tags[workspaces.count], ratio: workspaces.last?.ratio ?? 0.5))
@@ -261,6 +266,10 @@ public struct StackSet {
         }
         workspaces[wa].windows[ia] = b
         workspaces[wb].windows[ib] = a
+        // Sizes belong to a window within its workspace: on another workspace
+        // it starts over, as when it's moved there.
+        workspaces[wa].weights[a] = nil
+        workspaces[wb].weights[b] = nil
         if workspaces[wa].focused == a { workspaces[wa].focused = b }
         if workspaces[wb].focused == b { workspaces[wb].focused = a }
     }
@@ -423,8 +432,9 @@ public struct StackSet {
             ws.windows = (snap.order[i] ?? []).filter { existing.contains($0) && workspaceIndex(of: $0) == nil }
             ws.focused = snap.focused[i].flatMap { ws.windows.contains($0) ? $0 : nil } ?? ws.windows.first
             if let l = snap.layouts[i] { ws.layout = l }
-            if let r = snap.ratios[i] { ws.ratio = r }
-            if let n = snap.nMaster[i] { ws.nMaster = n }
+            // The file may be old, edited or damaged: only sensible values.
+            if let r = snap.ratios[i], r.isFinite { ws.ratio = min(0.9, max(0.1, r)) }
+            if let n = snap.nMaster[i] { ws.nMaster = min(50, max(0, n)) }
             ws.fullscreen = snap.fullscreen?[i] ?? false
             ws.weights = (snap.weights?[i] ?? [:]).filter { ws.windows.contains($0.key) }
             workspaces[i] = ws

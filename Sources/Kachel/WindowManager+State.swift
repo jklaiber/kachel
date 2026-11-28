@@ -18,7 +18,13 @@ extension WindowManager {
 
     func loadSaved() -> SavedState? {
         guard let data = store.load() else { return nil }
-        return try? JSONDecoder().decode(SavedState.self, from: data)
+        do {
+            return try JSONDecoder().decode(SavedState.self, from: data)
+        } catch {
+            // Starts afresh: every window joins the workspace on its display.
+            Log.info("couldn't read the saved workspaces (\(error.localizedDescription)): starting afresh")
+            return nil
+        }
     }
 
     struct SavedState: Codable {

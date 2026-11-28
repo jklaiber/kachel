@@ -134,9 +134,7 @@ extension WindowManager {
         guard !screens.isEmpty else { return }
         let visible = Set(ss.screenWorkspace)
 
-        for (i, ws) in ss.workspaces.enumerated() where !visible.contains(i) {
-            ws.windows.forEach(hide)
-        }
+        park(ss.workspaces.enumerated().filter { !visible.contains($0.offset) }.flatMap(\.element.windows))
 
         // Back on a workspace whose windows we minimized: restore them. They're
         // tiled into their old place once they reappear (see refresh).
@@ -262,21 +260,36 @@ extension WindowManager {
         showFloating(id, on: new)
     }
 
-    func hide(_ id: WindowID) {
-        guard !hidden.contains(id), let w = windows[id], let f = w.frame else { return }
+    /// Park a window (or minimize it, if its rule says so). The watchdog
+    /// hears about it before it moves: see `park`.
+    func hide(_ id: WindowID) { park([id]) }
+
+    /// Park windows out of sight. First they're marked and written to the
+    /// watchdog's list, then they move: a crash in between can't leave a
+    /// window in a corner that the watchdog doesn't know about.
+    func park(_ ids: [WindowID]) {
+        let moves = ids.compactMap(markHidden)
+        guard !moves.isEmpty else { return }
+        recordParkedNow()
+        moves.forEach { $0() }
+    }
+
+    /// Marks the window as out of sight and returns what moves it there.
+    private func markHidden(_ id: WindowID) -> (() -> Void)? {
+        guard !hidden.contains(id), let w = windows[id], let f = w.frame else { return nil }
         if rule(for: w)?.hide == .minimize, !scratchWindow.values.contains(id), let ws = ss.workspaceIndex(of: id) {
             minimizedByUs[id] = (w, clock.now, ss.workspaces[ws].focused == id)
             Log.info("minimizing window \(id) (\(appName(of: w))): its workspace \(ss.workspaces[ws].tag) is out of sight")
-            w.setMinimized(true)
-            return
+            return { w.setMinimized(true) }
         }
         if floatsNow(id) {
             let s = screenIndex(containing: CGPoint(x: f.midX, y: f.midY)) ?? ss.currentScreen
             let o = screens[min(s, screens.count - 1)].visible.origin
             floatRel[id] = f.offsetBy(dx: -o.x, dy: -o.y)
         }
-        w.move(to: hidePoint(for: f))
+        let point = hidePoint(for: f)
         hidden.insert(id)
+        return { w.move(to: point) }
     }
 
     func showFloating(_ id: WindowID, on scr: Screen) {
